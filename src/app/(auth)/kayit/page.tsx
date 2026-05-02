@@ -1,0 +1,153 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
+import { Field, Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useStore } from "@/lib/store";
+import { useToast } from "@/components/ui/toast";
+
+export default function KayitPage() {
+  const router = useRouter();
+  const { register } = useStore();
+  const { toast } = useToast();
+  const [data, setData] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    city: "",
+    password: "",
+    passwordConfirm: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (data.password.length < 6) {
+      setError("Şifre en az 6 karakter olmalı.");
+      return;
+    }
+    if (data.password !== data.passwordConfirm) {
+      setError("Şifreler eşleşmiyor.");
+      return;
+    }
+    setLoading(true);
+    setTimeout(() => {
+      const result = register({
+        fullName: data.fullName,
+        email: data.email,
+        phone: data.phone,
+        city: data.city,
+        password: data.password,
+      });
+      if (result.ok) {
+        toast({
+          tone: "success",
+          title: "Üyeliğiniz oluşturuldu",
+          description: "Hesabınıza yönlendiriliyorsunuz.",
+        });
+        router.push("/hesabim");
+      } else {
+        setError(result.error);
+      }
+      setLoading(false);
+    }, 400);
+  };
+
+  return (
+    <div>
+      <h1 className="text-3xl font-semibold text-brand-900">Üye Olun</h1>
+      <p className="mt-2 text-muted-foreground">
+        Üye panelinizden burs başvurusu yapabilir, etkinliklere kayıt
+        olabilirsiniz.
+      </p>
+
+      <form onSubmit={onSubmit} className="mt-8 grid sm:grid-cols-2 gap-4">
+        <div className="sm:col-span-2">
+          <Field label="Ad Soyad" required>
+            <Input
+              required
+              value={data.fullName}
+              onChange={(e) =>
+                setData((p) => ({ ...p, fullName: e.target.value }))
+              }
+              placeholder="Adınız Soyadınız"
+            />
+          </Field>
+        </div>
+        <Field label="E-posta" required>
+          <Input
+            type="email"
+            required
+            value={data.email}
+            onChange={(e) => setData((p) => ({ ...p, email: e.target.value }))}
+            placeholder="ornek@eposta.com"
+          />
+        </Field>
+        <Field label="Telefon">
+          <Input
+            type="tel"
+            value={data.phone}
+            onChange={(e) => setData((p) => ({ ...p, phone: e.target.value }))}
+            placeholder="+90 5xx xxx xx xx"
+          />
+        </Field>
+        <Field label="Şehir">
+          <Input
+            value={data.city}
+            onChange={(e) => setData((p) => ({ ...p, city: e.target.value }))}
+            placeholder="İstanbul"
+          />
+        </Field>
+        <span className="hidden sm:block" />
+        <Field label="Şifre" required hint="En az 6 karakter">
+          <Input
+            type="password"
+            required
+            value={data.password}
+            onChange={(e) =>
+              setData((p) => ({ ...p, password: e.target.value }))
+            }
+            placeholder="••••••••"
+          />
+        </Field>
+        <Field label="Şifre Tekrar" required>
+          <Input
+            type="password"
+            required
+            value={data.passwordConfirm}
+            onChange={(e) =>
+              setData((p) => ({ ...p, passwordConfirm: e.target.value }))
+            }
+            placeholder="••••••••"
+          />
+        </Field>
+
+        {error && (
+          <div className="sm:col-span-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        <div className="sm:col-span-2 mt-2">
+          <Button type="submit" loading={loading} className="w-full" size="lg">
+            Üyeliği Oluştur
+          </Button>
+        </div>
+
+        <div className="sm:col-span-2 text-center text-sm text-muted-foreground">
+          Zaten hesabınız var mı?{" "}
+          <Link
+            href="/giris"
+            className="text-brand-700 font-medium hover:underline"
+          >
+            Giriş yapın
+          </Link>
+        </div>
+      </form>
+    </div>
+  );
+}
