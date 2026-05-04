@@ -22,10 +22,17 @@ import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { formatDateTimeTR, initials } from "@/lib/utils";
 import { StatusBadge } from "@/components/status";
+import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
+import type { CommonUiText, PageHeadersMap } from "@/lib/types";
 
 export default function HesabimPage() {
   const router = useRouter();
-  const { ready, currentUser, applications, logout } = useStore();
+  const { ready, currentUser, applications, logout, pageBlocks } = useStore();
+  const headers = (pageBlocks["page.headers"] as PageHeadersMap | undefined)
+    ?.hesabim;
+  const ui =
+    (pageBlocks["ui.common"] as CommonUiText | undefined) ?? DEFAULT_COMMON_UI;
+  const accountUi = { ...DEFAULT_COMMON_UI.account, ...(ui.account ?? {}) };
 
   useEffect(() => {
     if (ready && !currentUser) {
@@ -42,8 +49,15 @@ export default function HesabimPage() {
   return (
     <>
       <PageHeader
-        title={`Merhaba, ${currentUser.fullName.split(" ")[0]}`}
-        description="Üyelik bilgilerinizi görüntüleyin, burs başvurularınızın durumunu takip edin."
+        title={
+          headers?.title
+            ? headers.title.replace(
+                "{firstName}",
+                currentUser.fullName.split(" ")[0],
+              )
+            : `Merhaba, ${currentUser.fullName.split(" ")[0]}`
+        }
+        description={headers?.description ?? ""}
         breadcrumbs={[
           { label: "Ana Sayfa", href: "/" },
           { label: "Hesabım" },
@@ -61,7 +75,9 @@ export default function HesabimPage() {
                   {currentUser.fullName}
                 </div>
                 <Badge tone={currentUser.role === "admin" ? "gold" : "brand"}>
-                  {currentUser.role === "admin" ? "Yönetici" : "Üye"}
+                  {currentUser.role === "admin"
+                    ? accountUi.roleAdminLabel
+                    : accountUi.roleMemberLabel}
                 </Badge>
               </div>
             </div>
@@ -85,7 +101,8 @@ export default function HesabimPage() {
               <li className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span>
-                  Üyelik: {new Date(currentUser.joinedAt).getFullYear()}
+                  {accountUi.membershipLabel}{" "}
+                  {new Date(currentUser.joinedAt).getFullYear()}
                 </span>
               </li>
             </ul>
@@ -97,7 +114,7 @@ export default function HesabimPage() {
                   className="w-full justify-center"
                   leftIcon={<ShieldCheck className="h-4 w-4" />}
                 >
-                  Yönetim Paneli
+                  {accountUi.adminPanelButton}
                 </ButtonLink>
               )}
               <Button
@@ -109,7 +126,7 @@ export default function HesabimPage() {
                   router.push("/");
                 }}
               >
-                Çıkış Yap
+                {accountUi.logoutButton}
               </Button>
             </div>
           </div>
@@ -121,11 +138,11 @@ export default function HesabimPage() {
               <div className="flex items-center gap-2">
                 <GraduationCap className="h-5 w-5 text-brand-700" />
                 <h3 className="font-semibold text-brand-900">
-                  Burs Başvurularım
+                  {accountUi.applicationsTitle}
                 </h3>
               </div>
               <ButtonLink href="/burs/basvuru" variant="primary" size="sm">
-                Yeni Başvuru
+                {accountUi.newApplicationButton}
               </ButtonLink>
             </div>
 
@@ -135,13 +152,13 @@ export default function HesabimPage() {
                   <FileText className="h-5 w-5" />
                 </div>
                 <p className="text-brand-900 font-medium mt-4">
-                  Henüz başvurunuz bulunmuyor
+                  {accountUi.emptyTitle}
                 </p>
                 <p className="text-muted-foreground text-sm mt-1.5 max-w-sm mx-auto">
-                  Online başvuru formunu doldurarak burs başvurusu yapabilirsiniz.
+                  {accountUi.emptyDescription}
                 </p>
                 <ButtonLink href="/burs/basvuru" variant="gold" className="mt-5">
-                  Başvuruyu Başlat
+                  {accountUi.startApplicationButton}
                 </ButtonLink>
               </div>
             ) : (
@@ -181,7 +198,9 @@ export default function HesabimPage() {
                     </div>
                     {app.reviewerNote && (
                       <div className="mt-3 rounded-md bg-muted/60 border border-border px-3 py-2 text-sm text-brand-900">
-                        <span className="font-medium">Komisyon notu:</span>{" "}
+                        <span className="font-medium">
+                          {accountUi.reviewerNoteLabel}
+                        </span>{" "}
                         {app.reviewerNote}
                       </div>
                     )}
@@ -198,15 +217,16 @@ export default function HesabimPage() {
               </div>
               <div>
                 <h3 className="text-base font-semibold text-brand-900">
-                  Profil bilgilerinizi güncel tutun
+                  {accountUi.profileTipTitle}
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Burs ödemeleri, etkinlik kayıtları ve duyuruların size ulaşması
-                  için iletişim bilgilerinizi güncel tutmayı unutmayın.
+                  {accountUi.profileTipDescription}
                 </p>
-                <p className="text-xs text-muted-foreground mt-3">
-                  (Demo: profil düzenleme bu sürümde dosya tabanlıdır.)
-                </p>
+                {accountUi.profileTipNote && (
+                  <p className="text-xs text-muted-foreground mt-3">
+                    {accountUi.profileTipNote}
+                  </p>
+                )}
               </div>
             </div>
           </div>

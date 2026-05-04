@@ -154,6 +154,34 @@ body {
   animation: float-up 0.5s ease-out both;
 }
 
+/* Sonsuz yatay kayma — sponsor logo şeridi (marquee) için.
+ * Track içinde liste iki kez render edilir; transform: translateX(-50%)
+ * ilk kümeyi ekran dışına çıkardığında ikinci küme aynı görüntüyü verir
+ * ve döngü sıfır sıçramayla yeniden başlar. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee var(--marquee-duration, 40s) linear infinite;
+  will-change: transform;
+}
+
+.marquee-pause:hover .animate-marquee {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   width: 8px;
   height: 8px;

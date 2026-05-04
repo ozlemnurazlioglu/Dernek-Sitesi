@@ -10,8 +10,10 @@ import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
 import { formatDateTR, slugify, uid } from "@/lib/utils";
 import type { NewsItem } from "@/lib/types";
+import { UploadInput } from "@/components/admin/upload-input";
+import { MarkdownTextarea } from "@/components/admin/markdown-textarea";
 
-const emptyItem = (): NewsItem => ({
+const emptyItem = (defaultCategory: string): NewsItem => ({
   id: `n-${uid()}`,
   slug: "",
   title: "",
@@ -19,16 +21,17 @@ const emptyItem = (): NewsItem => ({
   body: "",
   cover:
     "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=1200&q=80",
-  category: "Haber",
+  category: defaultCategory,
   publishedAt: new Date().toISOString(),
   author: "",
 });
 
 export default function AdminNewsPage() {
-  const { news, upsertNews, removeNews } = useStore();
+  const { news, newsCategories, upsertNews, removeNews } = useStore();
   const { toast } = useToast();
   const [editing, setEditing] = useState<NewsItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<NewsItem | null>(null);
+  const defaultCategory = newsCategories[0]?.name ?? "Haber";
 
   const sorted = useMemo(
     () =>
@@ -74,7 +77,7 @@ export default function AdminNewsPage() {
         </div>
         <Button
           variant="primary"
-          onClick={() => setEditing(emptyItem())}
+          onClick={() => setEditing(emptyItem(defaultCategory))}
           leftIcon={<Plus className="h-4 w-4" />}
         >
           Yeni Haber
@@ -174,20 +177,29 @@ export default function AdminNewsPage() {
                 placeholder={slugify(editing.title)}
               />
             </Field>
-            <Field label="Kategori">
+            <Field
+              label="Kategori"
+              hint={
+                newsCategories.length === 0
+                  ? "Henüz kategori yok. 'Haber Kategorileri' sayfasından ekleyebilirsiniz."
+                  : undefined
+              }
+            >
               <Select
                 value={editing.category}
                 onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    category: e.target.value as NewsItem["category"],
-                  })
+                  setEditing({ ...editing, category: e.target.value })
                 }
               >
-                <option>Haber</option>
-                <option>Duyuru</option>
-                <option>Basın</option>
-                <option>Proje</option>
+                {newsCategories.length === 0 ? (
+                  <option>{editing.category}</option>
+                ) : (
+                  newsCategories.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))
+                )}
               </Select>
             </Field>
             <Field label="Yazar">
@@ -211,12 +223,11 @@ export default function AdminNewsPage() {
               />
             </Field>
             <div className="sm:col-span-2">
-              <Field label="Kapak Görseli URL">
-                <Input
+              <Field label="Kapak Görseli">
+                <UploadInput
                   value={editing.cover}
-                  onChange={(e) =>
-                    setEditing({ ...editing, cover: e.target.value })
-                  }
+                  onChange={(url) => setEditing({ ...editing, cover: url })}
+                  kind="image"
                 />
               </Field>
             </div>
@@ -232,13 +243,14 @@ export default function AdminNewsPage() {
               </Field>
             </div>
             <div className="sm:col-span-2">
-              <Field label="İçerik">
-                <Textarea
+              <Field
+                label="İçerik"
+                hint="Markdown destekli — başlık, kalın yazı, link, listeler kullanabilirsiniz."
+              >
+                <MarkdownTextarea
                   value={editing.body}
-                  onChange={(e) =>
-                    setEditing({ ...editing, body: e.target.value })
-                  }
-                  rows={6}
+                  onChange={(body) => setEditing({ ...editing, body })}
+                  rows={10}
                 />
               </Field>
             </div>

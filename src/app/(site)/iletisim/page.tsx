@@ -8,10 +8,16 @@ import { Field, Input, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
-import { siteConfig } from "@/lib/site";
+import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
+import type { CommonUiText, PageHeadersMap } from "@/lib/types";
 
 export default function IletisimPage() {
-  const { addMessage } = useStore();
+  const { addMessage, siteSettings, pageBlocks } = useStore();
+  const headers = (pageBlocks["page.headers"] as PageHeadersMap | undefined)
+    ?.iletisim;
+  const ui =
+    (pageBlocks["ui.common"] as CommonUiText | undefined) ?? DEFAULT_COMMON_UI;
+  const contactUi = { ...DEFAULT_COMMON_UI.contact, ...(ui.contact ?? {}) };
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -29,8 +35,8 @@ export default function IletisimPage() {
       });
       toast({
         tone: "success",
-        title: "Mesajınız iletildi",
-        description: "En kısa sürede size dönüş yapacağız.",
+        title: contactUi.successTitle,
+        description: contactUi.successDescription,
       });
       form.reset();
       setLoading(false);
@@ -40,8 +46,8 @@ export default function IletisimPage() {
   return (
     <>
       <PageHeader
-        title="İletişim"
-        description="Sorularınız, iş birliği önerileriniz veya gönüllü olmak için bize yazın."
+        title={headers?.title ?? "İletişim"}
+        description={headers?.description ?? ""}
         breadcrumbs={[
           { label: "Ana Sayfa", href: "/" },
           { label: "İletişim" },
@@ -50,9 +56,11 @@ export default function IletisimPage() {
       <Container className="py-14 grid md:grid-cols-12 gap-8">
         <div className="md:col-span-7">
           <div className="rounded-2xl border border-border bg-white p-7">
-            <h2 className="text-2xl font-semibold text-brand-900">Bize yazın</h2>
+            <h2 className="text-2xl font-semibold text-brand-900">
+              {contactUi.formTitle}
+            </h2>
             <p className="text-muted-foreground mt-2">
-              Formu doldurun, en geç 2 iş günü içinde size dönüş yapalım.
+              {contactUi.formDescription}
             </p>
             <form
               onSubmit={handleSubmit}
@@ -92,14 +100,14 @@ export default function IletisimPage() {
               </div>
               <div className="sm:col-span-2 flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
-                  Verileriniz KVKK kapsamında işlenir, üçüncü taraflarla paylaşılmaz.
+                  {contactUi.kvkkNote}
                 </p>
                 <Button
                   type="submit"
                   loading={loading}
                   rightIcon={<Send className="h-4 w-4" />}
                 >
-                  Gönder
+                  {contactUi.submitButton}
                 </Button>
               </div>
             </form>
@@ -109,7 +117,7 @@ export default function IletisimPage() {
         <aside className="md:col-span-5 space-y-4">
           <div className="rounded-2xl border border-border bg-white p-6">
             <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wider">
-              İletişim Bilgileri
+              {contactUi.sidebarTitle}
             </h3>
             <ul className="mt-5 space-y-4 text-sm">
               <li className="flex items-start gap-3">
@@ -119,7 +127,7 @@ export default function IletisimPage() {
                 <div>
                   <div className="text-xs text-muted-foreground">Adres</div>
                   <div className="text-brand-900 mt-0.5 leading-relaxed">
-                    {siteConfig.contact.address}
+                    {siteSettings.contactAddress}
                   </div>
                 </div>
               </li>
@@ -130,7 +138,7 @@ export default function IletisimPage() {
                 <div>
                   <div className="text-xs text-muted-foreground">Telefon</div>
                   <div className="text-brand-900 mt-0.5">
-                    {siteConfig.contact.phone}
+                    {siteSettings.contactPhone}
                   </div>
                 </div>
               </li>
@@ -141,7 +149,7 @@ export default function IletisimPage() {
                 <div>
                   <div className="text-xs text-muted-foreground">E-posta</div>
                   <div className="text-brand-900 mt-0.5">
-                    {siteConfig.contact.email}
+                    {siteSettings.contactEmail}
                   </div>
                 </div>
               </li>
@@ -152,21 +160,23 @@ export default function IletisimPage() {
                 <div>
                   <div className="text-xs text-muted-foreground">Çalışma saatleri</div>
                   <div className="text-brand-900 mt-0.5">
-                    {siteConfig.contact.workingHours}
+                    {siteSettings.contactWorkingHours}
                   </div>
                 </div>
               </li>
             </ul>
           </div>
-          <div className="rounded-2xl overflow-hidden border border-border bg-muted h-64">
-            <iframe
-              src="https://maps.google.com/maps?q=Kadıköy+İstanbul&t=&z=13&ie=UTF8&iwloc=&output=embed"
-              className="w-full h-full"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Konum"
-            />
-          </div>
+          {siteSettings.mapEmbedUrl && (
+            <div className="rounded-2xl overflow-hidden border border-border bg-muted h-64">
+              <iframe
+                src={siteSettings.mapEmbedUrl}
+                className="w-full h-full"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Konum"
+              />
+            </div>
+          )}
         </aside>
       </Container>
     </>

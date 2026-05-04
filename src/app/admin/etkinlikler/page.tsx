@@ -10,8 +10,9 @@ import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
 import { formatDateTimeTR, slugify, uid } from "@/lib/utils";
 import type { EventItem } from "@/lib/types";
+import { UploadInput } from "@/components/admin/upload-input";
 
-const emptyItem = (): EventItem => ({
+const emptyItem = (defaultCategory: string): EventItem => ({
   id: `e-${uid()}`,
   slug: "",
   title: "",
@@ -23,7 +24,7 @@ const emptyItem = (): EventItem => ({
   location: "",
   capacity: 100,
   registered: 0,
-  category: "Sosyal",
+  category: defaultCategory,
 });
 
 const toLocalDateTime = (iso: string) => {
@@ -34,10 +35,11 @@ const toLocalDateTime = (iso: string) => {
 };
 
 export default function AdminEventsPage() {
-  const { events, upsertEvent, removeEvent } = useStore();
+  const { events, eventCategories, upsertEvent, removeEvent } = useStore();
   const { toast } = useToast();
   const [editing, setEditing] = useState<EventItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<EventItem | null>(null);
+  const defaultCategory = eventCategories[0]?.name ?? "Eğitim";
 
   const sorted = useMemo(
     () =>
@@ -75,7 +77,7 @@ export default function AdminEventsPage() {
         </div>
         <Button
           variant="primary"
-          onClick={() => setEditing(emptyItem())}
+          onClick={() => setEditing(emptyItem(defaultCategory))}
           leftIcon={<Plus className="h-4 w-4" />}
         >
           Yeni Etkinlik
@@ -163,20 +165,29 @@ export default function AdminEventsPage() {
                 />
               </Field>
             </div>
-            <Field label="Kategori">
+            <Field
+              label="Kategori"
+              hint={
+                eventCategories.length === 0
+                  ? "Henüz kategori yok. 'Etkinlik Kategorileri' sayfasından ekleyebilirsiniz."
+                  : undefined
+              }
+            >
               <Select
                 value={editing.category}
                 onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    category: e.target.value as EventItem["category"],
-                  })
+                  setEditing({ ...editing, category: e.target.value })
                 }
               >
-                <option>Eğitim</option>
-                <option>Sosyal</option>
-                <option>Yardım</option>
-                <option>Konferans</option>
+                {eventCategories.length === 0 ? (
+                  <option>{editing.category}</option>
+                ) : (
+                  eventCategories.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))
+                )}
               </Select>
             </Field>
             <Field label="Konum">
@@ -238,12 +249,11 @@ export default function AdminEventsPage() {
               />
             </Field>
             <div className="sm:col-span-2">
-              <Field label="Kapak URL">
-                <Input
+              <Field label="Kapak Görseli">
+                <UploadInput
                   value={editing.cover}
-                  onChange={(e) =>
-                    setEditing({ ...editing, cover: e.target.value })
-                  }
+                  onChange={(url) => setEditing({ ...editing, cover: url })}
+                  kind="image"
                 />
               </Field>
             </div>

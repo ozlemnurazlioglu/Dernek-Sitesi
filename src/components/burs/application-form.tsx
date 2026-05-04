@@ -28,10 +28,51 @@ import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
 import type {
   ApplicationDocument,
+  ApplicationFormText,
   DocumentKey,
   ScholarshipApplication,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+const DEFAULT_FORM_TEXT: ApplicationFormText = {
+  steps: {
+    personal: {
+      title: "Kişisel Bilgiler",
+      description:
+        "Lütfen kimlik bilgilerinizi resmi belgelerinizle birebir aynı girin.",
+    },
+    education: {
+      title: "Eğitim Bilgileri",
+      description:
+        "Halen devam ettiğiniz eğitim kademesi ve okul bilgilerinizi girin.",
+    },
+    family: {
+      title: "Aile Bilgileri",
+      description:
+        "Burs değerlendirmemizde gelir durumu önemli kriterlerden biridir.",
+    },
+    documents: {
+      title: "Belgeler",
+      description:
+        "Lütfen aşağıdaki belgeleri PDF veya JPG formatında, her biri en fazla 10 MB olacak şekilde yükleyin.",
+    },
+    finalize: {
+      title: "Son Adım: Banka & Motivasyon",
+      description:
+        "Burs onaylanması durumunda ödemenin yapılacağı IBAN ve motivasyon mektubunuzu giriniz.",
+    },
+  },
+  consentText:
+    "Verdiğim bilgilerin ve yüklediğim belgelerin doğruluğunu kabul ederim. Yanlış beyan halinde başvurum geçersiz sayılacaktır. Verilerim KVKK kapsamında işlenir.",
+  buttons: { prev: "Geri", next: "Devam Et", submit: "Başvuruyu Gönder" },
+  success: {
+    title: "Başvurunuz başarıyla alındı",
+    description:
+      "Başvurunuz komisyonumuz tarafından incelenecektir. Sonuç durumunu üyelik panelinizden ve e-posta adresinizden takip edebilirsiniz.",
+    newApplicationButton: "Yeni Başvuru",
+    accountButton: "Hesabıma Git",
+  },
+};
 
 type FormData = Omit<
   ScholarshipApplication,
@@ -39,6 +80,25 @@ type FormData = Omit<
 > & {
   documents: Partial<Record<DocumentKey, ApplicationDocument>>;
 };
+
+/**
+ * Başvuru formundaki dosya yükleme alanlarını tanımlayan, admin tarafından
+ * "İstenen Belgeler" sayfasından düzenlenen liste boşsa kullanılan yedek
+ * varsayılan. Üretimde gerçekçi bir liste kayıtlı olduğu sürece görünmez.
+ */
+const FALLBACK_DOCS: {
+  key: DocumentKey;
+  label: string;
+  description: string;
+  required: boolean;
+}[] = [
+  {
+    key: "id_card",
+    label: "Nüfus Cüzdanı / Kimlik",
+    description: "Ön ve arka yüzü, PDF veya JPG",
+    required: true,
+  },
+];
 
 const initialData = (): FormData => ({
   fullName: "",
@@ -69,62 +129,41 @@ const initialData = (): FormData => ({
   documents: {},
 });
 
-const requiredDocs: {
-  key: DocumentKey;
-  label: string;
-  description: string;
-  required: boolean;
-}[] = [
-  {
-    key: "id_card",
-    label: "Nüfus Cüzdanı / Kimlik",
-    description: "Ön ve arka yüzü, PDF veya JPG",
-    required: true,
-  },
-  {
-    key: "student_certificate",
-    label: "Öğrenci Belgesi",
-    description: "e-Devlet üzerinden alınabilir",
-    required: true,
-  },
-  {
-    key: "transcript",
-    label: "Transkript",
-    description: "Güncel not döküm belgesi",
-    required: true,
-  },
-  {
-    key: "income_proof",
-    label: "Gelir Durumu Belgesi",
-    description: "Anne/baba gelirini gösteren belge",
-    required: true,
-  },
-  {
-    key: "residence",
-    label: "İkametgâh Belgesi",
-    description: "e-Devlet üzerinden alınabilir",
-    required: false,
-  },
-  {
-    key: "photo",
-    label: "Vesikalık Fotoğraf",
-    description: "JPG, son 6 ay içinde çekilmiş",
-    required: false,
-  },
-];
-
-const steps = [
-  { key: "personal", title: "Kişisel Bilgiler", icon: User },
-  { key: "education", title: "Eğitim Bilgileri", icon: GraduationCap },
-  { key: "family", title: "Aile Bilgileri", icon: Users },
-  { key: "documents", title: "Belgeler", icon: FileText },
-  { key: "finalize", title: "Son Adım", icon: CreditCard },
+const STEP_DEFS = [
+  { key: "personal", icon: User },
+  { key: "education", icon: GraduationCap },
+  { key: "family", icon: Users },
+  { key: "documents", icon: FileText },
+  { key: "finalize", icon: CreditCard },
 ] as const;
+
+type StepKey = (typeof STEP_DEFS)[number]["key"];
 
 export function ApplicationForm() {
   const router = useRouter();
-  const { currentUser, submitApplication } = useStore();
+  const {
+    currentUser,
+    submitApplication,
+    pageBlocks,
+    requiredDocuments,
+  } = useStore();
   const { toast } = useToast();
+  const formText =
+    (pageBlocks["burs.application_form"] as ApplicationFormText | undefined) ??
+    DEFAULT_FORM_TEXT;
+  const steps = STEP_DEFS.map((s) => ({
+    ...s,
+    title: formText.steps[s.key as StepKey].title,
+    description: formText.steps[s.key as StepKey].description,
+  }));
+  const docs = requiredDocuments.length
+    ? requiredDocuments.map((d) => ({
+        key: d.docKey as DocumentKey,
+        label: d.title,
+        description: d.description ?? "",
+        required: d.required,
+      }))
+    : FALLBACK_DOCS;
   const [step, setStep] = useState(0);
   const [data, setData] = useState<FormData>(initialData);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -181,7 +220,7 @@ export function ApplicationForm() {
       if (!data.motherJob.trim())
         newErrors.motherJob = "Anne mesleği zorunludur";
     } else if (step === 3) {
-      const missing = requiredDocs
+      const missing = docs
         .filter((d) => d.required)
         .filter((d) => !data.documents[d.key]);
       if (missing.length > 0) {
@@ -278,7 +317,13 @@ export function ApplicationForm() {
   };
 
   if (submittedId) {
-    return <SuccessScreen id={submittedId} onView={() => router.push("/hesabim")} />;
+    return (
+      <SuccessScreen
+        id={submittedId}
+        text={formText.success}
+        onView={() => router.push("/hesabim")}
+      />
+    );
   }
 
   return (
@@ -331,8 +376,8 @@ export function ApplicationForm() {
         <div className="rounded-2xl border border-border bg-white p-6 md:p-8">
           {step === 0 && (
             <StepWrap
-              title="Kişisel Bilgiler"
-              description="Lütfen kimlik bilgilerinizi resmi belgelerinizle birebir aynı girin."
+              title={formText.steps.personal.title}
+              description={formText.steps.personal.description}
             >
               <div className="grid sm:grid-cols-2 gap-5">
                 <Field label="Ad Soyad" required error={errors.fullName}>
@@ -428,8 +473,8 @@ export function ApplicationForm() {
 
           {step === 1 && (
             <StepWrap
-              title="Eğitim Bilgileri"
-              description="Halen devam ettiğiniz eğitim kademesi ve okul bilgilerinizi girin."
+              title={formText.steps.education.title}
+              description={formText.steps.education.description}
             >
               <div className="grid sm:grid-cols-2 gap-5">
                 <Field label="Eğitim Kademesi" required>
@@ -491,8 +536,8 @@ export function ApplicationForm() {
 
           {step === 2 && (
             <StepWrap
-              title="Aile Bilgileri"
-              description="Burs değerlendirmemizde gelir durumu önemli kriterlerden biridir."
+              title={formText.steps.family.title}
+              description={formText.steps.family.description}
             >
               <div className="grid sm:grid-cols-2 gap-5">
                 <Field label="Baba Adı" required error={errors.fatherName}>
@@ -606,8 +651,8 @@ export function ApplicationForm() {
 
           {step === 3 && (
             <StepWrap
-              title="Belgeler"
-              description="Lütfen aşağıdaki belgeleri PDF veya JPG formatında, her biri en fazla 10 MB olacak şekilde yükleyin."
+              title={formText.steps.documents.title}
+              description={formText.steps.documents.description}
             >
               {errors._docs && (
                 <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -615,7 +660,7 @@ export function ApplicationForm() {
                 </div>
               )}
               <div className="grid sm:grid-cols-2 gap-4">
-                {requiredDocs.map((d) => {
+                {docs.map((d) => {
                   const file = data.documents[d.key];
                   return (
                     <div
@@ -637,9 +682,11 @@ export function ApplicationForm() {
                               <Badge tone="danger">Zorunlu</Badge>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {d.description}
-                          </p>
+                          {d.description && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {d.description}
+                            </p>
+                          )}
                         </div>
                         {d.key === "photo" ? (
                           <ImageIcon className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -690,8 +737,8 @@ export function ApplicationForm() {
 
           {step === 4 && (
             <StepWrap
-              title="Son Adım: Banka & Motivasyon"
-              description="Burs onaylanması durumunda ödemenin yapılacağı IBAN ve motivasyon mektubunuzu giriniz."
+              title={formText.steps.finalize.title}
+              description={formText.steps.finalize.description}
             >
               <div className="grid sm:grid-cols-2 gap-5">
                 <div className="sm:col-span-2">
@@ -731,10 +778,8 @@ export function ApplicationForm() {
                 </div>
                 <div className="sm:col-span-2 rounded-xl bg-brand-50 border border-brand-100 p-4">
                   <p className="text-sm text-brand-900">
-                    <span className="font-semibold">Onay:</span> Verdiğim
-                    bilgilerin ve yüklediğim belgelerin doğruluğunu kabul ederim.
-                    Yanlış beyan halinde başvurum geçersiz sayılacaktır.
-                    Verilerim KVKK kapsamında işlenir.
+                    <span className="font-semibold">Onay:</span>{" "}
+                    {formText.consentText}
                   </p>
                 </div>
               </div>
@@ -749,7 +794,7 @@ export function ApplicationForm() {
                 onClick={() => setStep(step - 1)}
                 leftIcon={<ArrowLeft className="h-4 w-4" />}
               >
-                Geri
+                {formText.buttons.prev}
               </Button>
             ) : (
               <span />
@@ -761,7 +806,9 @@ export function ApplicationForm() {
               loading={submitting}
               rightIcon={<ArrowRight className="h-4 w-4" />}
             >
-              {step === steps.length - 1 ? "Başvuruyu Gönder" : "Devam Et"}
+              {step === steps.length - 1
+                ? formText.buttons.submit
+                : formText.buttons.next}
             </Button>
           </div>
         </div>
@@ -792,9 +839,11 @@ function StepWrap({
 
 function SuccessScreen({
   id,
+  text,
   onView,
 }: {
   id: string;
+  text: ApplicationFormText["success"];
   onView: () => void;
 }) {
   return (
@@ -802,12 +851,9 @@ function SuccessScreen({
       <div className="h-16 w-16 mx-auto rounded-full bg-emerald-600 text-white flex items-center justify-center">
         <CheckCircle2 className="h-8 w-8" />
       </div>
-      <h2 className="text-2xl font-semibold text-brand-900 mt-5">
-        Başvurunuz başarıyla alındı
-      </h2>
+      <h2 className="text-2xl font-semibold text-brand-900 mt-5">{text.title}</h2>
       <p className="text-muted-foreground mt-2 max-w-lg mx-auto">
-        Başvurunuz komisyonumuz tarafından incelenecektir. Sonuç durumunu
-        üyelik panelinizden ve e-posta adresinizden takip edebilirsiniz.
+        {text.description}
       </p>
       <div className="mt-6 inline-flex items-center gap-2 rounded-md bg-white border border-border px-4 h-11 font-mono text-sm">
         Başvuru No:{" "}
@@ -815,10 +861,10 @@ function SuccessScreen({
       </div>
       <div className="mt-7 flex items-center justify-center gap-3">
         <Button variant="outline" onClick={() => window.location.reload()}>
-          Yeni Başvuru
+          {text.newApplicationButton}
         </Button>
         <Button variant="primary" onClick={onView}>
-          Hesabıma Git
+          {text.accountButton}
         </Button>
       </div>
     </div>

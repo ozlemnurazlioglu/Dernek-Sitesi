@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   ArrowRight,
@@ -16,41 +18,130 @@ import {
 import { Container, SectionHeader } from "@/components/ui/section";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { siteConfig } from "@/lib/site";
-import { seedEvents, seedNews } from "@/lib/seed-data";
+import { useStore } from "@/lib/store";
 import { formatDateTR } from "@/lib/utils";
+import { AnnouncementCard } from "@/components/site/announcement-card";
+import type {
+  AboutCard,
+  Aga,
+  Announcement,
+  AnnouncementCategory,
+  EventItem,
+  HeroBlock,
+  HomeProgramCard,
+  HomeScholarshipCTA,
+  HomeSponsorsBlock,
+  NewsItem,
+  SectionHeading,
+  SiteSettings,
+  Sponsor,
+  Testimonial,
+} from "@/lib/types";
 
 export default function HomePage() {
-  const latestNews = [...seedNews]
+  const store = useStore();
+  const {
+    siteSettings,
+    pageBlocks,
+    news,
+    events,
+    testimonials,
+    agalar,
+    announcements,
+    announcementCategories,
+    sponsors,
+  } = store;
+
+  const latestNews = [...news]
     .sort(
       (a, b) =>
         new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
     )
     .slice(0, 3);
 
-  const upcomingEvents = [...seedEvents]
+  const upcomingEvents = [...events]
     .sort(
       (a, b) =>
         new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
     )
     .slice(0, 2);
 
+  const hero = pageBlocks["home.hero"] as HeroBlock | undefined;
+  const aboutSection = pageBlocks["home.about_section"] as
+    | SectionHeading
+    | undefined;
+  const aboutCards = (pageBlocks["home.about_cards"] as AboutCard[]) ?? [];
+  const programsSection = pageBlocks["home.programs_section"] as
+    | SectionHeading
+    | undefined;
+  const programs = (pageBlocks["home.programs"] as HomeProgramCard[]) ?? [];
+  const scholarshipCta = pageBlocks["home.scholarship_cta"] as
+    | HomeScholarshipCTA
+    | undefined;
+  const newsSection = pageBlocks["home.news_section"] as
+    | SectionHeading
+    | undefined;
+  const eventsSection = pageBlocks["home.events_section"] as
+    | SectionHeading
+    | undefined;
+  const testimonialsSection = pageBlocks["home.testimonials_section"] as
+    | SectionHeading
+    | undefined;
+  const agalarSection = pageBlocks["home.agalar_section"] as
+    | SectionHeading
+    | undefined;
+  const announcementsSection = pageBlocks["home.announcements_section"] as
+    | SectionHeading
+    | undefined;
+  const recentAnnouncements = [...announcements]
+    .sort((a, b) => a.sort - b.sort)
+    .slice(0, 6);
+  const sponsorsBlock = pageBlocks["home.sponsors_section"] as
+    | HomeSponsorsBlock
+    | undefined;
+  const donateCta = pageBlocks["home.donate_cta"] as
+    | { title: string; description: string; buttonLabel: string; buttonHref: string }
+    | undefined;
+
   return (
     <>
-      <Hero />
-      <Stats />
-      <AboutPreview />
-      <Programs />
-      <ScholarshipCTA />
-      <NewsPreview items={latestNews} />
-      <EventsPreview items={upcomingEvents} />
-      <Testimonials />
-      <DonateCTA />
+      {hero && <Hero hero={hero} settings={siteSettings} />}
+      <Stats settings={siteSettings} />
+      {aboutSection && <AboutPreview heading={aboutSection} cards={aboutCards} />}
+      {programsSection && (
+        <Programs heading={programsSection} programs={programs} />
+      )}
+      {scholarshipCta && <ScholarshipCTA cta={scholarshipCta} />}
+      {newsSection && <NewsPreview heading={newsSection} items={latestNews} />}
+      {eventsSection && (
+        <EventsPreview heading={eventsSection} items={upcomingEvents} />
+      )}
+      {testimonialsSection && (
+        <Testimonials heading={testimonialsSection} items={testimonials} />
+      )}
+      {agalarSection && agalar.length > 0 && (
+        <AgalarSection heading={agalarSection} items={agalar} />
+      )}
+      {announcementsSection && recentAnnouncements.length > 0 && (
+        <AnnouncementsPreview
+          heading={announcementsSection}
+          items={recentAnnouncements}
+          categories={announcementCategories}
+        />
+      )}
+      {sponsorsBlock && sponsors.length > 0 && (
+        <SponsorsSection block={sponsorsBlock} items={sponsors} />
+      )}
+      {donateCta && <DonateCTA cta={donateCta} />}
     </>
   );
 }
 
-function Hero() {
+function Hero({ hero, settings }: { hero: HeroBlock; settings: SiteSettings }) {
+  const subtitle = hero.subtitle.replace(
+    "{yearsActive}",
+    String(settings.statYearsActive),
+  );
   return (
     <section className="relative overflow-hidden">
       <div className="absolute inset-0 bg-radial-fade" />
@@ -58,33 +149,33 @@ function Hero() {
       <Container className="relative py-20 md:py-28 grid md:grid-cols-12 gap-10 items-center">
         <div className="md:col-span-7 max-w-2xl">
           <Badge tone="gold" className="mb-5">
-            <Sparkles className="h-3 w-3" /> {siteConfig.founded}'den bu yana
-            eğitime destek
+            <Sparkles className="h-3 w-3" /> {settings.founded}
+            {hero.badgeText}
           </Badge>
           <h1 className="text-4xl md:text-6xl font-semibold tracking-tight text-brand-900 leading-[1.05]">
-            Bilgiyle aydınlanan{" "}
+            {hero.titlePrefix}{" "}
             <span className="relative inline-block">
-              <span className="relative z-10 text-brand-700">yarınlar</span>
+              <span className="relative z-10 text-brand-700">
+                {hero.titleHighlight}
+              </span>
               <span className="absolute left-0 right-0 bottom-1 h-3 bg-gold-200 -z-0" />
             </span>{" "}
-            için
+            {hero.titleSuffix}
           </h1>
           <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-xl">
-            Umut Eğitim ve Dayanışma Derneği olarak {siteConfig.stats.yearsActive}{" "}
-            yılı aşkın süredir öğrencilere burs, gönüllülük ve sosyal sorumluluk
-            projeleriyle umut oluyoruz. Bu yolda siz de yanımızda olun.
+            {subtitle}
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
             <ButtonLink
-              href="/burs/basvuru"
+              href={hero.primaryButton.href}
               size="lg"
               variant="primary"
               rightIcon={<ArrowRight className="h-4 w-4" />}
             >
-              Burs Başvurusu Yap
+              {hero.primaryButton.label}
             </ButtonLink>
-            <ButtonLink href="/bagis" size="lg" variant="outline">
-              Destek Ol
+            <ButtonLink href={hero.secondaryButton.href} size="lg" variant="outline">
+              {hero.secondaryButton.label}
             </ButtonLink>
           </div>
 
@@ -96,6 +187,7 @@ function Hero() {
                 "https://i.pravatar.cc/64?img=47",
                 "https://i.pravatar.cc/64?img=58",
               ].map((src) => (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={src}
                   src={src}
@@ -106,7 +198,7 @@ function Hero() {
             </div>
             <div className="text-sm text-muted-foreground">
               <span className="font-semibold text-brand-900">
-                {siteConfig.stats.activeMembers}+ aktif üye
+                {settings.statActiveMembers}+ aktif üye
               </span>{" "}
               değişimin parçası oldu.
             </div>
@@ -115,21 +207,22 @@ function Hero() {
 
         <div className="md:col-span-5 relative">
           <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-border shadow-xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1200&q=80"
+              src={hero.imageUrl}
               alt="Eğitime destek"
               className="absolute inset-0 h-full w-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-brand-950/80 via-brand-900/10 to-transparent" />
             <div className="absolute bottom-5 left-5 right-5 text-white">
               <div className="text-xs uppercase tracking-widest text-gold-200">
-                Bu yıl
+                {hero.imageOverlayLabel}
               </div>
               <div className="text-2xl font-semibold mt-1">
-                500 öğrenciye burs
+                {hero.imageOverlayTitle}
               </div>
               <div className="text-sm text-white/75 mt-1">
-                Lise, lisans ve lisansüstü düzeyinde
+                {hero.imageOverlayDesc}
               </div>
             </div>
           </div>
@@ -139,9 +232,11 @@ function Hero() {
               <Trophy className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-xs text-muted-foreground">17. yıl</div>
+              <div className="text-xs text-muted-foreground">
+                {hero.floatBadge1.label}
+              </div>
               <div className="text-sm font-semibold text-brand-900">
-                {siteConfig.stats.scholarshipsGiven}+ Burslu Öğrenci
+                {settings.statScholarshipsGiven}+ {hero.floatBadge1.value}
               </div>
             </div>
           </div>
@@ -150,9 +245,11 @@ function Hero() {
               <Heart className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-xs text-muted-foreground">Şeffaflık</div>
+              <div className="text-xs text-muted-foreground">
+                {hero.floatBadge2.label}
+              </div>
               <div className="text-sm font-semibold text-brand-900">
-                Yıllık Faaliyet Raporu
+                {hero.floatBadge2.value}
               </div>
             </div>
           </div>
@@ -162,26 +259,26 @@ function Hero() {
   );
 }
 
-function Stats() {
+function Stats({ settings }: { settings: SiteSettings }) {
   const items = [
     {
       label: "Faaliyet yılı",
-      value: `${siteConfig.stats.yearsActive}+`,
+      value: `${settings.statYearsActive}+`,
       icon: Calendar,
     },
     {
       label: "Burslu öğrenci",
-      value: `${siteConfig.stats.scholarshipsGiven.toLocaleString("tr-TR")}+`,
+      value: `${settings.statScholarshipsGiven.toLocaleString("tr-TR")}+`,
       icon: GraduationCap,
     },
     {
       label: "Aktif üye",
-      value: `${siteConfig.stats.activeMembers}+`,
+      value: `${settings.statActiveMembers}+`,
       icon: Users,
     },
     {
       label: "Tamamlanan proje",
-      value: `${siteConfig.stats.completedProjects}+`,
+      value: `${settings.statCompletedProjects}+`,
       icon: HandHeart,
     },
   ];
@@ -208,15 +305,23 @@ function Stats() {
   );
 }
 
-function AboutPreview() {
+function AboutPreview({
+  heading,
+  cards,
+}: {
+  heading: SectionHeading;
+  cards: AboutCard[];
+}) {
+  // İkonlar emoji olarak saklanır; eski kart yapısını korumak için fallback ikon var.
+  const fallbackIcons = [GraduationCap, BookOpen, HandHeart, Users];
   return (
     <section>
       <Container className="py-20 grid md:grid-cols-12 gap-10 items-start">
         <div className="md:col-span-5">
           <SectionHeader
-            eyebrow="Hakkımızda"
-            title="Eğitim için, gelecek için, birlikte"
-            description="Eğitim fırsatlarına erişimi kolaylaştırmak ve toplumsal dayanışmayı güçlendirmek için 2008'den beri çalışıyoruz. Şeffaf, hesap verebilir ve gönüllülük temelli bir yaklaşımla sürdürülebilir projeler üretiyoruz."
+            eyebrow={heading.eyebrow}
+            title={heading.title}
+            description={heading.description}
           />
           <ButtonLink
             href="/hakkimizda"
@@ -228,85 +333,48 @@ function AboutPreview() {
           </ButtonLink>
         </div>
         <div className="md:col-span-7 grid sm:grid-cols-2 gap-4">
-          {[
-            {
-              icon: GraduationCap,
-              title: "Karşılıksız Burs",
-              text: "Lise ve üniversite öğrencileri için akademik dönem boyu sürekli destek.",
-            },
-            {
-              icon: BookOpen,
-              title: "Eğitim Projeleri",
-              text: "Köy okullarına kitap, atölye ve laboratuvar desteği.",
-            },
-            {
-              icon: HandHeart,
-              title: "Sosyal Yardım",
-              text: "Doğal afet bölgeleri ve dezavantajlı gruplar için saha çalışmaları.",
-            },
-            {
-              icon: Users,
-              title: "Gönüllülük",
-              text: "Üyelerimizle birlikte yıl içinde 50+ etkinlik ve atölye düzenliyoruz.",
-            },
-          ].map((card) => (
-            <div
-              key={card.title}
-              className="rounded-xl border border-border bg-white p-5 hover:shadow-md hover:-translate-y-0.5 transition-all"
-            >
-              <div className="h-10 w-10 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center">
-                <card.icon className="h-5 w-5" />
+          {cards.map((card, i) => {
+            const Icon = fallbackIcons[i % fallbackIcons.length];
+            return (
+              <div
+                key={card.title}
+                className="rounded-xl border border-border bg-white p-5 hover:shadow-md hover:-translate-y-0.5 transition-all"
+              >
+                <div className="h-10 w-10 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center text-xl">
+                  {card.icon ? card.icon : <Icon className="h-5 w-5" />}
+                </div>
+                <h3 className="text-base font-semibold text-brand-900 mt-4">
+                  {card.title}
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                  {card.text}
+                </p>
               </div>
-              <h3 className="text-base font-semibold text-brand-900 mt-4">
-                {card.title}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                {card.text}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Container>
     </section>
   );
 }
 
-function Programs() {
-  const items = [
-    {
-      title: "Lise Burs Programı",
-      desc: "9–12. sınıf öğrencilerine yönelik aylık karşılıksız burs ve mentörlük.",
-      number: "01",
-      tag: "9 ay süreyle",
-    },
-    {
-      title: "Üniversite Burs Programı",
-      desc: "Lisans öğrencileri için akademik dönem boyu burs ve kariyer rehberliği.",
-      number: "02",
-      tag: "Tam akademik yıl",
-    },
-    {
-      title: "Lisansüstü Destek",
-      desc: "Yüksek lisans ve doktora öğrencilerine araştırma ve yayın desteği.",
-      number: "03",
-      tag: "Proje bazlı",
-    },
-  ];
+function Programs({
+  heading,
+  programs,
+}: {
+  heading: SectionHeading;
+  programs: HomeProgramCard[];
+}) {
   return (
     <section className="bg-brand-950 text-white relative overflow-hidden">
       <div className="absolute inset-0 bg-grid opacity-[0.06]" />
       <Container className="py-20 relative">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
           <SectionHeader
-            eyebrow="Burs Programları"
-            title={
-              <span className="text-white">Eğitim hayatına kesintisiz destek</span>
-            }
+            eyebrow={heading.eyebrow}
+            title={<span className="text-white">{heading.title}</span>}
             description={
-              <span className="text-white/70">
-                Akademik dönem boyu sürekli, karşılıksız ve şeffaf burs
-                programlarımız ile öğrencilerin yanındayız.
-              </span>
+              <span className="text-white/70">{heading.description}</span>
             }
           />
           <ButtonLink href="/burs" variant="gold" size="md">
@@ -314,7 +382,7 @@ function Programs() {
           </ButtonLink>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          {items.map((item) => (
+          {programs.map((item) => (
             <div
               key={item.title}
               className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 hover:bg-white/[0.06] transition-colors"
@@ -343,13 +411,7 @@ function Programs() {
   );
 }
 
-function ScholarshipCTA() {
-  const checks = [
-    "Ücretsiz başvuru — komisyon ücreti yok",
-    "Online belge yükleme & başvuru takibi",
-    "Şeffaf değerlendirme süreci",
-    "Akademik dönem boyu kesintisiz destek",
-  ];
+function ScholarshipCTA({ cta }: { cta: HomeScholarshipCTA }) {
   return (
     <section>
       <Container className="py-20">
@@ -359,18 +421,16 @@ function ScholarshipCTA() {
           <div className="relative grid md:grid-cols-12 gap-8 items-center">
             <div className="md:col-span-7 text-white">
               <Badge tone="gold" className="mb-4">
-                <GraduationCap className="h-3 w-3" /> 2025-2026 Başvuruları Açık
+                <GraduationCap className="h-3 w-3" /> {cta.badge}
               </Badge>
               <h3 className="text-3xl md:text-4xl font-semibold leading-tight">
-                Eğitiminize burs desteği için şimdi başvurun
+                {cta.title}
               </h3>
               <p className="text-white/75 mt-4 max-w-xl leading-relaxed">
-                Online başvuru formumuzu doldurun, gerekli evrakları yükleyin.
-                Komisyonumuz başvurunuzu inceleyip 30 gün içinde geri dönüş
-                yapacaktır.
+                {cta.description}
               </p>
               <div className="mt-6 grid sm:grid-cols-2 gap-2.5">
-                {checks.map((c) => (
+                {cta.checks.map((c) => (
                   <div
                     key={c}
                     className="flex items-center gap-2 text-sm text-white/85"
@@ -381,16 +441,16 @@ function ScholarshipCTA() {
                 ))}
               </div>
               <div className="flex flex-col sm:flex-row gap-3 mt-8">
-                <ButtonLink href="/burs/basvuru" variant="gold" size="lg">
-                  Başvuruyu Başlat
+                <ButtonLink href={cta.primaryButton.href} variant="gold" size="lg">
+                  {cta.primaryButton.label}
                 </ButtonLink>
                 <ButtonLink
-                  href="/burs"
+                  href={cta.secondaryButton.href}
                   variant="ghost"
                   size="lg"
                   className="!text-white hover:!bg-white/10"
                 >
-                  Burs Hakkında
+                  {cta.secondaryButton.label}
                 </ButtonLink>
               </div>
             </div>
@@ -400,12 +460,7 @@ function ScholarshipCTA() {
                   Başvuru Takvimi
                 </div>
                 <div className="mt-4 space-y-4">
-                  {[
-                    { label: "Başvuru başlangıç", date: "1 Eylül 2025" },
-                    { label: "Başvuru bitiş", date: "30 Eylül 2025" },
-                    { label: "Mülakatlar", date: "5–10 Ekim 2025" },
-                    { label: "Sonuç ilanı", date: "15 Ekim 2025" },
-                  ].map((row) => (
+                  {cta.calendar.map((row) => (
                     <div
                       key={row.label}
                       className="flex items-center justify-between text-sm border-b border-white/10 pb-3 last:border-0 last:pb-0 text-white"
@@ -424,15 +479,21 @@ function ScholarshipCTA() {
   );
 }
 
-function NewsPreview({ items }: { items: typeof seedNews }) {
+function NewsPreview({
+  heading,
+  items,
+}: {
+  heading: SectionHeading;
+  items: NewsItem[];
+}) {
   return (
     <section>
       <Container className="py-20">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
           <SectionHeader
-            eyebrow="Haberler"
-            title="Derneğimizden son haberler"
-            description="Projelerimiz, etkinliklerimiz ve duyurularımız."
+            eyebrow={heading.eyebrow}
+            title={heading.title}
+            description={heading.description}
           />
           <ButtonLink href="/haberler" variant="outline">
             Tüm Haberler
@@ -446,6 +507,7 @@ function NewsPreview({ items }: { items: typeof seedNews }) {
               className="group rounded-2xl border border-border bg-white overflow-hidden hover:shadow-md transition-shadow"
             >
               <div className="relative aspect-[16/10] overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={item.cover}
                   alt={item.title}
@@ -477,15 +539,21 @@ function NewsPreview({ items }: { items: typeof seedNews }) {
   );
 }
 
-function EventsPreview({ items }: { items: typeof seedEvents }) {
+function EventsPreview({
+  heading,
+  items,
+}: {
+  heading: SectionHeading;
+  items: EventItem[];
+}) {
   return (
     <section className="bg-muted/40 border-y border-border">
       <Container className="py-20">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
           <SectionHeader
-            eyebrow="Etkinlikler"
-            title="Yaklaşan etkinliklerimiz"
-            description="Bilgi paylaşımı ve dayanışma için sizi de bekliyoruz."
+            eyebrow={heading.eyebrow}
+            title={heading.title}
+            description={heading.description}
           />
           <ButtonLink href="/etkinlikler" variant="outline">
             Tüm Etkinlikler
@@ -498,6 +566,7 @@ function EventsPreview({ items }: { items: typeof seedEvents }) {
               className="rounded-2xl bg-white border border-border overflow-hidden flex flex-col md:flex-row"
             >
               <div className="md:w-2/5 relative aspect-[4/3] md:aspect-auto">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={event.cover}
                   alt={event.title}
@@ -533,46 +602,32 @@ function EventsPreview({ items }: { items: typeof seedEvents }) {
   );
 }
 
-function Testimonials() {
-  const items = [
-    {
-      name: "Ezgi A.",
-      role: "İTÜ Mimarlık 4. Sınıf · Burslu",
-      avatar: "https://i.pravatar.cc/96?img=49",
-      text: "Bursunuzla birlikte derslerime daha çok odaklanabildim ve final dönemini bursiyer dayanışma ağı sayesinde rahat geçirdim.",
-    },
-    {
-      name: "Murat T.",
-      role: "Mezun bursiyer · Yazılım Mühendisi",
-      avatar: "https://i.pravatar.cc/96?img=51",
-      text: "Sadece maddi destek değil; mentörlük programıyla profesyonel hayata hazırlanmamı sağladınız. Şimdi gönüllüyüm.",
-    },
-    {
-      name: "Selin K.",
-      role: "Hacettepe Tıp 2. Sınıf",
-      avatar: "https://i.pravatar.cc/96?img=29",
-      text: "Şeffaf ve hızlı bir başvuru süreciydi. Belge yükleme ekranı çok kolaydı, bir gün içinde değerlendirmeye girdim.",
-    },
-  ];
+function Testimonials({
+  heading,
+  items,
+}: {
+  heading: SectionHeading;
+  items: Testimonial[];
+}) {
   return (
     <section>
       <Container className="py-20">
         <SectionHeader
-          eyebrow="Bursiyerlerimizden"
-          title="Sözü onlara bırakıyoruz"
+          eyebrow={heading.eyebrow}
+          title={heading.title}
           align="center"
+          description={heading.description}
         />
         <div className="mt-12 grid md:grid-cols-3 gap-6">
           {items.map((t) => (
             <div
-              key={t.name}
+              key={t.id}
               className="rounded-2xl border border-border bg-white p-6 relative"
             >
               <Quote className="h-8 w-8 text-gold-300 absolute -top-3 left-6 bg-white" />
-              <p className="text-brand-900 leading-relaxed mt-3">
-                "{t.text}"
-              </p>
+              <p className="text-brand-900 leading-relaxed mt-3">"{t.text}"</p>
               <div className="mt-6 flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={t.avatar}
                   alt={t.name}
@@ -593,22 +648,219 @@ function Testimonials() {
   );
 }
 
-function DonateCTA() {
+function SponsorsSection({
+  block,
+  items,
+}: {
+  block: HomeSponsorsBlock;
+  items: Sponsor[];
+}) {
+  const cta = block.cta ?? {
+    visible: false,
+    label: "",
+    href: "",
+  };
+  const sorted = [...items].sort((a, b) => a.sort - b.sort);
+  // Liste iki kez render edilir → translate(-50%) ile sıfır-sıçrama döngü.
+  const loopItems = [...sorted, ...sorted];
+  // Daha uzun listede daha yavaş hız — her sponsor ~5s aksın.
+  const duration = Math.max(20, sorted.length * 5);
+
+  return (
+    <section>
+      <Container className="py-16 md:py-20">
+        <SectionHeader
+          eyebrow={block.eyebrow}
+          title={block.title}
+          description={block.description}
+          align="center"
+        />
+
+        {/* Marquee bandı — soldan sağa sürekli kayan tek satır.
+            Üzerine gelindiğinde hover ile durur. */}
+        <div
+          className="marquee-pause group relative mt-10 overflow-hidden"
+          style={
+            {
+              maskImage:
+                "linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%)",
+              WebkitMaskImage:
+                "linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%)",
+              ["--marquee-duration" as string]: `${duration}s`,
+            } as React.CSSProperties
+          }
+        >
+          <div className="animate-marquee flex w-max items-center gap-4 md:gap-6">
+            {loopItems.map((s, i) => {
+              const card = (
+                <div className="h-24 md:h-28 w-44 md:w-52 shrink-0 rounded-xl border border-border bg-white p-4 flex items-center justify-center transition-all hover:border-gold-300 hover:shadow-md">
+                  {s.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={s.logoUrl}
+                      alt={s.name}
+                      className="max-h-full max-w-full object-contain opacity-80 hover:opacity-100 transition"
+                    />
+                  ) : (
+                    <span className="text-sm text-muted-foreground text-center">
+                      {s.name}
+                    </span>
+                  )}
+                </div>
+              );
+              return s.websiteUrl ? (
+                <a
+                  key={`${s.id}-${i}`}
+                  href={s.websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={s.name}
+                  aria-hidden={i >= sorted.length}
+                  tabIndex={i >= sorted.length ? -1 : 0}
+                >
+                  {card}
+                </a>
+              ) : (
+                <div
+                  key={`${s.id}-${i}`}
+                  title={s.name}
+                  aria-hidden={i >= sorted.length}
+                >
+                  {card}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {cta.visible && cta.label && cta.href && (
+          <div className="mt-8 flex justify-center">
+            <Link
+              href={cta.href}
+              className="inline-flex items-center gap-2 px-5 h-11 rounded-xl border-2 border-dashed border-border text-sm font-medium text-muted-foreground hover:text-brand-900 hover:border-brand-300 hover:bg-brand-50/40 transition-colors"
+            >
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-current text-[14px] leading-none">
+                +
+              </span>
+              {cta.label}
+            </Link>
+          </div>
+        )}
+      </Container>
+    </section>
+  );
+}
+
+function AnnouncementsPreview({
+  heading,
+  items,
+  categories,
+}: {
+  heading: SectionHeading;
+  items: Announcement[];
+  categories: AnnouncementCategory[];
+}) {
+  const catBySlug: Record<string, AnnouncementCategory> = {};
+  for (const c of categories) catBySlug[c.slug] = c;
+  return (
+    <section>
+      <Container className="py-20">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
+          <SectionHeader
+            eyebrow={heading.eyebrow}
+            title={heading.title}
+            description={heading.description}
+          />
+          <ButtonLink href="/duyurular" variant="outline">
+            Tüm İlanlar
+          </ButtonLink>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {items.map((item) => (
+            <AnnouncementCard
+              key={item.id}
+              item={item}
+              category={catBySlug[item.categorySlug]}
+            />
+          ))}
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+function AgalarSection({
+  heading,
+  items,
+}: {
+  heading: SectionHeading;
+  items: Aga[];
+}) {
+  return (
+    <section className="bg-muted/30 border-y border-border">
+      <Container className="py-20">
+        <SectionHeader
+          eyebrow={heading.eyebrow}
+          title={heading.title}
+          align="center"
+          description={heading.description}
+        />
+        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {items.map((a) => (
+            <article
+              key={a.id}
+              className="group rounded-2xl overflow-hidden border border-border bg-white shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all"
+            >
+              <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                {a.photoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={a.photoUrl}
+                    alt={a.name}
+                    className="absolute inset-0 h-full w-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                  />
+                )}
+              </div>
+              <div className="p-5 text-center">
+                {a.caption && (
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                    {a.caption}
+                  </p>
+                )}
+                <h3 className="text-lg font-semibold text-brand-900 mt-1.5">
+                  {a.name}
+                </h3>
+                {a.eventDate && (
+                  <p className="text-xs text-gold-600 mt-1 font-medium">
+                    {a.eventDate}
+                  </p>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+function DonateCTA({
+  cta,
+}: {
+  cta: { title: string; description: string; buttonLabel: string; buttonHref: string };
+}) {
   return (
     <section className="border-t border-border bg-brand-50/40">
       <Container className="py-16 grid md:grid-cols-12 gap-8 items-center">
         <div className="md:col-span-8">
           <h3 className="text-2xl md:text-3xl font-semibold text-brand-900">
-            Bağışınızla bir öğrencinin yanında olabilirsiniz.
+            {cta.title}
           </h3>
-          <p className="mt-3 text-muted-foreground max-w-2xl">
-            Tek seferlik veya düzenli bağışlarınız doğrudan burs fonumuza
-            aktarılır. IBAN bilgilerimize bağış sayfamızdan ulaşabilirsiniz.
-          </p>
+          <p className="mt-3 text-muted-foreground max-w-2xl">{cta.description}</p>
         </div>
         <div className="md:col-span-4 flex md:justify-end gap-3">
-          <ButtonLink href="/bagis" size="lg" variant="gold">
-            Bağış Bilgileri
+          <ButtonLink href={cta.buttonHref} size="lg" variant="gold">
+            {cta.buttonLabel}
           </ButtonLink>
         </div>
       </Container>

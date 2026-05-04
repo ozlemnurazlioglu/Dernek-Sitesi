@@ -46,9 +46,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (toasts.length === 0) return;
+    // Hata toast'ları kaçırılmasın diye daha uzun gösterilir.
+    const head = toasts[0];
+    const duration = head.tone === "error" ? 7000 : 4000;
     const timer = setTimeout(() => {
       setToasts((prev) => prev.slice(1));
-    }, 4000);
+    }, duration);
     return () => clearTimeout(timer);
   }, [toasts]);
 

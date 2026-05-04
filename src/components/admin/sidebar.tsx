@@ -14,6 +14,24 @@ import {
   Mail,
   ExternalLink,
   X,
+  Settings,
+  FileText,
+  UserCog,
+  History,
+  FileBadge,
+  BookOpen,
+  ListOrdered,
+  HelpCircle,
+  MessageSquareQuote,
+  HandHeart,
+  CheckSquare,
+  Database,
+  Tags,
+  Scale,
+  Crown,
+  Wallet,
+  Megaphone,
+  Handshake,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { useStore } from "@/lib/store";
@@ -27,6 +45,33 @@ const items = [
   { href: "/admin/haberler", label: "Haberler", icon: Newspaper },
   { href: "/admin/etkinlikler", label: "Etkinlikler", icon: Calendar },
   { href: "/admin/mesajlar", label: "Mesajlar", icon: Mail },
+];
+
+const contentItems = [
+  { href: "/admin/ayarlar", label: "Site Ayarları", icon: Settings },
+  { href: "/admin/sayfalar", label: "Sayfa İçerikleri", icon: FileText },
+  { href: "/admin/yonetim-kurulu", label: "Yönetim Kurulu", icon: UserCog },
+  { href: "/admin/tarihce", label: "Tarihçe", icon: History },
+  { href: "/admin/raporlar", label: "Faaliyet Raporları", icon: FileBadge },
+  { href: "/admin/burs-programlari", label: "Burs Programları", icon: BookOpen },
+  { href: "/admin/istenen-belgeler", label: "İstenen Belgeler", icon: CheckSquare },
+  { href: "/admin/burs-takvimi", label: "Burs Takvimi", icon: ListOrdered },
+  { href: "/admin/sss", label: "Sıkça Sorulanlar", icon: HelpCircle },
+  { href: "/admin/yorumlar", label: "Bursiyer Yorumları", icon: MessageSquareQuote },
+  { href: "/admin/bagis-tutarlari", label: "Bağış Tutarları", icon: HandHeart },
+  { href: "/admin/bagis-kullanimi", label: "Bağış Kullanımı", icon: HandHeart },
+  { href: "/admin/haber-kategorileri", label: "Haber Kategorileri", icon: Tags },
+  {
+    href: "/admin/etkinlik-kategorileri",
+    label: "Etkinlik Kategorileri",
+    icon: Tags,
+  },
+  { href: "/admin/yasal-sayfalar", label: "Yasal Sayfalar", icon: Scale },
+  { href: "/admin/agalar", label: "Ağalarımız", icon: Crown },
+  { href: "/admin/mali-tablo", label: "Mali Tablo", icon: Wallet },
+  { href: "/admin/duyurular", label: "Duyurular", icon: Megaphone },
+  { href: "/admin/duyuru-kategorileri", label: "Duyuru Kategorileri", icon: Tags },
+  { href: "/admin/sponsorlar", label: "Sponsorlar", icon: Handshake },
 ];
 
 export function AdminSidebar({
@@ -66,8 +111,8 @@ export function AdminSidebar({
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="px-5 h-16 flex items-center justify-between border-b border-white/10">
-          <Logo variant="light" />
+        <div className="px-4 h-16 flex items-center justify-between gap-2 border-b border-white/10">
+          <Logo variant="light" compact className="flex-1" />
           <button
             type="button"
             onClick={onClose}
@@ -113,6 +158,31 @@ export function AdminSidebar({
           </ul>
 
           <p className="mt-6 px-3 text-[11px] uppercase tracking-widest text-white/40 mb-3">
+            İçerik Yönetimi
+          </p>
+          <ul className="space-y-0.5">
+            {contentItems.map((item) => {
+              const active = pathname.startsWith(item.href);
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 px-3 h-10 rounded-md text-sm font-medium transition-colors",
+                      active
+                        ? "bg-white/10 text-white"
+                        : "text-white/70 hover:text-white hover:bg-white/5",
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="flex-1">{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className="mt-6 px-3 text-[11px] uppercase tracking-widest text-white/40 mb-3">
             Site
           </p>
           <ul className="space-y-0.5">
@@ -123,6 +193,20 @@ export function AdminSidebar({
               >
                 <ExternalLink className="h-4 w-4" />
                 <span>Siteyi Görüntüle</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/yedek"
+                className={cn(
+                  "flex items-center gap-3 px-3 h-10 rounded-md text-sm font-medium transition-colors",
+                  pathname.startsWith("/admin/yedek")
+                    ? "bg-white/10 text-white"
+                    : "text-white/70 hover:text-white hover:bg-white/5",
+                )}
+              >
+                <Database className="h-4 w-4" />
+                <span>Yedek / İçe Aktar</span>
               </Link>
             </li>
             <li>

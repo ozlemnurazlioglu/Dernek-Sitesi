@@ -7,11 +7,16 @@ import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
+import { DEFAULT_AUTH_UI } from "@/lib/defaults/auth";
+import type { AuthUiText } from "@/lib/types";
 
 export default function KayitPage() {
   const router = useRouter();
-  const { register } = useStore();
+  const { register, pageBlocks } = useStore();
   const { toast } = useToast();
+  const auth =
+    (pageBlocks["ui.auth"] as AuthUiText | undefined) ?? DEFAULT_AUTH_UI;
+  const t = auth.register;
   const [data, setData] = useState({
     fullName: "",
     email: "",
@@ -23,7 +28,7 @@ export default function KayitPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     if (data.password.length < 6) {
@@ -35,35 +40,30 @@ export default function KayitPage() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      const result = register({
-        fullName: data.fullName,
-        email: data.email,
-        phone: data.phone,
-        city: data.city,
-        password: data.password,
+    const result = await register({
+      fullName: data.fullName,
+      email: data.email,
+      phone: data.phone,
+      city: data.city,
+      password: data.password,
+    });
+    if (result.ok) {
+      toast({
+        tone: "success",
+        title: "Üyeliğiniz oluşturuldu",
+        description: "Hesabınıza yönlendiriliyorsunuz.",
       });
-      if (result.ok) {
-        toast({
-          tone: "success",
-          title: "Üyeliğiniz oluşturuldu",
-          description: "Hesabınıza yönlendiriliyorsunuz.",
-        });
-        router.push("/hesabim");
-      } else {
-        setError(result.error);
-      }
-      setLoading(false);
-    }, 400);
+      router.push("/hesabim");
+    } else {
+      setError(result.error);
+    }
+    setLoading(false);
   };
 
   return (
     <div>
-      <h1 className="text-3xl font-semibold text-brand-900">Üye Olun</h1>
-      <p className="mt-2 text-muted-foreground">
-        Üye panelinizden burs başvurusu yapabilir, etkinliklere kayıt
-        olabilirsiniz.
-      </p>
+      <h1 className="text-3xl font-semibold text-brand-900">{t.title}</h1>
+      <p className="mt-2 text-muted-foreground">{t.description}</p>
 
       <form onSubmit={onSubmit} className="mt-8 grid sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
@@ -134,17 +134,17 @@ export default function KayitPage() {
 
         <div className="sm:col-span-2 mt-2">
           <Button type="submit" loading={loading} className="w-full" size="lg">
-            Üyeliği Oluştur
+            {t.submitButton}
           </Button>
         </div>
 
         <div className="sm:col-span-2 text-center text-sm text-muted-foreground">
-          Zaten hesabınız var mı?{" "}
+          {t.loginPrompt}{" "}
           <Link
             href="/giris"
             className="text-brand-700 font-medium hover:underline"
           >
-            Giriş yapın
+            {t.loginLink}
           </Link>
         </div>
       </form>

@@ -9,17 +9,28 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useStore } from "@/lib/store";
 import { formatDateTR } from "@/lib/utils";
-
-const categories = ["Tümü", "Duyuru", "Haber", "Basın", "Proje"] as const;
+import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
+import type { CommonUiText, PageHeadersMap } from "@/lib/types";
 
 export default function HaberlerPage() {
-  const { news } = useStore();
-  const [active, setActive] = useState<(typeof categories)[number]>("Tümü");
+  const { news, newsCategories, pageBlocks } = useStore();
+  const headers = (pageBlocks["page.headers"] as PageHeadersMap | undefined)
+    ?.haberler;
+  const ui =
+    (pageBlocks["ui.common"] as CommonUiText | undefined) ?? DEFAULT_COMMON_UI;
+  const allLabel = ui.filters?.allLabel ?? DEFAULT_COMMON_UI.filters.allLabel;
+  const categoryNames = useMemo(
+    () => newsCategories.map((c) => c.name),
+    [newsCategories],
+  );
+  // null = "Hepsi" (filtresiz). Etiketin store'dan değişebilmesi için
+  // active'i string yerine kategori adı veya null tutuyoruz.
+  const [active, setActive] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
     return news
-      .filter((n) => (active === "Tümü" ? true : n.category === active))
+      .filter((n) => (active === null ? true : n.category === active))
       .filter((n) =>
         query
           ? `${n.title} ${n.excerpt}`
@@ -37,8 +48,8 @@ export default function HaberlerPage() {
   return (
     <>
       <PageHeader
-        title="Haberler & Duyurular"
-        description="Derneğimizin son haberleri, projeleri ve duyurularına buradan ulaşabilirsiniz."
+        title={headers?.title ?? "Haberler & Duyurular"}
+        description={headers?.description ?? ""}
         breadcrumbs={[
           { label: "Ana Sayfa", href: "/" },
           { label: "Haberler" },
@@ -47,7 +58,20 @@ export default function HaberlerPage() {
       <Container className="py-12">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div className="flex flex-wrap gap-2">
-            {categories.map((c) => (
+            <button
+              key="__all__"
+              type="button"
+              onClick={() => setActive(null)}
+              className={
+                "h-9 px-4 rounded-full text-sm font-medium border transition-colors " +
+                (active === null
+                  ? "bg-brand-900 text-white border-brand-900"
+                  : "bg-white text-brand-800 border-border hover:border-brand-200")
+              }
+            >
+              {allLabel}
+            </button>
+            {categoryNames.map((c) => (
               <button
                 key={c}
                 type="button"
@@ -68,7 +92,10 @@ export default function HaberlerPage() {
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Haberlerde ara..."
+              placeholder={
+                ui.newsList?.searchPlaceholder ??
+                DEFAULT_COMMON_UI.newsList.searchPlaceholder
+              }
               className="pl-9"
             />
           </div>
@@ -77,7 +104,8 @@ export default function HaberlerPage() {
         {filtered.length === 0 ? (
           <div className="text-center py-20 border border-dashed border-border rounded-2xl">
             <p className="text-muted-foreground">
-              Aradığınız kriterlere uygun haber bulunamadı.
+              {ui.newsList?.emptyState ??
+                DEFAULT_COMMON_UI.newsList.emptyState}
             </p>
           </div>
         ) : (

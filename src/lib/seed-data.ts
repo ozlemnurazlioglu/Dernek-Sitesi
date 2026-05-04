@@ -9,12 +9,12 @@ import type {
 export const seedUsers: User[] = [
   {
     id: "u-admin",
-    fullName: "Genel Sekreter",
-    email: "admin@umutdernegi.org",
+    fullName: "Yönetim",
+    email: "admin@kumrulular.com",
     password: "admin123",
     role: "admin",
-    joinedAt: "2008-04-12T09:00:00.000Z",
-    phone: "+90 (216) 555 12 34",
+    joinedAt: "1998-04-12T09:00:00.000Z",
+    phone: "0535 678 53 43",
     city: "İstanbul",
   },
   {

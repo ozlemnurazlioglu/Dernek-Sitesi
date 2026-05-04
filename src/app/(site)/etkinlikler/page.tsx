@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Calendar, MapPin, Users } from "lucide-react";
 import { PageHeader } from "@/components/site/page-header";
 import { Container } from "@/components/ui/section";
@@ -8,23 +9,78 @@ import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
 import { formatDateTimeTR } from "@/lib/utils";
+import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
+import type { CommonUiText, PageHeadersMap } from "@/lib/types";
 
 export default function EtkinliklerPage() {
-  const { events } = useStore();
+  const { events, eventCategories, pageBlocks } = useStore();
   const { toast } = useToast();
+  const headers = (pageBlocks["page.headers"] as PageHeadersMap | undefined)
+    ?.etkinlikler;
+  const ui =
+    (pageBlocks["ui.common"] as CommonUiText | undefined) ?? DEFAULT_COMMON_UI;
+  const allLabel = ui.filters?.allLabel ?? DEFAULT_COMMON_UI.filters.allLabel;
+  const categoryNames = useMemo(
+    () => eventCategories.map((c) => c.name),
+    [eventCategories],
+  );
+  // null = "Hepsi" (filtresiz). Etiketin store'dan değişebilmesi için
+  // active'i string yerine kategori adı veya null tutuyoruz.
+  const [active, setActive] = useState<string | null>(null);
+  const filtered = useMemo(
+    () =>
+      active === null
+        ? events
+        : events.filter((e) => e.category === active),
+    [events, active],
+  );
 
   return (
     <>
       <PageHeader
-        title="Etkinlikler"
-        description="Eğitimden sosyal sorumluluğa, dayanışmadan kariyer mentörlüğüne kadar yaklaşan tüm etkinliklerimiz."
+        title={headers?.title ?? "Etkinlikler"}
+        description={headers?.description ?? ""}
         breadcrumbs={[
           { label: "Ana Sayfa", href: "/" },
           { label: "Etkinlikler" },
         ]}
       />
-      <Container className="py-14 grid md:grid-cols-2 gap-6">
-        {events.map((event) => {
+      <Container className="py-10">
+        {categoryNames.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-8">
+            <button
+              key="__all__"
+              type="button"
+              onClick={() => setActive(null)}
+              className={
+                "h-9 px-4 rounded-full text-sm font-medium border transition-colors " +
+                (active === null
+                  ? "bg-brand-900 text-white border-brand-900"
+                  : "bg-white text-brand-800 border-border hover:border-brand-200")
+              }
+            >
+              {allLabel}
+            </button>
+            {categoryNames.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setActive(c)}
+                className={
+                  "h-9 px-4 rounded-full text-sm font-medium border transition-colors " +
+                  (active === c
+                    ? "bg-brand-900 text-white border-brand-900"
+                    : "bg-white text-brand-800 border-border hover:border-brand-200")
+                }
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
+      </Container>
+      <Container className="pb-14 grid md:grid-cols-2 gap-6">
+        {filtered.map((event) => {
           const occupancy = Math.min(
             100,
             Math.round((event.registered / event.capacity) * 100),
@@ -82,16 +138,20 @@ export default function EtkinliklerPage() {
                     onClick={() =>
                       toast({
                         tone: "success",
-                        title: "Kaydınız alındı",
+                        title:
+                          ui.events?.bookSuccessTitle ??
+                          DEFAULT_COMMON_UI.events.bookSuccessTitle,
                         description:
-                          "Bu bir demo sürümdür. Gerçek kayıt için yetkililerimize ulaşabilirsiniz.",
+                          ui.events?.bookSuccessMessage ??
+                          DEFAULT_COMMON_UI.events.bookSuccessMessage,
                       })
                     }
                   >
-                    Hemen Kayıt Ol
+                    {ui.events?.bookButton ??
+                      DEFAULT_COMMON_UI.events.bookButton}
                   </Button>
                   <span className="text-xs text-muted-foreground">
-                    Ücretsiz · Üyelere ücretsiz
+                    {ui.events?.freeNote ?? DEFAULT_COMMON_UI.events.freeNote}
                   </span>
                 </div>
               </div>

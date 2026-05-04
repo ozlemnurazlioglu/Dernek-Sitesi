@@ -9,25 +9,57 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  seedApplications,
-  seedEvents,
-  seedMessages,
-  seedNews,
-  seedUsers,
-} from "./seed-data";
 import type {
+  ActivityReport,
+  Aga,
+  Announcement,
+  AnnouncementCategory,
   ApplicationStatus,
+  BoardMember,
   ContactMessage,
+  DonationPreset,
+  DonationUse,
+  EventCategory,
   EventItem,
+  Faq,
+  FinanceItem,
+  LegalPage,
+  Milestone,
+  NewsCategory,
   NewsItem,
+  RequiredDocument,
   ScholarshipApplication,
+  ScholarshipProgram,
+  ScholarshipTimelineStep,
+  SiteSettings,
+  Sponsor,
+  Testimonial,
   User,
 } from "./types";
 import { uid } from "./utils";
 
-const STORAGE_KEY = "umut-dernegi-store-v1";
-const SESSION_KEY = "umut-dernegi-session-v1";
+// İçerik tabloları için tip eşlemesi
+type ContentMap = {
+  "board-members": BoardMember;
+  milestones: Milestone;
+  "activity-reports": ActivityReport;
+  "scholarship-programs": ScholarshipProgram;
+  "required-documents": RequiredDocument;
+  "scholarship-timeline": ScholarshipTimelineStep;
+  faqs: Faq;
+  testimonials: Testimonial;
+  "donation-presets": DonationPreset;
+  "donation-uses": DonationUse;
+  "news-categories": NewsCategory;
+  "event-categories": EventCategory;
+  "legal-pages": LegalPage;
+  agalar: Aga;
+  "finance-items": FinanceItem;
+  "announcement-categories": AnnouncementCategory;
+  announcements: Announcement;
+  sponsors: Sponsor;
+};
+export type ContentType = keyof ContentMap;
 
 type State = {
   users: User[];
@@ -35,19 +67,63 @@ type State = {
   news: NewsItem[];
   events: EventItem[];
   messages: ContactMessage[];
+  // İçerik
+  siteSettings: SiteSettings;
+  pageBlocks: Record<string, unknown>;
+  boardMembers: BoardMember[];
+  milestones: Milestone[];
+  activityReports: ActivityReport[];
+  scholarshipPrograms: ScholarshipProgram[];
+  requiredDocuments: RequiredDocument[];
+  scholarshipTimeline: ScholarshipTimelineStep[];
+  faqs: Faq[];
+  testimonials: Testimonial[];
+  donationPresets: DonationPreset[];
+  donationUses: DonationUse[];
+  newsCategories: NewsCategory[];
+  eventCategories: EventCategory[];
+  legalPages: LegalPage[];
+  agalar: Aga[];
+  financeItems: FinanceItem[];
+  announcementCategories: AnnouncementCategory[];
+  announcements: Announcement[];
+  sponsors: Sponsor[];
+};
+
+type LoginResult =
+  | { ok: true; user: User }
+  | { ok: false; error: string };
+
+// Hangi state alanı hangi içerik tipine karşılık gelir?
+const CONTENT_STATE_KEY: Record<ContentType, keyof State> = {
+  "board-members": "boardMembers",
+  milestones: "milestones",
+  "activity-reports": "activityReports",
+  "scholarship-programs": "scholarshipPrograms",
+  "required-documents": "requiredDocuments",
+  "scholarship-timeline": "scholarshipTimeline",
+  faqs: "faqs",
+  testimonials: "testimonials",
+  "donation-presets": "donationPresets",
+  "donation-uses": "donationUses",
+  "news-categories": "newsCategories",
+  "event-categories": "eventCategories",
+  "legal-pages": "legalPages",
+  agalar: "agalar",
+  "finance-items": "financeItems",
+  "announcement-categories": "announcementCategories",
+  announcements: "announcements",
+  sponsors: "sponsors",
 };
 
 type StoreContextValue = State & {
   ready: boolean;
   currentUser: User | null;
-  login: (
-    email: string,
-    password: string,
-  ) => { ok: true; user: User } | { ok: false; error: string };
+  login: (email: string, password: string) => Promise<LoginResult>;
   register: (
     payload: Omit<User, "id" | "role" | "joinedAt"> & { password: string },
-  ) => { ok: true; user: User } | { ok: false; error: string };
-  logout: () => void;
+  ) => Promise<LoginResult>;
+  logout: () => Promise<void>;
 
   submitApplication: (
     application: Omit<
@@ -73,111 +149,228 @@ type StoreContextValue = State & {
   toggleMessageRead: (id: string, read: boolean) => void;
   removeMessage: (id: string) => void;
 
+  // İçerik mutation'ları
+  updateSiteSettings: (next: Partial<SiteSettings>) => void;
+  updatePageBlock: (key: string, data: unknown) => void;
+  upsertContent: <T extends ContentType>(
+    type: T,
+    item: ContentMap[T],
+  ) => Promise<void>;
+  removeContent: (type: ContentType, id: string) => Promise<void>;
+
   resetDemo: () => void;
+  /** Tüm state'i sunucudan yeniden çeker (örn. yedek geri yüklendikten sonra). */
+  bootstrap: () => Promise<void>;
 };
 
 const StoreContext = createContext<StoreContextValue | null>(null);
 
-function initialState(): State {
-  return {
-    users: seedUsers,
-    applications: seedApplications,
-    news: seedNews,
-    events: seedEvents,
-    messages: seedMessages,
+const fallbackSettings: SiteSettings = {
+  name: "",
+  shortName: "",
+  founded: 2008,
+  slogan: "",
+  description: "",
+  logoUrl: "",
+  logoSubtitle: "",
+  contactAddress: "",
+  contactPhone: "",
+  contactEmail: "",
+  contactWorkingHours: "",
+  mapEmbedUrl: "",
+  bankName: "",
+  bankAccountHolder: "",
+  bankIban: "",
+  bankBranch: "",
+  socialFacebook: "",
+  socialInstagram: "",
+  socialTwitter: "",
+  socialLinkedin: "",
+  socialYoutube: "",
+  statYearsActive: 0,
+  statScholarshipsGiven: 0,
+  statActiveMembers: 0,
+  statCompletedProjects: 0,
+  seoTitle: "",
+  seoTitleTemplate: "",
+  seoDescription: "",
+  seoOgImage: "",
+  seoFaviconUrl: "",
+};
+
+const emptyState: State = {
+  users: [],
+  applications: [],
+  news: [],
+  events: [],
+  messages: [],
+  siteSettings: fallbackSettings,
+  pageBlocks: {},
+  boardMembers: [],
+  milestones: [],
+  activityReports: [],
+  scholarshipPrograms: [],
+  requiredDocuments: [],
+  scholarshipTimeline: [],
+  faqs: [],
+  testimonials: [],
+  donationPresets: [],
+  donationUses: [],
+  newsCategories: [],
+  eventCategories: [],
+  legalPages: [],
+  agalar: [],
+  financeItems: [],
+  announcementCategories: [],
+  announcements: [],
+  sponsors: [],
+};
+
+type BootstrapPayload = State & { currentUser: User | null };
+
+async function fetchBootstrap(): Promise<BootstrapPayload> {
+  const res = await fetch("/api/bootstrap", {
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+  if (!res.ok) {
+    throw new Error(`Bootstrap başarısız: ${res.status}`);
+  }
+  return (await res.json()) as BootstrapPayload;
+}
+
+function logBgError(label: string) {
+  return (err: unknown) => {
+    if (typeof console !== "undefined") {
+      console.error(`[store] ${label}`, err);
+    }
   };
 }
 
+function bySort<T extends { sort: number }>(a: T, b: T) {
+  return a.sort - b.sort;
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<State>(() => initialState());
+  const [state, setState] = useState<State>(emptyState);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const reload = useCallback(async () => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as State;
-        setState({
-          users: parsed.users ?? seedUsers,
-          applications: parsed.applications ?? seedApplications,
-          news: parsed.news ?? seedNews,
-          events: parsed.events ?? seedEvents,
-          messages: parsed.messages ?? seedMessages,
-        });
-      }
-      const session = window.localStorage.getItem(SESSION_KEY);
-      if (session) {
-        const sessionUser = JSON.parse(session) as User;
-        setCurrentUser(sessionUser);
-      }
-    } catch {
-      // ignore corrupted storage in demo
+      const data = await fetchBootstrap();
+      setState({
+        users: data.users,
+        applications: data.applications,
+        news: data.news,
+        events: data.events,
+        messages: data.messages,
+        siteSettings: data.siteSettings ?? fallbackSettings,
+        pageBlocks: data.pageBlocks ?? {},
+        boardMembers: data.boardMembers ?? [],
+        milestones: data.milestones ?? [],
+        activityReports: data.activityReports ?? [],
+        scholarshipPrograms: data.scholarshipPrograms ?? [],
+        requiredDocuments: data.requiredDocuments ?? [],
+        scholarshipTimeline: data.scholarshipTimeline ?? [],
+        faqs: data.faqs ?? [],
+        testimonials: data.testimonials ?? [],
+        donationPresets: data.donationPresets ?? [],
+        donationUses: data.donationUses ?? [],
+        newsCategories: data.newsCategories ?? [],
+        eventCategories: data.eventCategories ?? [],
+        legalPages: data.legalPages ?? [],
+        agalar: data.agalar ?? [],
+        financeItems: data.financeItems ?? [],
+        announcementCategories: data.announcementCategories ?? [],
+        announcements: data.announcements ?? [],
+        sponsors: data.sponsors ?? [],
+      });
+      setCurrentUser(data.currentUser ?? null);
+    } catch (err) {
+      logBgError("bootstrap")(err);
     } finally {
       setReady(true);
     }
   }, []);
 
   useEffect(() => {
-    if (!ready || typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state, ready]);
-
-  useEffect(() => {
-    if (!ready || typeof window === "undefined") return;
-    if (currentUser) {
-      window.localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
-    } else {
-      window.localStorage.removeItem(SESSION_KEY);
-    }
-  }, [currentUser, ready]);
+    void reload();
+  }, [reload]);
 
   const login: StoreContextValue["login"] = useCallback(
-    (email, password) => {
-      const normalized = email.trim().toLowerCase();
-      const user = state.users.find(
-        (u) => u.email.toLowerCase() === normalized && u.password === password,
-      );
-      if (!user) {
-        return { ok: false, error: "E-posta veya şifre hatalı." };
+    async (email, password) => {
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = (await res.json()) as
+          | { user: User }
+          | { error: string };
+        if (!res.ok || !("user" in data)) {
+          const error = "error" in data ? data.error : "Giriş başarısız oldu.";
+          return { ok: false, error };
+        }
+        const user: User = { ...data.user, password: "" };
+        setCurrentUser(user);
+        void reload();
+        return { ok: true, user };
+      } catch (err) {
+        logBgError("login")(err);
+        return { ok: false, error: "Sunucuya ulaşılamadı." };
       }
-      setCurrentUser(user);
-      return { ok: true, user };
     },
-    [state.users],
+    [reload],
   );
 
   const register: StoreContextValue["register"] = useCallback(
-    (payload) => {
-      const normalized = payload.email.trim().toLowerCase();
-      const exists = state.users.some(
-        (u) => u.email.toLowerCase() === normalized,
-      );
-      if (exists) {
-        return {
-          ok: false,
-          error: "Bu e-posta ile kayıtlı bir hesap zaten mevcut.",
-        };
+    async (payload) => {
+      try {
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName: payload.fullName,
+            email: payload.email,
+            password: payload.password,
+            phone: payload.phone,
+            city: payload.city,
+          }),
+        });
+        const data = (await res.json()) as
+          | { user: User }
+          | { error: string };
+        if (!res.ok || !("user" in data)) {
+          const error = "error" in data ? data.error : "Kayıt başarısız oldu.";
+          return { ok: false, error };
+        }
+        const user: User = { ...data.user, password: "" };
+        setCurrentUser(user);
+        void reload();
+        return { ok: true, user };
+      } catch (err) {
+        logBgError("register")(err);
+        return { ok: false, error: "Sunucuya ulaşılamadı." };
       }
-      const newUser: User = {
-        id: `u-${uid()}`,
-        fullName: payload.fullName,
-        email: payload.email,
-        password: payload.password,
-        phone: payload.phone,
-        city: payload.city,
-        role: "member",
-        joinedAt: new Date().toISOString(),
-      };
-      setState((prev) => ({ ...prev, users: [...prev.users, newUser] }));
-      setCurrentUser(newUser);
-      return { ok: true, user: newUser };
     },
-    [state.users],
+    [reload],
   );
 
-  const logout = useCallback(() => setCurrentUser(null), []);
+  const logout = useCallback(async () => {
+    setCurrentUser(null);
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+    } catch (err) {
+      logBgError("logout")(err);
+    }
+  }, []);
 
   const submitApplication: StoreContextValue["submitApplication"] = useCallback(
     (payload) => {
@@ -192,6 +385,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ...prev,
         applications: [application, ...prev.applications],
       }));
+      void fetch("/api/applications", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(application),
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        })
+        .catch(logBgError("submitApplication"));
       return application;
     },
     [currentUser],
@@ -213,6 +416,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             : app,
         ),
       }));
+      void fetch(`/api/applications/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, note, score }),
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        })
+        .catch(logBgError("updateApplicationStatus"));
     }, []);
 
   const upsertNews: StoreContextValue["upsertNews"] = useCallback((item) => {
@@ -225,6 +438,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           : [item, ...prev.news],
       };
     });
+    void fetch("/api/news", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(item),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      })
+      .catch(logBgError("upsertNews"));
   }, []);
 
   const removeNews: StoreContextValue["removeNews"] = useCallback((id) => {
@@ -232,6 +455,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...prev,
       news: prev.news.filter((n) => n.id !== id),
     }));
+    void fetch(`/api/news/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "same-origin",
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      })
+      .catch(logBgError("removeNews"));
   }, []);
 
   const upsertEvent: StoreContextValue["upsertEvent"] = useCallback((item) => {
@@ -244,6 +475,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           : [item, ...prev.events],
       };
     });
+    void fetch("/api/events", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(item),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      })
+      .catch(logBgError("upsertEvent"));
   }, []);
 
   const removeEvent: StoreContextValue["removeEvent"] = useCallback((id) => {
@@ -251,6 +492,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...prev,
       events: prev.events.filter((e) => e.id !== id),
     }));
+    void fetch(`/api/events/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "same-origin",
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      })
+      .catch(logBgError("removeEvent"));
   }, []);
 
   const addMessage: StoreContextValue["addMessage"] = useCallback((payload) => {
@@ -264,6 +513,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...prev,
       messages: [message, ...prev.messages],
     }));
+    void fetch("/api/messages", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(message),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      })
+      .catch(logBgError("addMessage"));
     return message;
   }, []);
 
@@ -273,6 +532,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ...prev,
         messages: prev.messages.map((m) => (m.id === id ? { ...m, read } : m)),
       }));
+      void fetch(`/api/messages/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ read }),
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        })
+        .catch(logBgError("toggleMessageRead"));
     },
     [],
   );
@@ -283,18 +552,154 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ...prev,
         messages: prev.messages.filter((m) => m.id !== id),
       }));
+      void fetch(`/api/messages/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        })
+        .catch(logBgError("removeMessage"));
+    },
+    [],
+  );
+
+  const updateSiteSettings: StoreContextValue["updateSiteSettings"] = useCallback(
+    (next) => {
+      setState((prev) => ({
+        ...prev,
+        siteSettings: { ...prev.siteSettings, ...next },
+      }));
+      void fetch("/api/admin/site-settings", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(next),
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        })
+        .catch(logBgError("updateSiteSettings"));
+    },
+    [],
+  );
+
+  const updatePageBlock: StoreContextValue["updatePageBlock"] = useCallback(
+    (key, data) => {
+      setState((prev) => ({
+        ...prev,
+        pageBlocks: { ...prev.pageBlocks, [key]: data },
+      }));
+      void fetch(`/api/admin/page-blocks/${encodeURIComponent(key)}`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data }),
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        })
+        .catch(logBgError("updatePageBlock"));
+    },
+    [],
+  );
+
+  const upsertContent: StoreContextValue["upsertContent"] = useCallback(
+    async (type, item) => {
+      const stateKey = CONTENT_STATE_KEY[type];
+      let prevSnapshot: { id: string }[] | null = null;
+      setState((prev) => {
+        const list = (prev[stateKey] as { id: string }[]) ?? [];
+        prevSnapshot = list;
+        const exists = list.some((x) => x.id === item.id);
+        const next = exists
+          ? list.map((x) => (x.id === item.id ? item : x))
+          : [...list, item];
+        if (next.length && "sort" in next[0]) {
+          (next as unknown as { sort: number }[]).sort(bySort);
+        }
+        return { ...prev, [stateKey]: next };
+      });
+      try {
+        const res = await fetch(`/api/admin/list/${encodeURIComponent(type)}`, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(item),
+        });
+        if (!res.ok) {
+          let msg = `HTTP ${res.status}`;
+          try {
+            const data = (await res.json()) as { error?: string };
+            if (data?.error) msg = data.error;
+          } catch {
+            /* ignore json parse */
+          }
+          throw new Error(msg);
+        }
+      } catch (err) {
+        if (prevSnapshot) {
+          const rollback = prevSnapshot;
+          setState((prev) => ({ ...prev, [stateKey]: rollback }));
+        }
+        logBgError(`upsertContent(${type})`)(err);
+        throw err;
+      }
+    },
+    [],
+  );
+
+  const removeContent: StoreContextValue["removeContent"] = useCallback(
+    async (type, id) => {
+      const stateKey = CONTENT_STATE_KEY[type];
+      let prevSnapshot: { id: string }[] | null = null;
+      setState((prev) => {
+        const list = prev[stateKey] as { id: string }[];
+        prevSnapshot = list;
+        return { ...prev, [stateKey]: list.filter((x) => x.id !== id) };
+      });
+      try {
+        const res = await fetch(
+          `/api/admin/list/${encodeURIComponent(type)}/${encodeURIComponent(id)}`,
+          {
+            method: "DELETE",
+            credentials: "same-origin",
+          },
+        );
+        if (!res.ok) {
+          let msg = `HTTP ${res.status}`;
+          try {
+            const data = (await res.json()) as { error?: string };
+            if (data?.error) msg = data.error;
+          } catch {
+            /* ignore */
+          }
+          throw new Error(msg);
+        }
+      } catch (err) {
+        if (prevSnapshot) {
+          const rollback = prevSnapshot;
+          setState((prev) => ({ ...prev, [stateKey]: rollback }));
+        }
+        logBgError(`removeContent(${type})`)(err);
+        throw err;
+      }
     },
     [],
   );
 
   const resetDemo = useCallback(() => {
-    setState(initialState());
-    setCurrentUser(null);
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(STORAGE_KEY);
-      window.localStorage.removeItem(SESSION_KEY);
-    }
-  }, []);
+    void fetch("/api/admin/reset", {
+      method: "POST",
+      credentials: "same-origin",
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        setCurrentUser(null);
+        await reload();
+      })
+      .catch(logBgError("resetDemo"));
+  }, [reload]);
 
   const value = useMemo<StoreContextValue>(
     () => ({
@@ -313,7 +718,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addMessage,
       toggleMessageRead,
       removeMessage,
+      updateSiteSettings,
+      updatePageBlock,
+      upsertContent,
+      removeContent,
       resetDemo,
+      bootstrap: reload,
     }),
     [
       state,
@@ -331,7 +741,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addMessage,
       toggleMessageRead,
       removeMessage,
+      updateSiteSettings,
+      updatePageBlock,
+      upsertContent,
+      removeContent,
       resetDemo,
+      reload,
     ],
   );
 

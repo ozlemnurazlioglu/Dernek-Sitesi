@@ -8,6 +8,8 @@ import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
+import { DEFAULT_AUTH_UI } from "@/lib/defaults/auth";
+import type { AuthUiText } from "@/lib/types";
 
 export default function GirisPage() {
   return (
@@ -20,45 +22,45 @@ export default function GirisPage() {
 function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
-  const { login } = useStore();
+  const { login, pageBlocks } = useStore();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const onSubmit = (e: FormEvent) => {
+  const auth =
+    (pageBlocks["ui.auth"] as AuthUiText | undefined) ?? DEFAULT_AUTH_UI;
+  const t = auth.login;
+
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setTimeout(() => {
-      const result = login(email, password);
-      if (result.ok) {
-        toast({
-          tone: "success",
-          title: `Hoş geldiniz, ${result.user.fullName.split(" ")[0]}`,
-        });
-        const redirect = search.get("redirect");
-        if (redirect) {
-          router.push(redirect);
-        } else if (result.user.role === "admin") {
-          router.push("/admin");
-        } else {
-          router.push("/hesabim");
-        }
+    const result = await login(email, password);
+    if (result.ok) {
+      toast({
+        tone: "success",
+        title: `Hoş geldiniz, ${result.user.fullName.split(" ")[0]}`,
+      });
+      const redirect = search.get("redirect");
+      if (redirect) {
+        router.push(redirect);
+      } else if (result.user.role === "admin") {
+        router.push("/admin");
       } else {
-        setError(result.error);
+        router.push("/hesabim");
       }
-      setLoading(false);
-    }, 400);
+    } else {
+      setError(result.error);
+    }
+    setLoading(false);
   };
 
   return (
     <div>
-      <h1 className="text-3xl font-semibold text-brand-900">Giriş Yap</h1>
-      <p className="mt-2 text-muted-foreground">
-        Üye panelinize ve burs başvurularınıza erişmek için giriş yapın.
-      </p>
+      <h1 className="text-3xl font-semibold text-brand-900">{t.title}</h1>
+      <p className="mt-2 text-muted-foreground">{t.description}</p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-5">
         <Field label="E-posta" required>
@@ -95,32 +97,46 @@ function LoginForm() {
         )}
 
         <Button type="submit" loading={loading} className="w-full" size="lg">
-          Giriş Yap
+          {t.submitButton}
         </Button>
 
         <div className="text-center text-sm text-muted-foreground">
-          Hesabınız yok mu?{" "}
+          {t.registerPrompt}{" "}
           <Link href="/kayit" className="text-brand-700 font-medium hover:underline">
-            Üye olun
+            {t.registerLink}
           </Link>
         </div>
       </form>
 
-      <div className="mt-8 rounded-xl bg-brand-50/60 border border-brand-100 p-4">
-        <div className="text-xs font-semibold text-brand-900 uppercase tracking-wider flex items-center gap-1.5">
-          <ShieldCheck className="h-3.5 w-3.5" /> Demo Hesapları
+      {auth.showDemoAccounts && auth.demoAccountsLines.length > 0 && (
+        <div className="mt-8 rounded-xl bg-brand-50/60 border border-brand-100 p-4">
+          <div className="text-xs font-semibold text-brand-900 uppercase tracking-wider flex items-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5" /> {auth.demoAccountsTitle}
+          </div>
+          <ul className="mt-3 space-y-1 text-xs text-brand-800">
+            {auth.demoAccountsLines.map((line, i) => {
+              const [label, rest] = line.split("|").map((s) => s.trim());
+              const credentials = rest ?? label;
+              const labelText = rest ? label : "";
+              const [creds, ...labelParts] = credentials.split(" — ");
+              const inlineLabel = labelParts.join(" — ").trim();
+              const finalLabel = inlineLabel || labelText;
+              const [user, pwd] = creds.split("/").map((s) => s.trim());
+              return (
+                <li key={i}>
+                  <span className="font-mono">{user}</span>
+                  {pwd && (
+                    <>
+                      {" "}/ <span className="font-mono">{pwd}</span>
+                    </>
+                  )}
+                  {finalLabel && <> — {finalLabel}</>}
+                </li>
+              );
+            })}
+          </ul>
         </div>
-        <ul className="mt-3 space-y-1 text-xs text-brand-800">
-          <li>
-            <span className="font-mono">admin@umutdernegi.org</span> /{" "}
-            <span className="font-mono">admin123</span> — Yönetici
-          </li>
-          <li>
-            <span className="font-mono">ayse@example.com</span> /{" "}
-            <span className="font-mono">uye123</span> — Üye
-          </li>
-        </ul>
-      </div>
+      )}
     </div>
   );
 }

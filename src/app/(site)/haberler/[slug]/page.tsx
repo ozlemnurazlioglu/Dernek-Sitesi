@@ -7,12 +7,24 @@ import { Container } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { formatDateTR } from "@/lib/utils";
+import { Markdown } from "@/lib/markdown";
+import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
+import type { CommonUiText } from "@/lib/types";
 
 export default function NewsDetailPage() {
   const params = useParams<{ slug: string }>();
-  const { news } = useStore();
+  const { news, ready, pageBlocks } = useStore();
+  const ui =
+    (pageBlocks["ui.common"] as CommonUiText | undefined) ?? DEFAULT_COMMON_UI;
   const item = news.find((n) => n.slug === params.slug);
 
+  if (!ready) {
+    return (
+      <Container className="py-20 text-center text-muted-foreground">
+        {ui.loadingText ?? DEFAULT_COMMON_UI.loadingText}
+      </Container>
+    );
+  }
   if (!item) return notFound();
 
   const others = news.filter((n) => n.id !== item.id).slice(0, 3);
@@ -31,7 +43,8 @@ export default function NewsDetailPage() {
             href="/haberler"
             className="inline-flex items-center gap-1 text-sm text-white/75 hover:text-white mb-4"
           >
-            <ArrowLeft className="h-4 w-4" /> Tüm haberler
+            <ArrowLeft className="h-4 w-4" />{" "}
+            {ui.newsDetail?.backLink ?? DEFAULT_COMMON_UI.newsDetail.backLink}
           </Link>
           <Badge tone="gold" className="w-fit mb-3">
             {item.category}
@@ -55,14 +68,16 @@ export default function NewsDetailPage() {
           <p className="text-lg text-brand-900 font-medium leading-relaxed">
             {item.excerpt}
           </p>
-          <div className="mt-8 prose prose-zinc max-w-none">
-            <p className="text-muted-foreground leading-loose">{item.body}</p>
-          </div>
+          <Markdown
+            source={item.body}
+            className="mt-8 text-muted-foreground"
+          />
         </div>
         <aside className="md:col-span-4">
           <div className="sticky top-24 rounded-2xl border border-border bg-muted/40 p-6">
             <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wider">
-              Diğer haberler
+              {ui.newsDetail?.sidebarTitle ??
+                DEFAULT_COMMON_UI.newsDetail.sidebarTitle}
             </h3>
             <div className="mt-5 space-y-4">
               {others.map((o) => (

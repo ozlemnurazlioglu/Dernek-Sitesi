@@ -2,7 +2,7 @@
 
 Modern, hızlı ve müşteriye sunulabilir nitelikte bir **dernek web sitesi**, **üye paneli**, **çevrimiçi burs başvuru sistemi** ve **yönetim paneli (admin)** demosu.
 
-> Bu sürüm **demo** olarak hazırlanmıştır: tüm veriler tarayıcı `localStorage`'ında tutulur, evrak yüklemeleri görsel akışı simüle eder. Üretime geçişte `src/lib/store.tsx` veri katmanı Supabase / Postgres / Prisma ile değiştirilebilir.
+> **Veri katmanı:** Tüm veriler **MySQL**'de saklanır, şifreler **bcrypt** ile hash'lenir, oturum HttpOnly cookie ile yönetilir. Drizzle ORM kullanılır. Kurulum: bkz. [`MYSQL-KURULUM.md`](./MYSQL-KURULUM.md). Evrak yüklemeleri hâlâ görsel akışı simüle eder (yalnızca dosya adı + boyut DB'de tutulur).
 
 ---
 
@@ -57,6 +57,8 @@ Modern, hızlı ve müşteriye sunulabilir nitelikte bir **dernek web sitesi**, 
 
 - **Next.js 16** (App Router) + **TypeScript**
 - **Tailwind CSS v4** (özel marka teması — lacivert + altın aksan)
+- **MySQL 8** + **Drizzle ORM** (TypeScript-first, type-safe sorgular)
+- **bcryptjs** (şifre hash'leme) + HttpOnly cookie tabanlı oturum
 - **lucide-react** (icon kütüphanesi)
 - **clsx** (sınıf birleştirme)
 - Tüm UI komponentleri (Button, Input, Card, Dialog, Badge, Toast vb.) sıfırdan yazıldı (shadcn-tarzı).
@@ -65,8 +67,19 @@ Modern, hızlı ve müşteriye sunulabilir nitelikte bir **dernek web sitesi**, 
 
 ## Çalıştırma
 
+**Ön koşul:** MySQL çalışıyor olmalı. Detaylı adımlar için [`MYSQL-KURULUM.md`](./MYSQL-KURULUM.md).
+
 ```bash
+# 1. Bağımlılıkları kur
 npm install
+
+# 2. .env.local oluştur (örnekten kopyala, SESSION_SECRET'i değiştir)
+cp .env.local.example .env.local
+
+# 3. Tabloları oluştur + demo verilerini yükle
+npm run db:setup
+
+# 4. Geliştirme sunucusu
 npm run dev
 ```
 
@@ -77,13 +90,28 @@ npm run build   # üretim derlemesi
 npm run start   # üretim sunucusu
 ```
 
+### Veritabanı komutları
+
+| Komut                  | Açıklama                                              |
+| ---------------------- | ----------------------------------------------------- |
+| `npm run db:push`      | Şemayı MySQL'e uygula                                 |
+| `npm run db:seed`      | Demo verilerini yükle (var olanları siler)            |
+| `npm run db:reset`     | Tüm tabloları boşalt                                  |
+| `npm run db:generate`  | Şema değişikliği için yeni migration dosyası üret    |
+| `npm run db:setup`     | `db:push` + `db:seed` (ilk kurulum için kısayol)     |
+
 ---
 
 ## Yayına alma — Vercel
 
 1. GitHub'a yükleyin.
-2. [vercel.com/new](https://vercel.com/new) → repoyu seçin → **Deploy** deyin.
-3. Hiçbir env değişkeni gerekmez. Demo doğrudan çalışır.
+2. Yönetilen bir MySQL servisi alın (PlanetScale, Aiven, Railway, AWS RDS vs.) ve veritabanı oluşturun.
+3. [vercel.com/new](https://vercel.com/new) → repoyu seçin.
+4. **Environment Variables** kısmına şunları girin:
+   - `DATABASE_URL=mysql://kullanici:sifre@host:port/dernek`
+   - `SESSION_SECRET=...` (güçlü, rastgele bir string)
+5. **Deploy**.
+6. İlk deploy'dan sonra yerel makinenizden veritabanına `npm run db:push && npm run db:seed` ile şemayı kurun. (Veya bir kerelik `vercel env pull` ile env'i çekip aynı komutları çalıştırın.)
 
 ---
 
@@ -111,22 +139,42 @@ src/
 │   ├── brand/             # Logo
 │   └── burs/              # Çok adımlı başvuru formu
 └── lib/
-    ├── store.tsx          # State (localStorage) — Supabase/DB ile değiştirilebilir
-    ├── seed-data.ts       # Demo verileri
+    ├── store.tsx          # Client state — REST API'ye fetch eder, optimistik günceller
+    ├── auth.ts            # bcrypt + cookie tabanlı oturum (sunucu)
+    ├── db/
+    │   ├── index.ts       # MySQL connection pool + Drizzle instance
+    │   ├── schema.ts      # 7 tablonun Drizzle şeması
+    │   └── mappers.ts     # DB satırı → TypeScript tipi dönüştürücüler
+    ├── seed-data.ts       # Demo verileri (script ve reset endpoint'i kullanır)
     ├── site.ts            # Dernek bilgileri (ad, IBAN, sosyal medya...)
     ├── types.ts           # TypeScript tipleri
     └── utils.ts           # Yardımcı fonksiyonlar
+
+src/app/api/                # REST endpoints
+├── bootstrap/route.ts      # GET — tüm veri (sayfa açılışında)
+├── auth/{login,register,logout,me}/route.ts
+├── applications/route.ts + [id]/route.ts
+├── news/route.ts + [id]/route.ts
+├── events/route.ts + [id]/route.ts
+├── messages/route.ts + [id]/route.ts
+└── admin/reset/route.ts
+
+drizzle/                    # Otomatik üretilmiş SQL migration'lar
+scripts/
+├── seed.ts                 # tsx ile çalışır — demo verisini yükler
+└── reset.ts                # tüm tabloları boşaltır
 ```
 
 ---
 
 ## Üretime geçiş için sonraki adımlar
 
-1. **Veritabanı**: `src/lib/store.tsx` içindeki tüm `localStorage` çağrılarını Supabase / Postgres / Prisma ile değiştirin.
-2. **Auth**: Supabase Auth, NextAuth veya Clerk önerilir. `login/register/logout` fonksiyonlarını gerçek auth sağlayıcısıyla bağlayın.
-3. **Dosya yükleme**: `application-form.tsx` içindeki `handleFile` fonksiyonunu Supabase Storage / S3 / Cloudflare R2 ile değiştirin.
-4. **E-posta bildirimleri**: Başvuru onay/red durumunda Resend, SendGrid veya Postmark üzerinden e-posta gönderin.
+1. ~~**Veritabanı**~~ — Tamam ✓ MySQL + Drizzle ORM ile bağlandı.
+2. ~~**Auth**~~ — Tamam ✓ bcrypt hash + HttpOnly cookie session. Daha gelişmiş ihtiyaçlar (2FA, sosyal giriş) için NextAuth/Clerk eklenebilir.
+3. **Dosya yükleme**: `application-form.tsx` içindeki `handleFile` fonksiyonu hâlâ simülasyon. Üretim için S3 / Cloudflare R2 / Vercel Blob entegre edilmeli; gerçek dosya `application_documents.file_name` yerine bir URL/nesne anahtarı tutulmalı.
+4. **E-posta bildirimleri**: Başvuru onay/red durumunda Resend, SendGrid veya Postmark üzerinden e-posta gönderin (`/api/applications/[id]` PATCH'inde tetikleyebilirsiniz).
 5. **Online ödeme**: `/bagis` sayfasındaki butona iyzico / PayTR / Stripe entegrasyonu ekleyin.
+6. **Rate limiting**: Login ve kayıt endpoint'lerine bruteforce'a karşı rate limit (örn. Upstash Ratelimit) ekleyin.
 
 ---
 
