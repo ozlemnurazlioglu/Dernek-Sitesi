@@ -9,15 +9,28 @@ declare global {
 
 function makePool() {
   const url = process.env.DATABASE_URL;
-  // Production'da (Vercel) varsayılan olarak TLS açık.
-  // DATABASE_SSL=false ile manuel kapatılabilir, =true ile zorlanabilir.
+  // SSL kararı:
+  // - DATABASE_SSL=true|false ile manuel zorlanabilir.
+  // - DATABASE_URL kullanılıyorsa varsayılan AÇIK (TiDB Cloud/PlanetScale gibi
+  //   bulut sağlayıcılarının tamamı TLS gerektirir).
+  // - Yerel host (127.0.0.1/localhost) için varsayılan KAPALI.
   const sslEnv = (process.env.DATABASE_SSL ?? "").toLowerCase();
+  const localHosts = new Set([
+    "127.0.0.1",
+    "localhost",
+    "::1",
+    "0.0.0.0",
+  ]);
+  const fallbackHost = process.env.DB_HOST ?? "127.0.0.1";
+  const remote = url
+    ? true
+    : !localHosts.has(fallbackHost.toLowerCase());
   const useSSL =
     sslEnv === "true" || sslEnv === "1"
       ? true
       : sslEnv === "false" || sslEnv === "0"
         ? false
-        : process.env.NODE_ENV === "production";
+        : remote;
 
   if (url) {
     return mysql.createPool({
@@ -31,7 +44,7 @@ function makePool() {
     });
   }
   return mysql.createPool({
-    host: process.env.DB_HOST ?? "127.0.0.1",
+    host: fallbackHost,
     port: Number(process.env.DB_PORT ?? 3306),
     user: process.env.DB_USER ?? "root",
     password: process.env.DB_PASSWORD ?? "",

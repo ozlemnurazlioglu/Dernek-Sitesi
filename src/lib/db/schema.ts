@@ -253,7 +253,9 @@ export const boardMembers = mysqlTable(
     name: varchar("name", { length: 191 }).notNull(),
     role: varchar("role", { length: 191 }).notNull(),
     avatar: varchar("avatar", { length: 512 }).notNull(),
-    bio: text("bio").notNull().default(""),
+    // TiDB, text/blob türlerinde DEFAULT desteklemediğinden varchar(2000)
+    // kullanıyoruz. 2000 karakter kısa biyografi için fazlasıyla yeterli.
+    bio: varchar("bio", { length: 2000 }).notNull().default(""),
     /** Hiyerarşik seviye: 'baskan' | 'yonetim' | 'uye' */
     level: varchar("level", { length: 32 }).notNull().default("uye"),
     sort: int("sort").notNull().default(0),
@@ -414,7 +416,7 @@ export const announcements = mysqlTable(
     id: varchar("id", { length: 64 }).primaryKey(),
     categorySlug: varchar("category_slug", { length: 80 }).notNull(),
     title: varchar("title", { length: 255 }).notNull(),
-    description: text("description").notNull().default(""),
+    description: varchar("description", { length: 2000 }).notNull().default(""),
     eventDate: varchar("event_date", { length: 64 }).notNull().default(""),
     location: varchar("location", { length: 191 }).notNull().default(""),
     sort: int("sort").notNull().default(0),
