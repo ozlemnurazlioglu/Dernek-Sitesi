@@ -77,6 +77,14 @@ body {
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /*
+   * Yatay scroll'u devre dışı bırak. Header menüsü kalabalıklaşırsa veya
+   * herhangi bir bileşen viewport'tan biraz taşarsa, sayfanın ekranın altında
+   * istenmeyen yatay kaydırma çubuğu oluşturmasını engeller. `clip` >
+   * `hidden`: sticky/fixed konumlu header gibi öğelerin davranışını
+   * bozmaz, sadece yatay eksende taşmayı keser.
+   */
+  overflow-x: clip;
 }
 
 .bg-grid {

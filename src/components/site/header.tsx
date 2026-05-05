@@ -109,7 +109,14 @@ export function SiteHeader() {
           <Logo />
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1">
+        {/*
+          Desktop nav yalnızca 1400px+ ekranlarda görünür. Bu eşiğin altında
+          (yani çoğu 1366px laptop ekranı dahil) menü öğeleri + sağ blok (Giriş
+          Yap, Üye Ol, Burs Başvur) sığmıyor ve yatay scroll bar tetikliyordu.
+          Standart `xl` (1280px) yerine custom `[1400px]` kullanıyoruz — 1280
+          breakpoint'inde hesap dropdown'u kesiliyordu. 1399 altında hamburger.
+        */}
+        <nav className="hidden min-[1400px]:flex items-center gap-0.5 xl:gap-1">
           {navigation.map((item, idx) => {
             const active =
               item.href === "/"
@@ -282,7 +289,7 @@ export function SiteHeader() {
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="lg:hidden inline-flex items-center justify-center h-10 w-10 rounded-md border border-border text-brand-900"
+            className="min-[1400px]:hidden inline-flex items-center justify-center h-10 w-10 rounded-md border border-border text-brand-900"
             aria-label={headerUi.menuLabel}
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -291,7 +298,7 @@ export function SiteHeader() {
       </div>
 
       {open && (
-        <div className="lg:hidden border-t border-border bg-white">
+        <div className="min-[1400px]:hidden border-t border-border bg-white">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex flex-col gap-1">
             {navigation.map((item, idx) => {
               const active =
