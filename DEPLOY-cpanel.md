@@ -40,7 +40,25 @@ Databases`).
    - Kullanıcı: `kumrulul_appuser`
    - Veritabanı: `kumrulul_dernek`
    - Yetki: **ALL PRIVILEGES** ✅
-4. Bağlantı stringini hazırla:
+4. **DB charset'ini utf8mb4 yap (KRİTİK — drizzle-kit push'tan önce!):**
+   cPanel'in MariaDB'si yeni veritabanlarını varsayılan olarak `latin1`
+   ile açar. Türkçe karakterler (`ş`, `ğ`, `ı`, `İ`) latin1'de
+   gösterilemediği için INSERT sırasında MySQL onları kalıcı olarak
+   `?` ile değiştirir. Bu yüzden tablolar oluşturulmadan ÖNCE veritabanı
+   default'unu utf8mb4'e çek:
+
+   ```bash
+   mysql -u kumrulul_appuser -p'ŞİFRE' -e \
+     "ALTER DATABASE kumrulul_dernek CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+   ```
+
+   Bundan sonra `drizzle-kit push --force` (§4) otomatik olarak utf8mb4
+   tabloları oluşturur. Tabloları yanlış charset'le oluşturduktan sonra
+   düzeltmek için "Sorun giderme" bölümündeki tablo dönüştürme komutuna
+   bak — ayrıca tüm seed verisinin yeniden çalıştırılması gerekir,
+   çünkü `?` olarak yazılan karakterler veri kaybıdır.
+
+5. Bağlantı stringini hazırla:
 
    ```
    mysql://kumrulul_appuser:ŞİFRE@localhost:3306/kumrulul_dernek
@@ -375,3 +393,43 @@ Vercel'e bağlı domain çalışmaya devam eder.
 | Site varsayılan parking page gösteriyor | `public_html/index.html` Passenger'dan önce servis ediliyor | `mv ~/public_html/index.html ~/public_html/.parking.html.bak` |
 | Restart sonrası yine eski sürüm görünüyor | LSNode worker'lar Stop/Start butonuyla düşmemiş | Manuel `kill -TERM <pid>` (bkz. §5 not'u) |
 | `cfg.ctaButton.visible` benzeri "undefined" hatası | MariaDB'nin JSON tipi LONGTEXT alias'ı, mysql2 string döner | `bootstrap/route.ts` zaten elle parse ediyor; build'i güncelle |
+| Türkçe karakterler `?` görünüyor (Şenliği → ?enli?i, düğün → dü?ün, ama ç/ü/ö doğru) | Tablolar latin1 charset ile oluşturulmuş; ş/ğ/ı/İ gibi latin1'de olmayan karakterler INSERT sırasında `?` ile değişti — veri kaybı | Tabloları utf8mb4'e çevir + seed'i yeniden çalıştır (bkz. aşağıdaki "Charset onarımı" başlığı) |
+
+### Charset onarımı (Türkçe karakterler `?` olduğunda)
+
+Bu, §1 adım 4'ü atlanmış kurulumda olur. Düzeltme **veri kaybı yaratır** — `?` olan tüm Türkçe metinleri seed yeniden yazar; kullanıcı tarafından eklenmiş Türkçe içerik (örn. galeri başlıkları) kaybolur. Önce kullanıcı verisini yedekle:
+
+```bash
+DBP='ŞİFRE'
+
+# 1) Korunması gereken kullanıcı verilerini yedekle (örn. photos)
+mkdir -p ~/charset-fix && cd ~/charset-fix
+mysqldump -u kumrulul_appuser -p"$DBP" --single-transaction --no-create-info kumrulul_dernek photos > photos-data.sql
+
+# 2) Tüm tabloları utf8mb4'e dönüştür
+mysql -u kumrulul_appuser -p"$DBP" -Nse "SELECT CONCAT('ALTER TABLE \`', table_name, '\` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;') FROM information_schema.tables WHERE table_schema='kumrulul_dernek' AND table_type='BASE TABLE'" > convert.sql
+{ echo 'SET FOREIGN_KEY_CHECKS=0;'; cat convert.sql; echo 'SET FOREIGN_KEY_CHECKS=1;'; } | mysql -u kumrulul_appuser -p"$DBP" kumrulul_dernek
+
+# 3) DB default'unu da kalıcı olarak utf8mb4 yap (yeni tablolar için)
+mysql -u kumrulul_appuser -p"$DBP" -e "ALTER DATABASE kumrulul_dernek CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# 4) Seed'i yeniden çalıştır (tsx alt-süreç açtığı için lsnode worker'larını
+#    önce öldürmen gerekebilir; bkz. §5'teki kill -TERM notu)
+source /home/kumrulul/nodevenv/dernek/22/bin/activate && cd ~/dernek
+DATABASE_URL="mysql://kumrulul_appuser:$DBP@localhost:3306/kumrulul_dernek" \
+  SESSION_SECRET="..." \
+  node_modules/.bin/tsx scripts/seed.ts
+
+# 5) Yedeklenen kullanıcı verisini geri yükle
+mysql -u kumrulul_appuser -p"$DBP" kumrulul_dernek -e "DELETE FROM photos;"
+mysql -u kumrulul_appuser -p"$DBP" kumrulul_dernek < ~/charset-fix/photos-data.sql
+
+# 6) Doğrula — HEX değerleri C49F (ğ), C59E (Ş), C5B1 (ı) gibi olmalı
+mysql -u kumrulul_appuser -p"$DBP" --default-character-set=utf8mb4 kumrulul_dernek \
+  -e "SELECT title, HEX(title) FROM announcements LIMIT 2\G"
+```
+
+> **Not:** mysql client'ında `--default-character-set=utf8mb4` bayrağını
+> kullanmazsan, doğru depolanmış utf8mb4 verisi terminal output'unda
+> "kareler" olarak görünebilir — bu sadece görüntü, veri sağlamdır.
+> Doğrulamak için tarayıcıda siteyi aç veya `HEX()` ile byte'lara bak.
