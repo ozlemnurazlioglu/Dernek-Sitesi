@@ -2810,6 +2810,29 @@ export function HeaderEditor() {
             </Button>
           </div>
 
+          {/*
+            Menü kalabalık uyarısı.
+            Admin panelinden 9'dan fazla aktif ana menü öğesi olduğunda
+            laptop ekranlarında (1366px civarı) header sığmaya başlar ve
+            site otomatik olarak hamburger moduna geçer. Bu uyarı, admin'in
+            farkında olmasını sağlar — istemiyorsa öğeleri alt menülere
+            taşıma seçeneği önerir. Yalnızca aktif öğeler sayılır.
+          */}
+          {v.menu.filter((m) => m.enabled !== false).length > 9 && (
+            <div className="mb-3 rounded-md border border-amber-200 bg-amber-50/70 px-3 py-2.5 text-xs text-amber-900 leading-relaxed">
+              <strong>Bilgi:</strong> Şu an{" "}
+              <strong>
+                {v.menu.filter((m) => m.enabled !== false).length} aktif
+              </strong>{" "}
+              ana menü öğeniz var. 9+ öğe küçük dizüstü ekranlarda header'a
+              sığmaz; site otomatik olarak hamburger menüye geçer. Tam menünün
+              tüm ekranlarda görünmesi için bazı öğeleri (örn.{" "}
+              <em>Bağış</em>, <em>Mali Tablo</em>) bir üst öğenin{" "}
+              <strong>alt menüsüne</strong> taşımanızı öneririz — aşağıda her
+              satırın <em>"Alt Menüler"</em> bölümünden ekleyebilirsiniz.
+            </div>
+          )}
+
           {v.menu.length === 0 ? (
             <div className="text-sm text-muted-foreground text-center py-8 border border-dashed border-border rounded-lg">
               Henüz menü öğesi yok. "Yeni Öğe" butonuyla ekleyin.
