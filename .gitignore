@@ -50,4 +50,7 @@ next-env.d.ts
 # Playwright MCP çıktıları (otomatik testler)
 .playwright-mcp/
 
+# cPanel'e yüklemek üzere üretilen build tarball'ı (her release için yeniden üretilir)
+/next-build.tar.gz
+
 .vercel

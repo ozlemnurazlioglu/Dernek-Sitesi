@@ -10,9 +10,41 @@ import {
   mysqlEnum,
   primaryKey,
   index,
-  json,
+  customType,
   timestamp,
 } from "drizzle-orm/mysql-core";
+
+/**
+ * MariaDB-uyumlu JSON sütunu.
+ *
+ * MariaDB'de `JSON` türü aslında `LONGTEXT` alias'ıdır. Native MySQL'in aksine
+ * `mysql2` driver'ı bu sütunları string olarak döndürür ve Drizzle'ın yerleşik
+ * `json()` helper'ı parse etmez — uygulama tarafında `cfg.ctaButton.visible`
+ * gibi erişimler `Cannot read properties of undefined` ile patlar.
+ *
+ * Bu özel tip yazımda her zaman `JSON.stringify` uygular, okumada string ise
+ * güvenli `JSON.parse` yapar; gerçek MySQL'de değer zaten parse'lı geldiği
+ * için no-op olarak çalışır. Böylece TiDB Cloud, yerel MySQL ve cPanel
+ * MariaDB ortamlarının üçü de aynı kodla doğru veri döner.
+ */
+const json = customType<{ data: unknown; driverData: string }>({
+  dataType() {
+    return "json";
+  },
+  toDriver(value): string {
+    return JSON.stringify(value);
+  },
+  fromDriver(value): unknown {
+    if (typeof value === "string") {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  },
+});
 
 export const users = mysqlTable(
   "users",

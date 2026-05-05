@@ -149,7 +149,15 @@ export async function GET() {
 
   const pageBlocksMap: Record<string, unknown> = {};
   for (const b of pageBlocksRows) {
-    pageBlocksMap[b.blockKey] = b.data;
+    let value: unknown = b.data;
+    if (typeof value === "string") {
+      try {
+        value = JSON.parse(value);
+      } catch {
+        value = null;
+      }
+    }
+    pageBlocksMap[b.blockKey] = value;
   }
 
   return NextResponse.json({
@@ -166,12 +174,20 @@ export async function GET() {
     boardMembers: boardRows,
     milestones: milestoneRows,
     activityReports: reportRows,
-    scholarshipPrograms: programRows.map((p) => ({
-      ...p,
-      requirements: Array.isArray(p.requirements)
-        ? (p.requirements as string[])
-        : [],
-    })),
+    scholarshipPrograms: programRows.map((p) => {
+      let reqs: unknown = p.requirements;
+      if (typeof reqs === "string") {
+        try {
+          reqs = JSON.parse(reqs);
+        } catch {
+          reqs = [];
+        }
+      }
+      return {
+        ...p,
+        requirements: Array.isArray(reqs) ? (reqs as string[]) : [],
+      };
+    }),
     requiredDocuments: docTypeRows,
     scholarshipTimeline: timelineRows,
     faqs: faqRows,

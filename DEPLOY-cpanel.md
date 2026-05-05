@@ -111,24 +111,43 @@ cPanel ana ekranı → **Yazılım → Setup Node.js App** → **Create applicat
 
 ## 4) Bağımlılıkları yükle ve build al
 
-İki yol var; **terminal** (önerilen) veya **cPanel UI**.
+İki yol var; **lokal build → upload** (önerilen, hızlı) veya **sunucuda
+build** (CloudLinux LVE limitleri yüzünden çoğunlukla `SIGABRT` ile düşer).
 
-### A) Terminal yolu (önerilen)
+### A) Lokal build → cPanel'e .next yükle (ÖNERİLEN)
 
-cPanel ana ekran → **Gelişmiş → Terminal**.
+CloudLinux Application Starter paketinin EP/NPROC sınırı `next build`
+sırasında Turbopack/Webpack worker thread'lerini öldürür. Bu yüzden
+**lokal makinende** build alıp sadece çıktı dosyalarını yüklemek hem
+hızlı hem güvenilir:
 
 ```bash
-# 1. Sanal Node ortamına geç (cPanel uygulama oluşturduğunda gösterir;
-#    "Enter to the virtual environment" satırını kopyala-yapıştır)
-source /home/kumrulul/nodevenv/dernek/22/bin/activate && cd /home/kumrulul/dernek
-
-# 2. Bağımlılıkları yükle (production değil dev'de bağımlılıklar build için lazım)
-npm ci --include=dev
-
-# 3. Build
+# 1. Yerel makine — build al
 npm run build
 
-# 4. (İlk kurulumda) DB şemasını ve seed verisini yükle
+# 2. .next'i sıkıştır (cache + dev hariç)
+tar --exclude=".next/cache" --exclude=".next/dev" -czf next-build.tar.gz .next
+
+# 3. cPanel File Manager → /home/kumrulul/dernek altına next-build.tar.gz'ı
+#    yükle ("üzerine yaz" işaretli olsun)
+```
+
+Sonra cPanel Terminal'de:
+
+```bash
+source /home/kumrulul/nodevenv/dernek/22/bin/activate && cd /home/kumrulul/dernek
+
+# Bağımlılıklar (sadece runtime için yetiyor, dev gerekmiyor)
+npm ci --omit=dev
+
+# Eski build'i temizle, yenisini aç
+rm -rf .next
+tar -xzf next-build.tar.gz
+rm next-build.tar.gz
+
+# (İlk kurulumda) DB şemasını ve seed verisini yükle — bunlar tsx
+# gerektirdiğinden dev bağımlılıkları lazım; o zaman geçici olarak
+# `npm ci --include=dev` koş, seed'le, sonra istersen `npm prune --omit=dev`.
 DATABASE_URL="mysql://kumrulul_appuser:ŞİFRE@localhost:3306/kumrulul_dernek" \
   npx drizzle-kit push --force
 
@@ -137,13 +156,28 @@ DATABASE_URL="mysql://kumrulul_appuser:ŞİFRE@localhost:3306/kumrulul_dernek" \
   npx tsx scripts/seed.ts
 ```
 
-### B) cPanel UI yolu
+> **MariaDB ile JSON sütunu uyumu:** Bu host MariaDB kullanıyor (LiteSpeed
+> + CloudLinux). MariaDB'de `JSON` tipi `LONGTEXT` alias'ıdır ve mysql2
+> driver'ı string olarak döner. Uygulama `bootstrap/route.ts` içinde elle
+> `JSON.parse` yapıyor, ek bir migration gerekmez.
+
+### B) Sunucuda build (yedek yöntem)
+
+```bash
+source /home/kumrulul/nodevenv/dernek/22/bin/activate && cd /home/kumrulul/dernek
+npm ci --include=dev
+NODE_OPTIONS="--max-old-space-size=2048" npx next build --webpack
+```
+
+> Application Starter'da bu adımın `SIGABRT` ile çakılması yaygındır.
+> Daha üst paket (Application Pro/Max) veya yerel build önerilir.
+
+### C) cPanel UI yolu
 
 Setup Node.js App → uygulama detay sayfasında:
 
 - **Run NPM Install** butonu
-- **Run JS Script** → script: `build` (package.json'daki "build" scriptini
-  çalıştırır)
+- **Run JS Script** → script: `build`
 
 > UI yolu DB migration'larını çalıştıramaz; bu kısım için Terminal şart.
 
@@ -155,7 +189,38 @@ Setup Node.js App detayında **Restart** veya **Start App** butonuna bas.
 
 `https://kumrulular.org` adresini aç → site açılmalı.
 
-Hata varsa:
+> **DİKKAT — LiteSpeed/LSNode worker davranışı:** Bu hostta `Restart`
+> butonu (ya da `tmp/restart.txt` dokunma) bazen mevcut LSNode worker
+> proseslerini düşürmeden config'i yeniler. Bu durumda eski `.next`
+> bellekte kalır ve yeni build görünmez.
+>
+> Çözüm: cPanel Terminal'de eski worker'ları manuel kapat:
+>
+> ```bash
+> pkill -TERM -u $USER -f 'lsnode:/home/'$USER'/dernek/' || true
+> # ya da PID'leri tek tek:
+> ps -ef | grep lsnode | grep -v grep
+> kill -TERM <pid1> <pid2>
+> ```
+>
+> Bir sonraki istek geldiğinde Passenger fresh worker spawn eder; yeni
+> derleme aktif olur. Doğrulamak için:
+>
+> ```bash
+> cat ~/dernek/.next/BUILD_ID
+> curl -s 'http://kumrulular.org/' -o /dev/null -w '%{http_code}\n'
+> ```
+
+`public_html/.htaccess`'e Passenger satırlarını cPanel zaten yazar; ama
+hosting sağlayıcısı varsayılan bir `index.html` (parking page) bırakmış
+olabilir. Bu dosya Passenger'dan ÖNCE servis edilir ve uygulamanı
+gizler. Karşılaştığında:
+
+```bash
+mv ~/public_html/index.html ~/public_html/.parking.html.bak
+```
+
+Hata logları için:
 
 ```bash
 tail -n 200 ~/dernek/stderr.log
@@ -243,6 +308,9 @@ Vercel'e bağlı domain çalışmaya devam eder.
 | 503 / "Application failed to start" | startup file bulunamadı | `app.js` dosyası repo kökünde mi kontrol et |
 | `Cannot find module 'next'` | `npm ci` yapılmadı | Terminal'de bağımlılıkları yükle |
 | 500 + DB hatası | DATABASE_URL yanlış | env'de şifre URL-encoded mi, kullanıcının yetkisi var mı |
-| `next build` "out of memory" | RAM bitti | `NODE_OPTIONS=--max-old-space-size=2048 npm run build` |
+| `next build` "SIGABRT" / "EAGAIN" | CloudLinux EP/NPROC limiti | Lokal build → upload yöntemini kullan (§4A) |
 | Yüklenen görsel sonra kayboluyor | `npm ci` build'i public/'i temizledi mi | `public/uploads` klasörünün izinleri 755 olmalı, içeriği silinmemeli |
 | Sayfa açılıyor ama statik dosyalar 404 | Passenger Next'in build çıktısını göremiyor | Repo kökünde `.next/` klasörü oluştu mu (build başarılı mı) kontrol et, sonra Restart |
+| Site varsayılan parking page gösteriyor | `public_html/index.html` Passenger'dan önce servis ediliyor | `mv ~/public_html/index.html ~/public_html/.parking.html.bak` |
+| Restart sonrası yine eski sürüm görünüyor | LSNode worker'lar Stop/Start butonuyla düşmemiş | Manuel `kill -TERM <pid>` (bkz. §5 not'u) |
+| `cfg.ctaButton.visible` benzeri "undefined" hatası | MariaDB'nin JSON tipi LONGTEXT alias'ı, mysql2 string döner | `bootstrap/route.ts` zaten elle parse ediyor; build'i güncelle |

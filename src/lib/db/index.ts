@@ -64,3 +64,20 @@ if (process.env.NODE_ENV !== "production") {
 
 export const db = drizzle(pool, { schema, mode: "default" });
 export { schema };
+
+/**
+ * MariaDB / `JSON`-as-`LONGTEXT` ortamlarında mysql2 driver'ı JSON sütunlarını
+ * string olarak döndürür ve Drizzle'ın `json()` (ya da `customType`) helper'ı
+ * driver-uyum nedeniyle her zaman parse etmez. Bu küçük yardımcı, doğrudan
+ * Drizzle ile alınmış satırlardaki JSON alanlarını parse-güvenli normalize
+ * eder; MySQL/TiDB ortamında parse'lı geleni olduğu gibi geri verir.
+ */
+export function parseDbJson<T = unknown>(value: unknown): T | null {
+  if (value == null) return null;
+  if (typeof value !== "string") return value as T;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+}
