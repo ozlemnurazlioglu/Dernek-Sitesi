@@ -234,11 +234,32 @@ tail -n 200 ~/dernek/stdout.log
 Self-signed sertifika tarayıcıda "güvensiz" uyarısı verir. Ücretsiz Let's
 Encrypt kur:
 
-1. cPanel ana ekran → **Güvenlik → SSL/TLS Certificates**.
-2. **Issue a New Certificate** → `kumrulular.org` ve `www.kumrulular.org`'u
-   seç.
-3. Issue → 30-60 saniye sonra hazır.
-4. Otomatik yenilenir; her 90 günde bir cPanel kendisi yeniler.
+1. cPanel ana ekran → **Güvenlik → SSL/TLS Certificates → Wizard**.
+2. "Issue a certificate" altında **DNS'i bu sunucuya gerçekten resolve olan**
+   alan adlarını seç. `kumrulular.org` için tipik kombinasyon:
+   - `kumrulular.org`
+   - `mail.kumrulular.org`
+   - `webmail.kumrulular.org`
+   - `cpanel.kumrulular.org`
+   - `autodiscover.kumrulular.org`
+3. **Devam Et** → ürün seçiminde **Let's Encrypt Certificate**.
+4. İlk denemede `webdisk`, `cpcontacts`, `cpcalendars` gibi DNS kaydı
+   olmayan subdomain'ler "Domain Control Validation failed" ile patlarsa,
+   "Remove the domains that failed" linkine tıkla; kalan domainler için
+   sertifika otomatik düzenlenir.
+5. Sertifika 30-60 saniye sonra aktif olur, her 90 günde cPanel otomatik
+   yeniler.
+
+### HTTP → HTTPS otomatik yönlendirme
+
+cPanel ana ekran → **Domains** (Alan Adları) → tablonun "Force HTTPS
+Redirect" sütunundaki toggle'ı **Açık** konumuna getir. Doğrulama:
+
+```bash
+curl -sI http://kumrulular.org/
+# HTTP/1.1 301 Moved Permanently
+# location: https://kumrulular.org/
+```
 
 ---
 
