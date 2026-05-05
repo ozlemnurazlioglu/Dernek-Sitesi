@@ -11,7 +11,8 @@ deploy'u için `DEPLOY.md` dosyasına bakın.
 > - Home dizini: `/home/kumrulul`
 > - Node.js: 22.x (cPanel "Setup Node.js App" üzerinden)
 > - Veritabanı: cPanel'in kendi MySQL'i (localhost)
-> - Dosya yükleme: yerel disk (`public/uploads/`)
+> - Dosya yükleme: yerel disk; `public/uploads` → `public_html/uploads`
+>   simlinki (bkz. §8)
 
 ---
 
@@ -287,14 +288,52 @@ Kodu güncellediğinde:
 
 ## 8) Bilinmesi gerekenler
 
-### Dosya yükleme — kalıcılık
+### Dosya yükleme — `public/uploads` ve `public_html/uploads` simlinki (KRİTİK)
 
-`public/uploads/` cPanel'in disk alanına yazılır. Git ile sürüm kontrol
-ALTINDA DEĞİL (`.gitignore`'da). Backup için cPanel'in **Yedekleme**
-aracını kullan ya da `cron` ile günlük tar al:
+Next.js production'da (`next start` / Passenger) `public/` klasörünü
+**build sırasında** tarar ve dahili manifest'e sabitler. Build'den sonra
+`public/uploads/` altına yazılan yeni dosyalar Next.js tarafından
+**404** olarak döner. Aynı zamanda cPanel'in `.htaccess`'inde
+`PassengerBaseURI "/"` tanımı her isteği Passenger'a iletir, Next.js bu
+isteği yakalayıp 404 prerender döner.
+
+**Çözüm:** `~/dernek/public/uploads`'ı `~/public_html/uploads`'a
+sembolik link yap. LiteSpeed `public_html/` altında gerçek dosya
+bulduğunda Passenger'a hiç sokmadan dosyayı doğrudan servis eder
+(image/png, server: LiteSpeed, max-age=604800).
+
+Kurulum (cPanel Terminal — bir kerelik):
 
 ```bash
-0 3 * * * tar -czf /home/kumrulul/backups/uploads-$(date +\%F).tar.gz /home/kumrulul/dernek/public/uploads
+# Eğer mevcut yüklemeler varsa yeni konuma taşı
+mkdir -p ~/public_html/uploads
+mv ~/dernek/public/uploads/* ~/public_html/uploads/ 2>/dev/null
+rmdir ~/dernek/public/uploads 2>/dev/null
+
+# public/uploads -> public_html/uploads simlinki
+ln -s /home/kumrulul/public_html/uploads /home/kumrulul/dernek/public/uploads
+
+# Doğrula
+ls -la ~/dernek/public/ | grep uploads
+# uploads -> /home/kumrulul/public_html/uploads
+
+# Yeni bir dosya yükle ve curl ile test et:
+curl -sI https://kumrulular.org/uploads/<yıl>/<ay>/<dosya>.png | head -5
+# HTTP/2 200, content-type: image/png, server: LiteSpeed (Next.js header'ı YOK)
+```
+
+> Bu simlink **deploy'dan deploy'a kalır** — `git pull` `public/uploads`
+> içeriğine dokunmaz (`.gitignore`'da). `npm ci` ve `next build` lokal
+> tarafta yapılırsa server'daki simlink hiç bozulmaz. Yeni bir cPanel
+> hesabına taşırken yukarıdaki komutları tekrar çalıştır.
+
+### Dosya yükleme — yedekleme
+
+Tüm yüklemeler artık `~/public_html/uploads/` altında. cPanel'in
+**Yedekleme** aracını kullan ya da cron ile:
+
+```bash
+0 3 * * * tar -czf /home/kumrulul/backups/uploads-$(date +\%F).tar.gz /home/kumrulul/public_html/uploads
 ```
 
 ### RAM kullanımı
@@ -331,6 +370,7 @@ Vercel'e bağlı domain çalışmaya devam eder.
 | 500 + DB hatası | DATABASE_URL yanlış | env'de şifre URL-encoded mi, kullanıcının yetkisi var mı |
 | `next build` "SIGABRT" / "EAGAIN" | CloudLinux EP/NPROC limiti | Lokal build → upload yöntemini kullan (§4A) |
 | Yüklenen görsel sonra kayboluyor | `npm ci` build'i public/'i temizledi mi | `public/uploads` klasörünün izinleri 755 olmalı, içeriği silinmemeli |
+| Yeni yüklenen görsel 404 dönüyor (`x-nextjs-cache: HIT`, `x-powered-by: Next.js`) | Next.js `public/`'i build sırasında manifest'e sabitler; runtime'da eklenen dosyaları görmez | `~/dernek/public/uploads` → `~/public_html/uploads` simlinki kur (bkz. §8) |
 | Sayfa açılıyor ama statik dosyalar 404 | Passenger Next'in build çıktısını göremiyor | Repo kökünde `.next/` klasörü oluştu mu (build başarılı mı) kontrol et, sonra Restart |
 | Site varsayılan parking page gösteriyor | `public_html/index.html` Passenger'dan önce servis ediliyor | `mv ~/public_html/index.html ~/public_html/.parking.html.bak` |
 | Restart sonrası yine eski sürüm görünüyor | LSNode worker'lar Stop/Start butonuyla düşmemiş | Manuel `kill -TERM <pid>` (bkz. §5 not'u) |
