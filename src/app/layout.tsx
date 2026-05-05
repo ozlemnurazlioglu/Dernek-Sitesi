@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import { siteSettings as siteSettingsTable } from "@/lib/db/schema";
 import { rowToSiteSettings } from "@/lib/db/mappers";
 import { seedSiteSettings } from "@/lib/seed-content";
+import { getSiteUrl } from "@/lib/site-url";
 import type { SiteSettings } from "@/lib/types";
 
 const geistSans = Geist({
@@ -49,16 +50,22 @@ export async function generateMetadata(): Promise<Metadata> {
     s.seoDescription?.trim() || s.description || seedSiteSettings.description;
 
   return {
+    metadataBase: new URL(getSiteUrl()),
     title: {
       default: defaultTitle,
       template,
     },
     description,
     icons: s.seoFaviconUrl ? { icon: s.seoFaviconUrl } : undefined,
+    alternates: {
+      canonical: "/",
+    },
     openGraph: {
       title: defaultTitle,
       description,
       siteName: s.name,
+      type: "website",
+      locale: "tr_TR",
       ...(s.seoOgImage ? { images: [{ url: s.seoOgImage }] } : {}),
     },
   };
