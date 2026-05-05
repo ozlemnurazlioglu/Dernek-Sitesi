@@ -29,6 +29,9 @@ export type ApplicationDocument = {
   fileName: string;
   size: number;
   uploadedAt: string;
+  /** Yüklenen dosyanın public URL'i (Vercel Blob veya /uploads/...).
+   *  Eski demo başvurularda tanımsız olabilir. */
+  url?: string;
 };
 
 export type ScholarshipApplication = {
@@ -498,6 +501,42 @@ export type HeroSlide = {
    * göstermek isteyip istemediğini belirler. Tanımlı değilse `true` kabul edilir.
    */
   showOverlay?: boolean;
+  /**
+   * Bu slayta özel birincil buton — tanımlıysa ve label doluysa hero'nun
+   * GLOBAL birincil butonu yerine bunu gösterir. label boşsa global butona
+   * geri düşer (geriye dönük uyumluluk: eski slaytlarda alan tanımsız).
+   *
+   * Kullanım örneği: bir slayt habere, başkası burs başvurusuna,
+   * başkası etkinliğe yönlendirsin.
+   */
+  primaryButton?: { label: string; href: string };
+  /**
+   * Bu slayta özel ikincil buton — birincil ile aynı mantık. label boşsa
+   * global ikincil butona geri düşer.
+   */
+  secondaryButton?: { label: string; href: string };
+
+  /* —————— Slayta özel METİN override'ları ——————
+   * Hepsi opsiyoneldir; boş/tanımsızsa hero'nun ortak (global) değeri kullanılır.
+   * Bu sayede her slayt; rozet, başlık, alt yazı ve yüzen rozetlerini
+   * kendi temasına göre değiştirebilir (ör. burs slaytı vs etkinlik slaytı). */
+
+  /** Slaytın sol üstündeki rozet metni. Doldurulursa
+   *  `{founded}{hero.badgeText}` yerine SADECE bu metin gösterilir. */
+  badgeText?: string;
+  /** Başlık üç parçası — herhangi biri non-empty ise bu üç alan global
+   *  başlığın TAMAMINI yerine geçer (boş alanlar boş olarak basılır). */
+  titlePrefix?: string;
+  titleHighlight?: string;
+  titleSuffix?: string;
+  /** Alt yazı — non-empty ise global subtitle yerine kullanılır.
+   *  `{yearsActive}` yer tutucusu burada da çalışır. */
+  subtitle?: string;
+  /** Sağ üstteki ilk yüzen rozet override'ı. Hem label hem value boşsa
+   *  global `floatBadge1` kullanılır. */
+  floatBadge1?: { label: string; value: string };
+  /** Sağ üstteki ikinci yüzen rozet override'ı. */
+  floatBadge2?: { label: string; value: string };
 };
 
 export type HeroBlock = {
@@ -590,12 +629,18 @@ export type FooterConfig = {
   groups: FooterLinkGroup[];
   legalLinks: { label: string; href: string }[];
   /**
-   * Footer'ın ortasında "Destekçilerimiz" başlığı altında listelenen şirket
-   * bağlantıları. Her biri ad + URL içerir; tıklandığında yeni sekmede açılır.
-   * Boş array veya tanımsız ise bu blok hiç gösterilmez. Geri uyumluluk için
-   * opsiyonel.
+   * Sitenin en altında küçük bir şerit halinde listelenen şirket bağlantıları.
+   * Her biri ad + URL içerir; tıklandığında yeni sekmede açılır. Boş array
+   * veya tanımsız ise bu blok hiç gösterilmez. Geri uyumluluk için opsiyonel.
    */
   supporters?: { name: string; href: string }[];
+  /**
+   * Destekçiler şeridinin başlığı.
+   *  - `undefined` → varsayılan "Destekçilerimiz" başlığı kullanılır
+   *  - `""` (boş string) → başlık hiç gösterilmez, sadece destekçi adları
+   *  - Başka bir değer → bu metin başlık olarak gösterilir (ör. "Site Sponsoru")
+   */
+  supportersTitle?: string;
 };
 
 /**

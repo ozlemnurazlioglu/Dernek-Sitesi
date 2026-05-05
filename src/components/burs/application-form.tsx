@@ -16,6 +16,7 @@ import {
   FileText,
   GraduationCap,
   Image as ImageIcon,
+  Loader2,
   Trash2,
   Upload,
   User,
@@ -169,6 +170,11 @@ export function ApplicationForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submittedId, setSubmittedId] = useState<string | null>(null);
+  // Şu anda sunucuya yüklenmekte olan belgeler — bu süre boyunca alanın
+  // üzerinde spinner gösterip yeniden seçim engellenir.
+  const [uploadingKeys, setUploadingKeys] = useState<Set<DocumentKey>>(
+    () => new Set(),
+  );
 
   useEffect(() => {
     if (currentUser) {
@@ -225,6 +231,10 @@ export function ApplicationForm() {
         .filter((d) => !data.documents[d.key]);
       if (missing.length > 0) {
         newErrors._docs = `${missing.length} zorunlu belge eksik`;
+      } else if (uploadingKeys.size > 0) {
+        // Yüklenmekte olan dosya varken sonraki adıma geçmek dosya kaybına
+        // yol açar (component unmount → upload state kaybolur).
+        newErrors._docs = "Dosya yüklemesi tamamlanmadı, lütfen bekleyin.";
       }
     } else if (step === 4) {
       if (!/^TR/i.test(data.iban.replace(/\s/g, "")))
@@ -289,25 +299,89 @@ export function ApplicationForm() {
     }, 800);
   };
 
-  const handleFile = (key: DocumentKey, e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFile = async (
+    key: DocumentKey,
+    e: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file) return;
+
     if (file.size > 10 * 1024 * 1024) {
       toast({
         tone: "error",
         title: "Dosya çok büyük",
         description: "Her dosya en fazla 10 MB olabilir.",
       });
+      input.value = "";
       return;
     }
-    const doc: ApplicationDocument = {
-      key,
-      fileName: file.name,
-      size: file.size,
-      uploadedAt: new Date().toISOString(),
-    };
-    update("documents", { ...data.documents, [key]: doc });
-    toast({ tone: "success", title: "Belge yüklendi", description: file.name });
+
+    setUploadingKeys((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("docKey", key);
+      const res = await fetch("/api/applications/upload", {
+        method: "POST",
+        body: fd,
+        credentials: "same-origin",
+      });
+
+      if (!res.ok) {
+        let msg = "Yükleme başarısız";
+        try {
+          const body = (await res.json()) as { error?: string };
+          if (body?.error) msg = body.error;
+        } catch {
+          // JSON gelmediyse genel mesaj göster
+        }
+        toast({ tone: "error", title: "Belge yüklenemedi", description: msg });
+        return;
+      }
+
+      const payload = (await res.json()) as {
+        url: string;
+        size: number;
+        type: string;
+        name: string;
+      };
+
+      const doc: ApplicationDocument = {
+        key,
+        fileName: file.name,
+        size: file.size,
+        uploadedAt: new Date().toISOString(),
+        url: payload.url,
+      };
+      update("documents", { ...data.documents, [key]: doc });
+      toast({
+        tone: "success",
+        title: "Belge yüklendi",
+        description: file.name,
+      });
+    } catch (err) {
+      console.error("[application-form] upload hatası", err);
+      toast({
+        tone: "error",
+        title: "Belge yüklenemedi",
+        description: "Bağlantınızı kontrol edip yeniden deneyin.",
+      });
+    } finally {
+      setUploadingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+      // input.value temizliği — aynı dosyayı silip tekrar seçince
+      // change event'i tetiklensin diye gerekli.
+      input.value = "";
+    }
   };
 
   const removeFile = (key: DocumentKey) => {
@@ -662,6 +736,7 @@ export function ApplicationForm() {
               <div className="grid sm:grid-cols-2 gap-4">
                 {docs.map((d) => {
                   const file = data.documents[d.key];
+                  const isUploading = uploadingKeys.has(d.key);
                   return (
                     <div
                       key={d.key}
@@ -669,7 +744,9 @@ export function ApplicationForm() {
                         "rounded-xl border-2 border-dashed p-4 transition-colors",
                         file
                           ? "border-emerald-300 bg-emerald-50/40"
-                          : "border-border bg-muted/30 hover:border-brand-300",
+                          : isUploading
+                            ? "border-brand-300 bg-brand-50/30"
+                            : "border-border bg-muted/30 hover:border-brand-300",
                       )}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -718,12 +795,29 @@ export function ApplicationForm() {
                           </button>
                         </div>
                       ) : (
-                        <label className="mt-4 inline-flex w-full items-center justify-center gap-2 h-11 rounded-md bg-white border border-border text-sm font-medium text-brand-800 hover:bg-brand-50 cursor-pointer">
-                          <Upload className="h-4 w-4" /> Dosya Seç
+                        <label
+                          className={cn(
+                            "mt-4 inline-flex w-full items-center justify-center gap-2 h-11 rounded-md bg-white border border-border text-sm font-medium text-brand-800",
+                            isUploading
+                              ? "opacity-60 cursor-wait"
+                              : "hover:bg-brand-50 cursor-pointer",
+                          )}
+                        >
+                          {isUploading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Yükleniyor…
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4" /> Dosya Seç
+                            </>
+                          )}
                           <input
                             type="file"
                             className="sr-only"
                             accept=".pdf,.jpg,.jpeg,.png"
+                            disabled={isUploading}
                             onChange={(e) => handleFile(d.key, e)}
                           />
                         </label>

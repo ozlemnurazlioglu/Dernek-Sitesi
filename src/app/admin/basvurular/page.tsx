@@ -2,18 +2,26 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Search, Download, ChevronRight } from "lucide-react";
+import {
+  Archive,
+  ChevronRight,
+  Download,
+  Search,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge, statusOptions } from "@/components/status";
 import { useStore } from "@/lib/store";
 import { formatDateTimeTR } from "@/lib/utils";
-import type { ApplicationStatus } from "@/lib/types";
+import type { ApplicationStatus, ScholarshipApplication } from "@/lib/types";
+
+const MAX_BULK = 50;
 
 export default function AdminApplicationsPage() {
   const { applications } = useStore();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | ApplicationStatus>("all");
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
 
   const counts = useMemo(() => {
     const map: Record<ApplicationStatus | "all", number> = {
@@ -45,6 +53,43 @@ export default function AdminApplicationsPage() {
           new Date(a.submittedAt).getTime(),
       );
   }, [applications, filter, query]);
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelected((prev) => {
+      const allFilteredIds = filtered.map((a) => a.id);
+      const allSelected = allFilteredIds.every((id) => prev.has(id));
+      if (allSelected) {
+        const next = new Set(prev);
+        for (const id of allFilteredIds) next.delete(id);
+        return next;
+      }
+      const next = new Set(prev);
+      for (const id of allFilteredIds) next.add(id);
+      return next;
+    });
+  };
+
+  const allSelectedOnPage =
+    filtered.length > 0 && filtered.every((a) => selected.has(a.id));
+  const selectedCount = selected.size;
+  const tooMany = selectedCount > MAX_BULK;
+
+  // Toplu zip URL'i — yalnızca seçim varken render edilir.
+  const bulkZipHref =
+    selectedCount > 0
+      ? `/api/applications/zip?ids=${encodeURIComponent(
+          Array.from(selected).join(","),
+        )}`
+      : "#";
 
   return (
     <div className="space-y-6">
@@ -91,11 +136,71 @@ export default function AdminApplicationsPage() {
           </div>
         </div>
 
+        {selectedCount > 0 && (
+          <div
+            className={
+              "px-4 sm:px-6 py-3 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 " +
+              (tooMany
+                ? "border-amber-200 bg-amber-50/60"
+                : "border-brand-100 bg-brand-50/40")
+            }
+          >
+            <div className="text-sm">
+              <span className="font-semibold text-brand-900">
+                {selectedCount} başvuru
+              </span>
+              <span className="text-muted-foreground"> seçildi</span>
+              {tooMany && (
+                <span className="ml-2 text-amber-700 font-medium">
+                  · Tek seferde en fazla {MAX_BULK} başvuru indirilebilir
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelected(new Set())}
+                className="h-9 px-3 rounded-md text-xs font-medium border border-border bg-white text-brand-800 hover:bg-muted"
+              >
+                Seçimi Temizle
+              </button>
+              {tooMany ? (
+                <button
+                  type="button"
+                  disabled
+                  className="h-9 px-3 rounded-md text-xs font-semibold bg-muted text-muted-foreground inline-flex items-center gap-1.5 cursor-not-allowed"
+                >
+                  <Archive className="h-3.5 w-3.5" />
+                  Belgeleri ZIP indir
+                </button>
+              ) : (
+                <a
+                  href={bulkZipHref}
+                  className="h-9 px-3 rounded-md text-xs font-semibold bg-brand-900 text-white hover:bg-brand-800 inline-flex items-center gap-1.5"
+                >
+                  <Archive className="h-3.5 w-3.5" />
+                  Seçili {selectedCount} başvurunun belgelerini ZIP indir
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="text-left font-medium px-6 py-3">ID</th>
+                <th className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    aria-label="Tümünü seç"
+                    checked={allSelectedOnPage}
+                    onChange={toggleAll}
+                    disabled={filtered.length === 0}
+                    className="h-4 w-4 rounded border-border accent-brand-700 cursor-pointer disabled:cursor-not-allowed"
+                  />
+                </th>
+                <th className="text-left font-medium px-4 py-3">ID</th>
                 <th className="text-left font-medium px-4 py-3">Başvuran</th>
                 <th className="text-left font-medium px-4 py-3">Eğitim</th>
                 <th className="text-left font-medium px-4 py-3">GANO</th>
@@ -108,61 +213,104 @@ export default function AdminApplicationsPage() {
             <tbody className="divide-y divide-border">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-14 text-muted-foreground">
+                  <td
+                    colSpan={9}
+                    className="text-center py-14 text-muted-foreground"
+                  >
                     Sonuç bulunamadı.
                   </td>
                 </tr>
               ) : (
-                filtered.map((app) => {
-                  const docs = Object.keys(app.documents).length;
-                  return (
-                    <tr key={app.id} className="hover:bg-muted/30">
-                      <td className="px-6 py-3.5 font-mono text-xs text-muted-foreground">
-                        {app.id}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="font-medium text-brand-900">
-                          {app.fullName}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {app.email}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="text-brand-900">{app.schoolName}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {app.department}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5">{app.gpa}</td>
-                      <td className="px-4 py-3.5">
-                        <Badge tone={docs >= 4 ? "success" : "warning"}>
-                          {docs} belge
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3.5 text-muted-foreground whitespace-nowrap">
-                        {formatDateTimeTR(app.submittedAt)}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <StatusBadge status={app.status} />
-                      </td>
-                      <td className="px-6 py-3.5 text-right">
-                        <Link
-                          href={`/admin/basvurular/${app.id}`}
-                          className="text-sm font-medium text-brand-700 hover:text-brand-900 inline-flex items-center"
-                        >
-                          İncele <ChevronRight className="h-4 w-4" />
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })
+                filtered.map((app) => (
+                  <ApplicationRow
+                    key={app.id}
+                    app={app}
+                    selected={selected.has(app.id)}
+                    onToggle={() => toggle(app.id)}
+                  />
+                ))
               )}
             </tbody>
           </table>
         </div>
       </div>
     </div>
+  );
+}
+
+function ApplicationRow({
+  app,
+  selected,
+  onToggle,
+}: {
+  app: ScholarshipApplication;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  // Gerçekten indirilebilir belge sayısı (URL'i olanlar).
+  const realDocs = Object.values(app.documents).filter(
+    (d) => d && d.url,
+  ).length;
+  const totalDocs = Object.keys(app.documents).length;
+
+  return (
+    <tr
+      className={
+        "hover:bg-muted/30 " + (selected ? "bg-brand-50/40" : "")
+      }
+    >
+      <td className="px-4 py-3.5">
+        <input
+          type="checkbox"
+          aria-label={`${app.fullName} başvurusunu seç`}
+          checked={selected}
+          onChange={onToggle}
+          className="h-4 w-4 rounded border-border accent-brand-700 cursor-pointer"
+        />
+      </td>
+      <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+        {app.id}
+      </td>
+      <td className="px-4 py-3.5">
+        <div className="font-medium text-brand-900">{app.fullName}</div>
+        <div className="text-xs text-muted-foreground">{app.email}</div>
+      </td>
+      <td className="px-4 py-3.5">
+        <div className="text-brand-900">{app.schoolName}</div>
+        <div className="text-xs text-muted-foreground">{app.department}</div>
+      </td>
+      <td className="px-4 py-3.5">{app.gpa}</td>
+      <td className="px-4 py-3.5">
+        <Badge tone={realDocs >= 4 ? "success" : "warning"}>
+          {realDocs}/{totalDocs} belge
+        </Badge>
+      </td>
+      <td className="px-4 py-3.5 text-muted-foreground whitespace-nowrap">
+        {formatDateTimeTR(app.submittedAt)}
+      </td>
+      <td className="px-4 py-3.5">
+        <StatusBadge status={app.status} />
+      </td>
+      <td className="px-6 py-3.5 text-right">
+        <div className="inline-flex items-center gap-3">
+          {realDocs > 0 && (
+            <a
+              href={`/api/applications/${app.id}/zip`}
+              className="text-xs text-brand-700 hover:text-brand-900 inline-flex items-center gap-1"
+              title="Bu başvurunun tüm belgelerini ZIP olarak indir"
+            >
+              <Archive className="h-3.5 w-3.5" /> ZIP
+            </a>
+          )}
+          <Link
+            href={`/admin/basvurular/${app.id}`}
+            className="text-sm font-medium text-brand-700 hover:text-brand-900 inline-flex items-center"
+          >
+            İncele <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </td>
+    </tr>
   );
 }
 

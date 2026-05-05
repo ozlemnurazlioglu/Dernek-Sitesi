@@ -88,6 +88,14 @@ function LoginForm() {
               placeholder="••••••••"
             />
           </div>
+          <div className="mt-1.5 text-right">
+            <Link
+              href="/sifremi-unuttum"
+              className="text-xs text-brand-700 font-medium hover:text-brand-900 hover:underline"
+            >
+              Şifremi unuttum
+            </Link>
+          </div>
         </Field>
 
         {error && (

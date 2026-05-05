@@ -21,6 +21,7 @@
     "db:add-galeri-submenu": "tsx --env-file=.env.local scripts/add-galeri-submenu.ts",
     "db:add-analytics-fields": "tsx --env-file=.env.local scripts/add-analytics-fields.ts",
     "db:add-donors": "tsx --env-file=.env.local scripts/add-donors.ts",
+    "db:add-application-doc-urls": "tsx --env-file=.env.local scripts/add-application-doc-urls.ts",
     "db:migrate-all": "tsx scripts/migrate-all.ts"
   },
   "dependencies": {
@@ -28,6 +29,7 @@
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.14.0",
     "mysql2": "^3.22.3",
     "next": "16.2.4",

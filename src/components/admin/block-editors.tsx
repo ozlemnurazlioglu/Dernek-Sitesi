@@ -483,6 +483,235 @@ export function HeroEditor() {
                       />
                     </Field>
                   </div>
+
+                  <div className="sm:col-span-2 mt-2">
+                    <details className="group rounded-lg border border-dashed border-border bg-white/60">
+                      <summary className="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between gap-2 select-none">
+                        <span>
+                          <span className="block text-xs font-semibold text-brand-900 uppercase tracking-wider">
+                            Bu slayta özel metinler &amp; butonlar
+                          </span>
+                          <span className="block text-[11px] text-muted-foreground mt-0.5">
+                            Boş bırakılan alanlar için yukarıdaki ortak hero
+                            metinleri kullanılır. Doldurulanlar bu slayt
+                            aktifken o değerleri override eder — her slayta
+                            farklı başlık, alt yazı ve buton verebilirsiniz.
+                          </span>
+                        </span>
+                        <ArrowDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform group-open:rotate-180" />
+                      </summary>
+
+                      <div className="px-3 pb-3 pt-1 space-y-4 border-t border-dashed border-border/60">
+                        <div className="grid sm:grid-cols-2 gap-3 pt-3">
+                          <div className="sm:col-span-2">
+                            <Field
+                              label="Rozet metni (bu slayt)"
+                              hint="Doldurursanız sol üstteki '1998…' rozetinin yerine SADECE bu metin gösterilir."
+                            >
+                              <Input
+                                value={slide.badgeText ?? ""}
+                                onChange={(e) =>
+                                  updateSlide(i, { badgeText: e.target.value })
+                                }
+                                placeholder="Boş = ortak rozet kullanılsın"
+                              />
+                            </Field>
+                          </div>
+
+                          <Field label="Başlık ön (bu slayt)">
+                            <Input
+                              value={slide.titlePrefix ?? ""}
+                              onChange={(e) =>
+                                updateSlide(i, {
+                                  titlePrefix: e.target.value,
+                                })
+                              }
+                              placeholder="Boş = ortak başlık"
+                            />
+                          </Field>
+                          <Field label="Vurgulu kelime (bu slayt)">
+                            <Input
+                              value={slide.titleHighlight ?? ""}
+                              onChange={(e) =>
+                                updateSlide(i, {
+                                  titleHighlight: e.target.value,
+                                })
+                              }
+                              placeholder="altın çizgili kelime"
+                            />
+                          </Field>
+                          <div className="sm:col-span-2">
+                            <Field
+                              label="Başlık son (bu slayt)"
+                              hint="Üç başlık alanından biri bile dolu olursa, bu slaytta üç parça birden slayt değerleriyle gösterilir; boş alanlar boş basılır."
+                            >
+                              <Input
+                                value={slide.titleSuffix ?? ""}
+                                onChange={(e) =>
+                                  updateSlide(i, {
+                                    titleSuffix: e.target.value,
+                                  })
+                                }
+                                placeholder=""
+                              />
+                            </Field>
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            <Field
+                              label="Alt yazı (bu slayt)"
+                              hint="{yearsActive} yer tutucusu burada da çalışır."
+                            >
+                              <Textarea
+                                value={slide.subtitle ?? ""}
+                                onChange={(e) =>
+                                  updateSlide(i, {
+                                    subtitle: e.target.value,
+                                  })
+                                }
+                                placeholder="Boş = ortak alt yazı kullanılsın"
+                              />
+                            </Field>
+                          </div>
+                        </div>
+
+                        <div className="rounded-md border border-border bg-muted/30 p-3 space-y-3">
+                          <div className="text-xs font-semibold text-brand-900">
+                            Sağ üst yüzen rozetler (bu slayt)
+                          </div>
+                          <p className="text-[11px] text-muted-foreground -mt-2">
+                            Bir rozetin label veya value alanı doluysa o rozet
+                            için slayt değerleri kullanılır; ikisi de boşsa
+                            ortak rozet gösterilir.
+                          </p>
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            <Field label="Rozet 1 — etiket">
+                              <Input
+                                value={slide.floatBadge1?.label ?? ""}
+                                onChange={(e) =>
+                                  updateSlide(i, {
+                                    floatBadge1: {
+                                      label: e.target.value,
+                                      value: slide.floatBadge1?.value ?? "",
+                                    },
+                                  })
+                                }
+                                placeholder="ör. Aktif Etkinlik"
+                              />
+                            </Field>
+                            <Field label="Rozet 1 — değer">
+                              <Input
+                                value={slide.floatBadge1?.value ?? ""}
+                                onChange={(e) =>
+                                  updateSlide(i, {
+                                    floatBadge1: {
+                                      label: slide.floatBadge1?.label ?? "",
+                                      value: e.target.value,
+                                    },
+                                  })
+                                }
+                                placeholder="ör. Geleneksel Piknik"
+                              />
+                            </Field>
+                            <Field label="Rozet 2 — etiket">
+                              <Input
+                                value={slide.floatBadge2?.label ?? ""}
+                                onChange={(e) =>
+                                  updateSlide(i, {
+                                    floatBadge2: {
+                                      label: e.target.value,
+                                      value: slide.floatBadge2?.value ?? "",
+                                    },
+                                  })
+                                }
+                                placeholder="ör. Tarih"
+                              />
+                            </Field>
+                            <Field label="Rozet 2 — değer">
+                              <Input
+                                value={slide.floatBadge2?.value ?? ""}
+                                onChange={(e) =>
+                                  updateSlide(i, {
+                                    floatBadge2: {
+                                      label: slide.floatBadge2?.label ?? "",
+                                      value: e.target.value,
+                                    },
+                                  })
+                                }
+                                placeholder="ör. 12 Haziran 2026"
+                              />
+                            </Field>
+                          </div>
+                        </div>
+
+                        <div className="rounded-md border border-border bg-muted/30 p-3 space-y-3">
+                          <div className="text-xs font-semibold text-brand-900">
+                            Butonlar (bu slayt)
+                          </div>
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            <Field label="Birincil buton metni">
+                              <Input
+                                value={slide.primaryButton?.label ?? ""}
+                                onChange={(e) =>
+                                  updateSlide(i, {
+                                    primaryButton: {
+                                      label: e.target.value,
+                                      href: slide.primaryButton?.href ?? "",
+                                    },
+                                  })
+                                }
+                                placeholder="Boş = ortak buton"
+                              />
+                            </Field>
+                            <Field label="Birincil buton linki">
+                              <Input
+                                value={slide.primaryButton?.href ?? ""}
+                                onChange={(e) =>
+                                  updateSlide(i, {
+                                    primaryButton: {
+                                      label: slide.primaryButton?.label ?? "",
+                                      href: e.target.value,
+                                    },
+                                  })
+                                }
+                                placeholder="ör. /haberler/yeni-burs-donemi"
+                              />
+                            </Field>
+                            <Field label="İkincil buton metni">
+                              <Input
+                                value={slide.secondaryButton?.label ?? ""}
+                                onChange={(e) =>
+                                  updateSlide(i, {
+                                    secondaryButton: {
+                                      label: e.target.value,
+                                      href:
+                                        slide.secondaryButton?.href ?? "",
+                                    },
+                                  })
+                                }
+                                placeholder="Boş = ortak buton"
+                              />
+                            </Field>
+                            <Field label="İkincil buton linki">
+                              <Input
+                                value={slide.secondaryButton?.href ?? ""}
+                                onChange={(e) =>
+                                  updateSlide(i, {
+                                    secondaryButton: {
+                                      label:
+                                        slide.secondaryButton?.label ?? "",
+                                      href: e.target.value,
+                                    },
+                                  })
+                                }
+                                placeholder="ör. /etkinlikler/piknik-2026"
+                              />
+                            </Field>
+                          </div>
+                        </div>
+                      </div>
+                    </details>
+                  </div>
                 </div>
               </div>
             ))}
@@ -1337,6 +1566,41 @@ export function ApplicationFormEditor() {
 
 /* --------------- Footer Editor --------------- */
 
+/**
+ * Bir footer link'ini textarea satırına dönüştürür.
+ *
+ * Kritik UX detayı: href boşsa otomatik " | " EKLENMEZ. Aksi halde
+ * kullanıcı sadece etiket yazarken (henüz |'ye gelmemişken) textarea'ya
+ * her tuş başına " | " inject olur ve cursor doğal akışı bozulur.
+ */
+function serializeFooterLink(l: { label: string; href: string }): string {
+  if (!l.label && !l.href) return "";
+  if (l.href) return `${l.label} | ${l.href}`;
+  return l.label;
+}
+
+/**
+ * Textarea içeriğini link listesine çevirir. Boş satırlar `{label:'',href:''}`
+ * olarak korunur — re-render sırasında kaybolup yazma akışını bozmasınlar.
+ * (Eski sürümde burada `.filter(l => l.label || l.href)` vardı; bu yüzden
+ * Enter ile yeni satır açıldığı anda satır siliniyor, kullanıcı "yeni
+ * öğe eklenmiyor" davranışını görüyordu.) Save sırasında temizlenirler.
+ */
+function parseFooterLinkLines(text: string): { label: string; href: string }[] {
+  return text.split(/\r?\n/).map((line) => {
+    const idx = line.indexOf("|");
+    const label = (idx === -1 ? line : line.slice(0, idx)).trim();
+    const href = (idx === -1 ? "" : line.slice(idx + 1)).trim();
+    return { label, href };
+  });
+}
+
+function cleanFooterLinks(
+  links: { label: string; href: string }[],
+): { label: string; href: string }[] {
+  return links.filter((l) => l.label.trim() || l.href.trim());
+}
+
 export function FooterEditor() {
   const { pageBlocks, updatePageBlock } = useStore();
   const fb: FooterConfig = { groups: [], legalLinks: [], supporters: [] };
@@ -1392,7 +1656,23 @@ export function FooterEditor() {
       title="Site Altı (Footer)"
       description="Footer'daki link grupları ve yasal linkler. Sosyal medya hesapları Site Ayarları'ndan düzenlenir."
       blockKey="footer"
-      onSave={() => updatePageBlock("footer", v)}
+      onSave={() => {
+        // Kaydetme anında boş satırları (yazılırken durup kalmış olanlar)
+        // ve boş destekçi kayıtlarını temizle. Textarea'larda korumamız
+        // gereken boş satır → kalıcı veriye sızmasın.
+        const cleaned: FooterConfig = {
+          ...v,
+          groups: v.groups.map((g) => ({
+            ...g,
+            links: cleanFooterLinks(g.links),
+          })),
+          legalLinks: cleanFooterLinks(v.legalLinks),
+          supporters: (v.supporters ?? []).filter(
+            (s) => s.name.trim() || s.href.trim(),
+          ),
+        };
+        updatePageBlock("footer", cleaned);
+      }}
     >
       <div className="space-y-4">
         {v.groups.map((g, gi) => (
@@ -1405,20 +1685,14 @@ export function FooterEditor() {
             </Field>
             <Field
               label="Linkler (her satır: 'metin | href')"
-              hint="Örnek: Hakkımızda | /hakkimizda"
+              hint="Örnek: Hakkımızda | /hakkimizda. Yeni satır eklemek için Enter'a basın; boş satırlar kaydetme sırasında otomatik temizlenir."
             >
               <Textarea
                 rows={5}
-                value={g.links.map((l) => `${l.label} | ${l.href}`).join("\n")}
+                value={g.links.map(serializeFooterLink).join("\n")}
                 onChange={(e) =>
                   updateGroup(gi, {
-                    links: e.target.value
-                      .split(/\r?\n/)
-                      .map((line) => {
-                        const [label, href] = line.split("|").map((s) => s.trim());
-                        return { label: label ?? "", href: href ?? "" };
-                      })
-                      .filter((l) => l.label || l.href),
+                    links: parseFooterLinkLines(e.target.value),
                   })
                 }
               />
@@ -1444,21 +1718,15 @@ export function FooterEditor() {
         <div className="border-t border-border pt-4 mt-4">
           <Field
             label="Yasal linkler (her satır: 'metin | href')"
-            hint="Footer'ın altındaki Gizlilik / KVKK / Çerez linkleri"
+            hint="Footer'ın altındaki Gizlilik / KVKK / Çerez linkleri. Yeni satır için Enter'a basın; kaydederken boş satırlar otomatik temizlenir."
           >
             <Textarea
               rows={4}
-              value={v.legalLinks.map((l) => `${l.label} | ${l.href}`).join("\n")}
+              value={v.legalLinks.map(serializeFooterLink).join("\n")}
               onChange={(e) =>
                 setV({
                   ...v,
-                  legalLinks: e.target.value
-                    .split(/\r?\n/)
-                    .map((line) => {
-                      const [label, href] = line.split("|").map((s) => s.trim());
-                      return { label: label ?? "", href: href ?? "" };
-                    })
-                    .filter((l) => l.label || l.href),
+                  legalLinks: parseFooterLinkLines(e.target.value),
                 })
               }
             />
@@ -1469,13 +1737,13 @@ export function FooterEditor() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <div className="text-xs uppercase tracking-wider text-gold-600 font-semibold">
-                Destekçilerimiz
+                Destekçiler / Site Sponsorları
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Footer'ın ortasında "Destekçilerimiz" başlığı altında listelenen
-                şirket bağlantıları. Boş bırakılırsa bu blok gösterilmez.
-                Bağlantı dış link (https://...) veya site içi yol (/yonetim)
-                olabilir.
+                Sitenin EN ALTINDA — copyright satırının altında — küçük bir
+                şerit halinde listelenen kuruluş/sponsor bağlantıları. Hiç
+                destekçi eklenmezse şerit hiç gösterilmez. Bağlantı dış link
+                (https://...) veya site içi yol (/yonetim) olabilir.
               </p>
             </div>
             <Button
@@ -1486,6 +1754,21 @@ export function FooterEditor() {
             >
               Destekçi Ekle
             </Button>
+          </div>
+
+          <div className="mb-4">
+            <Field
+              label="Şerit başlığı"
+              hint="Boş bırakırsanız başlık hiç gösterilmez. 'Destekçilerimiz' yerine 'Site Sponsoru', 'İş Ortaklarımız' gibi alternatif yazabilirsiniz."
+            >
+              <Input
+                value={v.supportersTitle ?? "Destekçilerimiz"}
+                onChange={(e) =>
+                  setV({ ...v, supportersTitle: e.target.value })
+                }
+                placeholder="Boş bırakılırsa başlık gizlenir"
+              />
+            </Field>
           </div>
 
           {supporters.length === 0 ? (

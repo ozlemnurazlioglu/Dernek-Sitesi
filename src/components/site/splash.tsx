@@ -28,8 +28,10 @@ export function SiteSplash() {
 
   useEffect(() => {
     if (!ready) return;
-    const fade = setTimeout(() => setHiding(true), 120);
-    const remove = setTimeout(() => setMounted(false), 720);
+    // Daha kısa fade-out: ready olduğunda bilinen içeriğe daha hızlı geç —
+    // algılanan giriş süresini kısaltır.
+    const fade = setTimeout(() => setHiding(true), 60);
+    const remove = setTimeout(() => setMounted(false), 380);
     return () => {
       clearTimeout(fade);
       clearTimeout(remove);
@@ -42,8 +44,9 @@ export function SiteSplash() {
   const subtitleRaw =
     siteSettings.logoSubtitle?.trim() || siteSettings.slogan || "";
   const subtitle = subtitleRaw.toLocaleUpperCase("tr-TR");
-  const logoUrl = siteSettings.logoUrl?.trim();
-  const initial = (title.charAt(0) || "K").toLocaleUpperCase("tr-TR");
+  // Admin bir logo yüklediyse onu, yüklemediyse repo'daki marka logosunu
+  // kullan. Bu sayede ilk açılışta DB cevabı beklenmeden gerçek logo görünür.
+  const logoUrl = siteSettings.logoUrl?.trim() || "/logo.png";
 
   return (
     <div
@@ -92,28 +95,17 @@ export function SiteSplash() {
           </svg>
 
           <div
-            className="relative h-[78px] w-[78px] overflow-hidden rounded-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
-            style={{
-              background:
-                "linear-gradient(135deg, #2f5a9c 0%, #163357 60%, #102542 100%)",
-            }}
+            className="relative h-[96px] w-[96px] overflow-hidden rounded-2xl border border-white/10 bg-white/95 shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
           >
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={logoUrl}
-                alt={title}
-                className="absolute inset-0 h-full w-full object-contain p-2"
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-[36px] font-semibold leading-none text-gold-300 drop-shadow-sm">
-                  {initial}
-                </span>
-              </div>
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={logoUrl}
+              alt={title}
+              // Logo geniş bir görsel (sağı transparan); object-cover + sol
+              // hizalama ile yalnız yuvarlak arma görünür.
+              className="absolute inset-0 h-full w-full object-cover object-left"
+            />
             <span className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10" />
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-2xl bg-gradient-to-b from-white/12 to-transparent" />
           </div>
         </div>
 

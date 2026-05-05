@@ -96,20 +96,20 @@ const contentItems: ContentItem[] = [
     children: [
       { href: "/admin/haber-kategorileri", label: "Haber Kategorileri", icon: Tags },
       { href: "/admin/etkinlik-kategorileri", label: "Etkinlik Kategorileri", icon: Tags },
+      { href: "/admin/duyuru-kategorileri", label: "Duyuru Kategorileri", icon: Tags },
+      { href: "/admin/foto-kategorileri", label: "Foto Kategorileri", icon: Tags },
+      { href: "/admin/video-kategorileri", label: "Video Kategorileri", icon: Tags },
     ],
   },
   { href: "/admin/yasal-sayfalar", label: "Yasal Sayfalar", icon: Scale },
   { href: "/admin/agalar", label: "Ağalarımız", icon: Crown },
   { href: "/admin/mali-tablo", label: "Mali Tablo", icon: Wallet },
   { href: "/admin/duyurular", label: "Duyurular", icon: Megaphone },
-  { href: "/admin/duyuru-kategorileri", label: "Duyuru Kategorileri", icon: Tags },
   { href: "/admin/sponsorlar", label: "Sponsorlar", icon: Handshake },
   { href: "/admin/sponsor-turleri", label: "Sponsor Türleri", icon: Tags },
   { href: "/admin/bagiscilar", label: "Bağışçılar", icon: HandHeart },
   { href: "/admin/mahallelerimiz", label: "Mahallelerimiz", icon: Home },
-  { href: "/admin/foto-kategorileri", label: "Foto Kategorileri", icon: Tags },
   { href: "/admin/foto-galeri", label: "Foto Galeri", icon: ImageIcon },
-  { href: "/admin/video-kategorileri", label: "Video Kategorileri", icon: Tags },
   { href: "/admin/video-galeri", label: "Video Galeri", icon: Film },
 ];
 
@@ -128,6 +128,12 @@ export function AdminSidebar({
   const { currentUser, logout, applications, messages, resetDemo } = useStore();
   const { toast } = useToast();
 
+  // Yan menü rozetleri "ilgilenilmesi gereken" sayıları gösterir
+  // (toplam değil). Burs Başvuruları için bu, henüz karara bağlanmamış
+  // yani Beklemede + İnceleniyor durumundaki başvuruların sayısıdır;
+  // Onaylandı/Reddedildi kararlananları sayıma katmaz. Mesajlarda da
+  // benzer şekilde sadece okunmamış mesajlar sayılır. Hover'da
+  // (title attribute) ne anlama geldiği açıklanır.
   const pendingApps = applications.filter(
     (a) => a.status === "submitted" || a.status === "in_review",
   ).length;
@@ -136,6 +142,11 @@ export function AdminSidebar({
   const counts: Record<string, number> = {
     "/admin/basvurular": pendingApps,
     "/admin/mesajlar": unread,
+  };
+  const countTitles: Record<string, string> = {
+    "/admin/basvurular":
+      "İlgilenilmesi gereken başvurular (Beklemede + İnceleniyor). Karara bağlanmış başvurular sayıma dâhil değildir.",
+    "/admin/mesajlar": "Okunmamış mesajlar",
   };
 
   /**
@@ -219,6 +230,7 @@ export function AdminSidebar({
                 ? pathname === item.href
                 : pathname.startsWith(item.href);
               const count = counts[item.href];
+              const countTitle = countTitles[item.href];
               return (
                 <li key={item.href}>
                   <Link
@@ -233,7 +245,10 @@ export function AdminSidebar({
                     <item.icon className="h-4 w-4" />
                     <span className="flex-1">{item.label}</span>
                     {count ? (
-                      <span className="text-[11px] font-semibold rounded-full bg-gold-400 text-brand-900 h-5 min-w-5 px-1.5 inline-flex items-center justify-center">
+                      <span
+                        title={countTitle}
+                        className="text-[11px] font-semibold rounded-full bg-gold-400 text-brand-900 h-5 min-w-5 px-1.5 inline-flex items-center justify-center cursor-help"
+                      >
                         {count}
                       </span>
                     ) : null}

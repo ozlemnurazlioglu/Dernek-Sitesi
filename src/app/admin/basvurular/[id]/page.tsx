@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { notFound, useParams, useRouter } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import { useState } from "react";
 import {
+  AlertTriangle,
+  Archive,
   ArrowLeft,
   Calendar,
   CheckCircle2,
@@ -50,10 +52,37 @@ const allDocs: DocumentKey[] = [
 
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
-  const { applications, updateApplicationStatus } = useStore();
+  const { applications, updateApplicationStatus, requiredDocuments } =
+    useStore();
   const { toast } = useToast();
   const application = applications.find((a) => a.id === params.id);
+
+  // Gösterilecek belge anahtarları:
+  //  1) Admin'in "İstenen Belgeler" listesindeki sırayla başlat,
+  //  2) Bu başvuruda yüklenmiş ama listede olmayan ek anahtarları sona ekle,
+  //  3) Liste boşsa eski/yedek 6 anahtar üzerinden git.
+  const docKeysToShow: DocumentKey[] = (() => {
+    const fromAdmin = requiredDocuments.map((d) => d.docKey as DocumentKey);
+    const uploaded = application
+      ? (Object.keys(application.documents) as DocumentKey[])
+      : [];
+    if (fromAdmin.length === 0) {
+      const merged = new Set<DocumentKey>([...allDocs, ...uploaded]);
+      return Array.from(merged);
+    }
+    const merged = [...fromAdmin];
+    for (const k of uploaded) {
+      if (!merged.includes(k)) merged.push(k);
+    }
+    return merged;
+  })();
+
+  const labelFor = (k: DocumentKey): string => {
+    const fromAdmin = requiredDocuments.find((d) => d.docKey === k)?.title;
+    if (fromAdmin) return fromAdmin;
+    if (k in docLabels) return docLabels[k as keyof typeof docLabels]!;
+    return k;
+  };
 
   const [note, setNote] = useState(application?.reviewerNote ?? "");
   const [score, setScore] = useState<string>(
@@ -218,9 +247,34 @@ export default function ApplicationDetailPage() {
           </Section>
 
           <Section title="Belgeler" icon={FileText}>
+            {(() => {
+              const realDocCount = docKeysToShow.filter((k) => {
+                const d = application.documents[k];
+                return d && d.url;
+              }).length;
+              return (
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="text-xs text-muted-foreground">
+                    {realDocCount > 0
+                      ? `${realDocCount} belge indirilebilir`
+                      : "Bu başvuruda indirilebilir belge yok"}
+                  </div>
+                  {realDocCount > 0 ? (
+                    <a
+                      href={`/api/applications/${application.id}/zip`}
+                      className="h-9 px-3 rounded-md text-xs font-semibold bg-brand-900 text-white hover:bg-brand-800 inline-flex items-center gap-1.5"
+                    >
+                      <Archive className="h-3.5 w-3.5" />
+                      Tümünü .zip indir
+                    </a>
+                  ) : null}
+                </div>
+              );
+            })()}
             <div className="grid sm:grid-cols-2 gap-3">
-              {allDocs.map((key) => {
+              {docKeysToShow.map((key) => {
                 const doc = application.documents[key];
+                const hasFile = doc && !!doc.url;
                 return (
                   <div
                     key={key}
@@ -233,12 +287,18 @@ export default function ApplicationDetailPage() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-sm font-medium text-brand-900">
-                        {docLabels[key]}
+                        {labelFor(key)}
                       </div>
                       {doc ? (
-                        <Badge tone="success">
-                          <CheckCircle2 className="h-3 w-3" /> Yüklü
-                        </Badge>
+                        hasFile ? (
+                          <Badge tone="success">
+                            <CheckCircle2 className="h-3 w-3" /> Yüklü
+                          </Badge>
+                        ) : (
+                          <Badge tone="warning">
+                            <AlertTriangle className="h-3 w-3" /> Eski demo
+                          </Badge>
+                        )
                       ) : (
                         <Badge tone="warning">Eksik</Badge>
                       )}
@@ -254,20 +314,30 @@ export default function ApplicationDetailPage() {
                             {formatDateTimeTR(doc.uploadedAt)}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toast({
-                              tone: "info",
-                              title: "Demo modu",
-                              description:
-                                "Gerçek sürümde belge bu noktadan indirilecek.",
-                            })
-                          }
-                          className="h-9 px-3 rounded-md text-xs font-medium border border-border hover:bg-muted text-brand-800 inline-flex items-center gap-1.5 shrink-0"
-                        >
-                          <Download className="h-3.5 w-3.5" /> İndir
-                        </button>
+                        {hasFile ? (
+                          <a
+                            href={`/api/applications/${application.id}/documents/${encodeURIComponent(key)}`}
+                            className="h-9 px-3 rounded-md text-xs font-medium border border-border hover:bg-muted text-brand-800 inline-flex items-center gap-1.5 shrink-0"
+                            title={`${application.id}-{ad-soyad}-{belge}.{uzantı} adıyla iner`}
+                          >
+                            <Download className="h-3.5 w-3.5" /> İndir
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              toast({
+                                tone: "info",
+                                title: "Belge dosyası yok",
+                                description:
+                                  "Bu kayıt demo döneminden kalma; gerçek dosya saklanmamış.",
+                              })
+                            }
+                            className="h-9 px-3 rounded-md text-xs font-medium border border-dashed border-border text-muted-foreground inline-flex items-center gap-1.5 shrink-0 cursor-not-allowed"
+                          >
+                            <Download className="h-3.5 w-3.5" /> İndirilemez
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="text-xs text-muted-foreground mt-3">

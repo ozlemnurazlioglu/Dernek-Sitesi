@@ -21,49 +21,32 @@ export function Logo({
   const shortName = siteSettings.shortName?.trim() || "Dernek";
   const subtitle =
     siteSettings.logoSubtitle?.trim() || siteSettings.slogan || "";
-  const logoUrl = siteSettings.logoUrl?.trim();
+  // Admin DB'de bir logo URL'i tanımladıysa onu, yoksa repo'daki gerçek
+  // dernek armasını kullan. Böylece DB henüz yüklenmemiş olsa bile (ilk
+  // mount'ta) doğru marka anında görünür.
+  const logoUrl = siteSettings.logoUrl?.trim() || "/logo.png";
 
-  const iconSize = compact ? "h-9 w-9" : "h-11 w-11";
+  // Sidebar'da kompakt; header'da daha hâkim bir varlık için biraz büyütüldü
+  // (44px → 48px md+, 52px lg+). Wide ekranlarda logonun belirgin olması
+  // markayı güçlendirir.
+  const iconSize = compact ? "h-9 w-9" : "h-12 w-12 lg:h-[52px] lg:w-[52px]";
 
   return (
-    <div className={cn("flex items-center gap-2.5 min-w-0", className)}>
-      <div className={cn("relative shrink-0", iconSize)}>
-        {logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={logoUrl}
-            alt={shortName}
-            className="absolute inset-0 h-full w-full object-contain"
-          />
-        ) : (
-          <svg
-            viewBox="0 0 48 48"
-            className="absolute inset-0 h-full w-full"
-            fill="none"
-          >
-            <defs>
-              <linearGradient id="logo-grad" x1="0" y1="0" x2="48" y2="48">
-                <stop offset="0" stopColor="#163357" />
-                <stop offset="1" stopColor="#0b1c33" />
-              </linearGradient>
-            </defs>
-            <rect width="48" height="48" rx="12" fill="url(#logo-grad)" />
-            <path
-              d="M14 30c0-5.523 4.477-10 10-10s10 4.477 10 10"
-              stroke="#c9a35a"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-            />
-            <circle cx="24" cy="20" r="4" stroke="#c9a35a" strokeWidth="2.2" />
-            <path
-              d="M18 34h12"
-              stroke="#ffffff"
-              strokeOpacity="0.55"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-            />
-          </svg>
+    <div className={cn("flex items-center gap-3 min-w-0", className)}>
+      <div
+        className={cn(
+          "relative shrink-0 overflow-hidden rounded-md",
+          iconSize,
         )}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={logoUrl}
+          alt={shortName}
+          // Logo geniş bir görsel; arma sol tarafta. object-cover + sol
+          // hizalama ile yalnız yuvarlak arma görünür.
+          className="absolute inset-0 h-full w-full object-cover object-left"
+        />
       </div>
       <div className="flex flex-col leading-tight min-w-0">
         <span
@@ -71,7 +54,7 @@ export function Logo({
             "font-bold uppercase truncate",
             compact
               ? "text-[13px] tracking-[0.04em]"
-              : "text-base tracking-[0.12em]",
+              : "text-[17px] lg:text-lg tracking-[0.12em]",
             textColor,
           )}
         >
@@ -83,7 +66,7 @@ export function Logo({
               "uppercase truncate",
               compact
                 ? "text-[9px] tracking-[0.08em]"
-                : "text-[11px] tracking-[0.18em]",
+                : "text-[11px] lg:text-[12px] tracking-[0.18em]",
               subColor,
             )}
             title={subtitle}

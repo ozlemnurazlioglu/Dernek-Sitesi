@@ -117,6 +117,9 @@ export const applicationDocuments = mysqlTable(
     fileName: varchar("file_name", { length: 255 }).notNull(),
     size: int("size").notNull(),
     uploadedAt: datetime("uploaded_at", { fsp: 3 }).notNull(),
+    // Vercel Blob veya yerel /public/uploads URL'i. Eski (demo dönemi)
+    // başvurularda boş olabilir; UI bunları "indirilemez" olarak işaretler.
+    fileUrl: varchar("file_url", { length: 512 }).notNull().default(""),
   },
   (t) => [primaryKey({ columns: [t.applicationId, t.docKey] })],
 );

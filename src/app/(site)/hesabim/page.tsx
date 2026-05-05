@@ -1,13 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Calendar,
   Clock,
+  Eye,
+  EyeOff,
   FileText,
   GraduationCap,
+  KeyRound,
+  Loader2,
   LogOut,
   Mail,
   MapPin,
@@ -19,7 +22,9 @@ import { PageHeader } from "@/components/site/page-header";
 import { Container } from "@/components/ui/section";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useStore } from "@/lib/store";
+import { useToast } from "@/components/ui/toast";
 import { formatDateTimeTR, initials } from "@/lib/utils";
 import { StatusBadge } from "@/components/status";
 import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
@@ -242,8 +247,291 @@ export default function HesabimPage() {
               </div>
             </div>
           </div>
+
+          <ChangePasswordCard />
         </div>
       </Container>
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*                       Şifre Değiştir Kartı                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Hesabım sayfasında, kullanıcının kendi şifresini değiştirebileceği
+ * inline kart. Mevcut şifre + yeni şifre (× 2) ister; başarı sonrası
+ * formu sıfırlar. Mevcut tarayıcı oturumu korunur — kullanıcı sayfada
+ * kalır. Diğer cihazlardaki oturumlar API tarafında sonlandırılır.
+ */
+function ChangePasswordCard() {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNext, setShowNext] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  function reset() {
+    setCurrent("");
+    setNext("");
+    setConfirm("");
+    setShowCurrent(false);
+    setShowNext(false);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!current) {
+      toast({
+        tone: "error",
+        title: "Mevcut şifre boş",
+        description: "Devam etmek için mevcut şifrenizi girin.",
+      });
+      return;
+    }
+    if (next.length < 6) {
+      toast({
+        tone: "error",
+        title: "Yeni şifre çok kısa",
+        description: "En az 6 karakter olmalı.",
+      });
+      return;
+    }
+    if (next !== confirm) {
+      toast({
+        tone: "error",
+        title: "Şifreler eşleşmiyor",
+        description: "Yeni şifre ile tekrarı aynı olmalı.",
+      });
+      return;
+    }
+    if (next === current) {
+      toast({
+        tone: "error",
+        title: "Aynı şifre",
+        description: "Yeni şifre mevcut şifre ile aynı olamaz.",
+      });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/account/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ currentPassword: current, newPassword: next }),
+      });
+      if (!res.ok) {
+        let msg = "Şifre güncellenemedi";
+        try {
+          const body = (await res.json()) as { error?: string };
+          if (body?.error) msg = body.error;
+        } catch {
+          // generic mesaj kullanılır
+        }
+        toast({ tone: "error", title: "Hata", description: msg });
+        return;
+      }
+      toast({
+        tone: "success",
+        title: "Şifreniz güncellendi",
+        description: "Diğer cihazlardaki oturumlarınız kapatıldı.",
+      });
+      reset();
+      setOpen(false);
+    } catch (err) {
+      console.error("[hesabim] şifre değiştirme hatası", err);
+      toast({
+        tone: "error",
+        title: "Bağlantı hatası",
+        description: "Lütfen tekrar deneyin.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <div className="rounded-2xl border border-border bg-white p-6">
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 rounded-md bg-brand-50 border border-brand-100 text-brand-700 flex items-center justify-center shrink-0">
+            <KeyRound className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-semibold text-brand-900">
+              Şifre Değiştir
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Hesabınızın güvenliği için şifrenizi düzenli aralıklarla
+              güncelleyin. Şifreyi değiştirdiğinizde diğer cihazlardaki
+              oturumlarınız otomatik olarak kapatılır.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setOpen(true)}
+            leftIcon={<KeyRound className="h-4 w-4" />}
+          >
+            Şifreyi Değiştir
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-white p-6">
+      <div className="flex items-start gap-3 mb-5">
+        <div className="h-10 w-10 rounded-md bg-brand-50 border border-brand-100 text-brand-700 flex items-center justify-center shrink-0">
+          <KeyRound className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-base font-semibold text-brand-900">
+            Şifreyi Değiştir
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Mevcut şifrenizi girip yeni bir tane belirleyin.
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label
+            htmlFor="cur-pass"
+            className="block text-sm font-medium text-brand-900 mb-1"
+          >
+            Mevcut şifre
+          </label>
+          <div className="relative">
+            <Input
+              id="cur-pass"
+              type={showCurrent ? "text" : "password"}
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+              autoComplete="current-password"
+              required
+              disabled={submitting}
+              className="pr-10"
+            />
+            <button
+              type="button"
+              tabIndex={-1}
+              onClick={() => setShowCurrent((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+              aria-label={showCurrent ? "Gizle" : "Göster"}
+            >
+              {showCurrent ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label
+              htmlFor="new-pass"
+              className="block text-sm font-medium text-brand-900 mb-1"
+            >
+              Yeni şifre
+            </label>
+            <div className="relative">
+              <Input
+                id="new-pass"
+                type={showNext ? "text" : "password"}
+                value={next}
+                onChange={(e) => setNext(e.target.value)}
+                autoComplete="new-password"
+                placeholder="En az 6 karakter"
+                minLength={6}
+                required
+                disabled={submitting}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowNext((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+                aria-label={showNext ? "Gizle" : "Göster"}
+              >
+                {showNext ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label
+              htmlFor="confirm-pass"
+              className="block text-sm font-medium text-brand-900 mb-1"
+            >
+              Yeni şifre (tekrar)
+            </label>
+            <Input
+              id="confirm-pass"
+              type={showNext ? "text" : "password"}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="new-password"
+              placeholder="Aynı şifreyi tekrar girin"
+              minLength={6}
+              required
+              disabled={submitting}
+            />
+            {confirm && next && confirm !== next && (
+              <p className="text-xs text-red-600 mt-1">
+                Şifreler eşleşmiyor.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              reset();
+              setOpen(false);
+            }}
+            disabled={submitting}
+          >
+            Vazgeç
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={
+              submitting ||
+              !current ||
+              next.length < 6 ||
+              next !== confirm ||
+              next === current
+            }
+            leftIcon={
+              submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <KeyRound className="h-4 w-4" />
+              )
+            }
+          >
+            {submitting ? "Kaydediliyor…" : "Şifreyi Güncelle"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }

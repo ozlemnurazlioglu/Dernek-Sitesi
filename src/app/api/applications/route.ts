@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
       fileName: doc.fileName,
       size: doc.size,
       uploadedAt: new Date(doc.uploadedAt),
+      fileUrl: doc.url ?? "",
     });
   }
 

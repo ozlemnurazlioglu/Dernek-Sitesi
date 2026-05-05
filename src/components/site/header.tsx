@@ -97,7 +97,14 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 md:h-[72px] flex items-center justify-between gap-4">
+      {/*
+        Header düzen: logo ve nav SOLDA yapışık dururken, hesap/CTA bloğu
+        sağa itilir. Eski düzen `justify-between` idi — logo, nav ve hesap
+        bloğu üç eşit bölüme yayılıyor, logonun sağında ve solunda boşluk
+        bırakıyordu. `ml-auto` ile sadece sağ blok itilir, böylece menü
+        eklendikçe logo ile yapışık kalır ve boş alan kullanılır.
+      */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 md:h-[72px] flex items-center gap-4 lg:gap-6">
         <Link href="/" className="shrink-0">
           <Logo />
         </Link>
@@ -182,7 +189,7 @@ export function SiteHeader() {
           })}
         </nav>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0 ml-auto">
           <div className="hidden md:flex items-center gap-1.5">
             {currentUser ? (
               <div className="relative">

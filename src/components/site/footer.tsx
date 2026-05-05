@@ -22,6 +22,12 @@ export function SiteFooter() {
   const { siteSettings, pageBlocks } = useStore();
   const footer = (pageBlocks["footer"] as FooterConfig) ?? DEFAULT_FOOTER;
   const supporters = footer.supporters ?? [];
+  // Başlık mantığı: undefined ise default ("Destekçilerimiz"), boş string
+  // ise başlık gizlenir, dolu string ise olduğu gibi gösterilir.
+  const supportersTitle =
+    footer.supportersTitle === undefined
+      ? "Destekçilerimiz"
+      : footer.supportersTitle;
 
   return (
     <footer className="mt-24 bg-brand-950 text-white/80">
@@ -105,12 +111,14 @@ export function SiteFooter() {
       </div>
 
       {supporters.length > 0 && (
-        <div className="border-t border-white/10">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
-            <div className="flex flex-col items-center text-center gap-3">
-              <span className="text-[11px] font-semibold tracking-widest uppercase text-white/45">
-                Destekçilerimiz
-              </span>
+        <div className="border-t border-white/10 bg-brand-950/60">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-5">
+            <div className="flex flex-col items-center text-center gap-2.5">
+              {supportersTitle && (
+                <span className="text-[11px] font-semibold tracking-widest uppercase text-white/45">
+                  {supportersTitle}
+                </span>
+              )}
               <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">
                 {supporters.map((s, idx) => {
                   const external = isExternalHref(s.href);

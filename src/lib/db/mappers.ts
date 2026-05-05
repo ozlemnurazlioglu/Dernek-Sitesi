@@ -92,6 +92,7 @@ export function rowToDocument(r: DbDocRow): ApplicationDocument {
     fileName: r.fileName,
     size: r.size,
     uploadedAt: r.uploadedAt.toISOString(),
+    url: r.fileUrl ?? "",
   };
 }
 

@@ -224,11 +224,6 @@ export default function HomePage() {
  * Slayt sayısı 1 ise oklar/dot'lar gizlenir; otomatik geçiş durur.
  */
 function Hero({ hero, settings }: { hero: HeroBlock; settings: SiteSettings }) {
-  const subtitle = hero.subtitle.replace(
-    "{yearsActive}",
-    String(settings.statYearsActive),
-  );
-
   // Eski tek-görselli `imageUrl` alanı yerine yeni `slides` listesi kullanılır;
   // ikisi de boşsa boş bir placeholder slayt çıkarılır.
   const slides = useMemo<HeroSlide[]>(() => {
@@ -275,6 +270,80 @@ function Hero({ hero, settings }: { hero: HeroBlock; settings: SiteSettings }) {
         activeSlide?.overlayTitle ||
         activeSlide?.overlayDesc,
     );
+
+  // ——— Slayt-özel METİN/BUTON override mantığı ———
+  // Her alan için: aktif slaytta non-empty değer varsa onu, yoksa global
+  // hero değerini kullan. Eski hero kayıtları (slayt-bazlı alan yok) hâlâ
+  // çalışır.
+  const primaryBtn =
+    activeSlide?.primaryButton && activeSlide.primaryButton.label.trim()
+      ? activeSlide.primaryButton
+      : hero.primaryButton;
+  const secondaryBtn =
+    activeSlide?.secondaryButton && activeSlide.secondaryButton.label.trim()
+      ? activeSlide.secondaryButton
+      : hero.secondaryButton;
+
+  // Rozet metni: slaytta non-empty ise SADECE onu göster (founded prefix yok),
+  // değilse hep ki "{founded}{hero.badgeText}" gösterilir.
+  const badgeContent = activeSlide?.badgeText?.trim()
+    ? activeSlide.badgeText
+    : `${settings.founded}${hero.badgeText}`;
+
+  // Başlık üç-parça: herhangi bir parça non-empty ise üçü birden slayttan
+  // alınır (boş alanlar boş basılır). Aksi takdirde global başlık kullanılır.
+  const slideTitleSet = Boolean(
+    activeSlide?.titlePrefix?.trim() ||
+      activeSlide?.titleHighlight?.trim() ||
+      activeSlide?.titleSuffix?.trim(),
+  );
+  const titlePrefix = slideTitleSet
+    ? (activeSlide?.titlePrefix ?? "")
+    : hero.titlePrefix;
+  const titleHighlight = slideTitleSet
+    ? (activeSlide?.titleHighlight ?? "")
+    : hero.titleHighlight;
+  const titleSuffix = slideTitleSet
+    ? (activeSlide?.titleSuffix ?? "")
+    : hero.titleSuffix;
+
+  // Alt yazı: slaytta non-empty ise onu, değilse global. {yearsActive}
+  // yer tutucusu her iki kaynak için de değiştirilir.
+  const subtitleRaw = activeSlide?.subtitle?.trim()
+    ? activeSlide.subtitle
+    : hero.subtitle;
+  const subtitle = subtitleRaw.replace(
+    "{yearsActive}",
+    String(settings.statYearsActive),
+  );
+
+  // Yüzen rozetler: slaytta label VEYA value non-empty ise slayt değerleri
+  // (object olarak) kullanılır; değilse global. Tek alanda kısmi override
+  // değil — bütün-veya-hiç davranışı UI tarafında daha öngörülebilir.
+  const slideFb1Filled = Boolean(
+    activeSlide?.floatBadge1 &&
+      (activeSlide.floatBadge1.label.trim() ||
+        activeSlide.floatBadge1.value.trim()),
+  );
+  const floatBadge1 = slideFb1Filled
+    ? activeSlide!.floatBadge1!
+    : hero.floatBadge1;
+
+  const slideFb2Filled = Boolean(
+    activeSlide?.floatBadge2 &&
+      (activeSlide.floatBadge2.label.trim() ||
+        activeSlide.floatBadge2.value.trim()),
+  );
+  const floatBadge2 = slideFb2Filled
+    ? activeSlide!.floatBadge2!
+    : hero.floatBadge2;
+
+  // Slayt değişiminde metin/rozet bloklarını yumuşakça yeniden mount edip
+  // animate-float-up animasyonunu tetiklemek için içerik parmak izi key'leri.
+  // Eğer iki slayt arasında gerçek metin değişimi yoksa key aynı kalır →
+  // gereksiz animasyon olmaz.
+  const heroTextKey = `${badgeContent}|${titlePrefix}|${titleHighlight}|${titleSuffix}|${subtitle}|${primaryBtn.label}|${primaryBtn.href}|${secondaryBtn.label}|${secondaryBtn.href}`;
+  const floatBadgesKey = `${floatBadge1.label}|${floatBadge1.value}|${floatBadge2.label}|${floatBadge2.value}`;
 
   return (
     <section
@@ -337,49 +406,74 @@ function Hero({ hero, settings }: { hero: HeroBlock; settings: SiteSettings }) {
       <div className="absolute inset-0 z-[2] bg-gradient-to-t from-brand-950/80 via-transparent to-brand-950/35" />
       <div className="absolute inset-0 z-[2] bg-grid opacity-[0.05]" />
 
-      {/* Metin içeriği — görselin üzerinde */}
-      <Container className="relative z-10 py-24 md:py-36 lg:py-44 min-h-[600px] md:min-h-[680px] flex items-center">
+      {/*
+        Metin içeriği — görselin üzerinde.
+        Yükseklik stratejisi:
+        - Sticky header ≈ 112px (topbar + nav). Hero'nun ekrana tam oturması için
+          `min-h` viewport'a göre dinamik hesaplanır: `100svh - 128px` (header +
+          ufak nefes). Eski sabit 680px değeri 1024×768 laptop'larda taşıyordu.
+        - svh = "small viewport height" → mobil tarayıcı çubukları açıkken bile
+          stabil kalır (vh'nin neden olduğu zıplamayı önler).
+        - max() ile bir alt sınır: çok kısa pencerelerde hero garip biçimde
+          ezilmesin. Üst sınır yok — uzun ekranda doğal olarak büyür.
+        - Padding `py-10 md:py-16 lg:py-20` — eski py-44 yarıdan fazla azaltıldı.
+      */}
+      <Container className="relative z-10 py-10 md:py-16 lg:py-20 min-h-[480px] md:min-h-[max(560px,calc(100svh-128px))] flex items-center">
         <div className="max-w-2xl">
-          <Badge
-            tone="gold"
-            className="mb-5 !bg-gold-300/15 !text-gold-100 !border-gold-200/30 backdrop-blur-sm"
-          >
-            <Sparkles className="h-3 w-3" /> {settings.founded}
-            {hero.badgeText}
-          </Badge>
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-semibold tracking-tight text-white leading-[1.05] drop-shadow-sm">
-            {hero.titlePrefix}{" "}
-            <span className="relative inline-block">
-              <span className="relative z-10 text-gold-200">
-                {hero.titleHighlight}
-              </span>
-              <span className="absolute left-0 right-0 bottom-1 h-3 bg-gold-300/25 -z-0" />
-            </span>{" "}
-            {hero.titleSuffix}
-          </h1>
-          <p className="mt-6 text-lg md:text-xl text-white/85 leading-relaxed max-w-xl">
-            {subtitle}
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row gap-3">
-            <ButtonLink
-              href={hero.primaryButton.href}
-              size="lg"
-              variant="gold"
-              rightIcon={<ArrowRight className="h-4 w-4" />}
+          {/*
+            Slayt-özel metin override aktifse heroTextKey değişir → bu wrapper
+            remount olur ve animate-float-up devreye girer. Aksi halde key
+            sabit kaldığı için geçişler statik (animation yok).
+          */}
+          <div key={heroTextKey} className="animate-float-up">
+            <Badge
+              tone="gold"
+              className="mb-5 !bg-gold-300/15 !text-gold-100 !border-gold-200/30 backdrop-blur-sm"
             >
-              {hero.primaryButton.label}
-            </ButtonLink>
-            <ButtonLink
-              href={hero.secondaryButton.href}
-              size="lg"
-              variant="outline"
-              className="!bg-white/10 !text-white !border-white/30 hover:!bg-white/20 hover:!border-white/50 backdrop-blur-sm"
-            >
-              {hero.secondaryButton.label}
-            </ButtonLink>
+              <Sparkles className="h-3 w-3" /> {badgeContent}
+            </Badge>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-semibold tracking-tight text-white leading-[1.05] drop-shadow-sm">
+              {titlePrefix}
+              {titleHighlight ? " " : ""}
+              {titleHighlight && (
+                <span className="relative inline-block">
+                  <span className="relative z-10 text-gold-200">
+                    {titleHighlight}
+                  </span>
+                  <span className="absolute left-0 right-0 bottom-1 h-3 bg-gold-300/25 -z-0" />
+                </span>
+              )}
+              {titleSuffix ? " " : ""}
+              {titleSuffix}
+            </h1>
+            <p className="mt-6 text-lg md:text-xl text-white/85 leading-relaxed max-w-xl">
+              {subtitle}
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              {primaryBtn.label.trim() && (
+                <ButtonLink
+                  href={primaryBtn.href}
+                  size="lg"
+                  variant="gold"
+                  rightIcon={<ArrowRight className="h-4 w-4" />}
+                >
+                  {primaryBtn.label}
+                </ButtonLink>
+              )}
+              {secondaryBtn.label.trim() && (
+                <ButtonLink
+                  href={secondaryBtn.href}
+                  size="lg"
+                  variant="outline"
+                  className="!bg-white/10 !text-white !border-white/30 hover:!bg-white/20 hover:!border-white/50 backdrop-blur-sm"
+                >
+                  {secondaryBtn.label}
+                </ButtonLink>
+              )}
+            </div>
           </div>
 
-          <div className="mt-10 flex items-center gap-4">
+          <div className="mt-6 md:mt-10 flex items-center gap-4">
             <div className="flex -space-x-2">
               {[
                 "https://i.pravatar.cc/64?img=12",
@@ -406,30 +500,43 @@ function Hero({ hero, settings }: { hero: HeroBlock; settings: SiteSettings }) {
         </div>
       </Container>
 
-      {/* Sağ üst — yüzen rozetler (admin'den düzenlenir) */}
-      <div className="pointer-events-none absolute right-6 top-8 hidden md:flex flex-col gap-3 z-10 items-end">
-        <div className="pointer-events-auto flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg p-3 pr-4 animate-float-up">
-          <div className="h-10 w-10 rounded-lg bg-gold-300/20 text-gold-100 flex items-center justify-center">
-            <Trophy className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="text-xs text-white/70">{hero.floatBadge1.label}</div>
-            <div className="text-sm font-semibold text-white">
-              {settings.statScholarshipsGiven}+ {hero.floatBadge1.value}
+      {/* Sağ üst — yüzen rozetler (slayt-bazlı override edilebilir) */}
+      <div
+        key={floatBadgesKey}
+        className="pointer-events-none absolute right-6 top-8 hidden md:flex flex-col gap-3 z-10 items-end"
+      >
+        {(floatBadge1.label.trim() || floatBadge1.value.trim()) && (
+          <div className="pointer-events-auto flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg p-3 pr-4 animate-float-up">
+            <div className="h-10 w-10 rounded-lg bg-gold-300/20 text-gold-100 flex items-center justify-center">
+              <Trophy className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xs text-white/70">{floatBadge1.label}</div>
+              <div className="text-sm font-semibold text-white">
+                {/*
+                  Sadece global rozet kullanılırken faaliyet sayısı önek olarak
+                  basılır (eski tasarım). Slayt-özel override aktifse kullanıcı
+                  "değer" alanına ne yazarsa o gösterilir; öneki istemezler.
+                */}
+                {!slideFb1Filled && `${settings.statScholarshipsGiven}+ `}
+                {floatBadge1.value}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="pointer-events-auto flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg p-3 pr-4">
-          <div className="h-10 w-10 rounded-lg bg-brand-300/20 text-brand-100 flex items-center justify-center">
-            <Heart className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="text-xs text-white/70">{hero.floatBadge2.label}</div>
-            <div className="text-sm font-semibold text-white">
-              {hero.floatBadge2.value}
+        )}
+        {(floatBadge2.label.trim() || floatBadge2.value.trim()) && (
+          <div className="pointer-events-auto flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg p-3 pr-4 animate-float-up">
+            <div className="h-10 w-10 rounded-lg bg-brand-300/20 text-brand-100 flex items-center justify-center">
+              <Heart className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xs text-white/70">{floatBadge2.label}</div>
+              <div className="text-sm font-semibold text-white">
+                {floatBadge2.value}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Sağ alt — slayt başına opsiyonel bilgi kutusu (admin toggle'lı) */}
