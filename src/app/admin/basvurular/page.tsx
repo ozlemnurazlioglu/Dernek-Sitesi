@@ -15,7 +15,89 @@ import { useStore } from "@/lib/store";
 import { formatDateTimeTR } from "@/lib/utils";
 import type { ApplicationStatus, ScholarshipApplication } from "@/lib/types";
 
+/**
+ * Toplu ZIP indirme limiti. Backend (`/api/applications/zip`) tarafında da
+ * `MAX_IDS = 50` sabit; bu limiti UI'da senkron tutuyoruz ki kullanıcı
+ * 50'yi aşan bir seçim yapınca buton önceden disabled olsun.
+ */
 const MAX_BULK = 50;
+
+/**
+ * Filtre + arama sonucu görünür başvuruların belgelerini tek ZIP'te indirme
+ * URL'i. Kullanıcı seçim yapmasa bile, sayfada gördüğü her başvuru için
+ * tek tıkla "Tümünü İndir" hızı sağlar.
+ */
+function buildAllZipHref(ids: string[]) {
+  if (ids.length === 0) return "#";
+  return `/api/applications/zip?ids=${encodeURIComponent(ids.join(","))}`;
+}
+
+/**
+ * Filtrelenmiş başvuruları CSV olarak indirir. Tarayıcıda blob URL üzerinden
+ * inerek; harici endpoint gerekmez. UTF-8 BOM eklenir → Excel TR karakterleri
+ * doğru gösterir. Alanlar standart RFC 4180: tırnaklarla sarılı, içerideki
+ * tırnaklar `""` ile escape edilir, yeni satırlar koruınur.
+ */
+function downloadApplicationsCsv(rows: ScholarshipApplication[]) {
+  const header = [
+    "ID",
+    "Ad Soyad",
+    "E-posta",
+    "Telefon",
+    "Okul",
+    "Bölüm",
+    "Sınıf",
+    "GANO",
+    "Durum",
+    "Başvuru Tarihi",
+  ];
+  const escape = (v: unknown) => {
+    const s =
+      v === null || v === undefined
+        ? ""
+        : typeof v === "string"
+          ? v
+          : String(v);
+    // Çift tırnakları kaçır, satırı tırnağa al.
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+  const statusLabel = (s: ApplicationStatus) =>
+    statusOptions.find((o) => o.value === s)?.label ?? s;
+
+  const csvLines = [header.map(escape).join(",")];
+  for (const r of rows) {
+    csvLines.push(
+      [
+        r.id,
+        r.fullName,
+        r.email,
+        r.phone ?? "",
+        r.schoolName,
+        r.department ?? "",
+        r.grade ?? "",
+        r.gpa ?? "",
+        statusLabel(r.status),
+        r.submittedAt,
+      ]
+        .map(escape)
+        .join(","),
+    );
+  }
+  // BOM ile UTF-8 — Excel'in TR karakterleri yamulmadan açmasını sağlar.
+  const blob = new Blob(["\uFEFF" + csvLines.join("\r\n")], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const stamp = new Date().toISOString().slice(0, 10);
+  a.download = `Basvurular-${stamp}-${rows.length}adet.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Bellek sızıntısını engelle.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 export default function AdminApplicationsPage() {
   const { applications } = useStore();
@@ -91,6 +173,17 @@ export default function AdminApplicationsPage() {
         )}`
       : "#";
 
+  // Filtreli (görünür) tüm başvuruların ZIP'i. Seçim gerekmez — kullanıcı
+  // doğrudan "şu an gördüğüm tüm başvuruların belgelerini indir" diyebilir.
+  const filteredIds = filtered.map((a) => a.id);
+  const allFilteredZipHref = buildAllZipHref(filteredIds);
+  const filteredCount = filtered.length;
+  const filteredTooMany = filteredCount > MAX_BULK;
+  const filterLabel =
+    filter === "all"
+      ? "Tümü"
+      : (statusOptions.find((o) => o.value === filter)?.label ?? "");
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -103,9 +196,62 @@ export default function AdminApplicationsPage() {
             güncelleyin.
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 h-11 px-4 rounded-md border border-border bg-white text-sm font-medium hover:bg-brand-50 text-brand-800">
-          <Download className="h-4 w-4" /> CSV İndir
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => downloadApplicationsCsv(filtered)}
+            disabled={filteredCount === 0}
+            className="inline-flex items-center gap-2 h-11 px-4 rounded-md border border-border bg-white text-sm font-medium hover:bg-brand-50 text-brand-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+            title={
+              filteredCount === 0
+                ? "İndirilecek başvuru yok"
+                : `${filterLabel} (${filteredCount}) başvurularını CSV olarak indir`
+            }
+          >
+            <Download className="h-4 w-4" /> CSV İndir
+          </button>
+          {/*
+            Tümünü ZIP olarak indirme butonu. "Tümü" filtresinde ise tüm
+            başvurular; başka filtrede ise yalnızca o filtreye uyanlar
+            indirilir. Filtreli sayı 50'yi aşarsa buton disabled — kullanıcı
+            önce filtreyi daraltmalı veya elle seçim yapmalı. Bu, backend
+            tarafındaki MAX_IDS=50 limiti ile uyumlu.
+          */}
+          {filteredTooMany ? (
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center gap-2 h-11 px-4 rounded-md bg-muted text-muted-foreground text-sm font-semibold cursor-not-allowed"
+              title={`Tek seferde en fazla ${MAX_BULK} başvuru indirilebilir. Lütfen filtreyi daraltın veya manuel seçim yapın.`}
+            >
+              <Archive className="h-4 w-4" />
+              {filterLabel} ({filteredCount}) ·{" "}
+              <span className="font-normal">limit {MAX_BULK}</span>
+            </button>
+          ) : (
+            <a
+              href={allFilteredZipHref}
+              aria-disabled={filteredCount === 0}
+              onClick={(e) => {
+                if (filteredCount === 0) e.preventDefault();
+              }}
+              className={
+                "inline-flex items-center gap-2 h-11 px-4 rounded-md text-sm font-semibold " +
+                (filteredCount === 0
+                  ? "bg-muted text-muted-foreground cursor-not-allowed"
+                  : "bg-brand-900 text-white hover:bg-brand-800")
+              }
+              title={
+                filteredCount === 0
+                  ? "İndirilecek başvuru yok"
+                  : `${filterLabel} (${filteredCount}) başvurunun TÜM belgelerini tek ZIP olarak indir`
+              }
+            >
+              <Archive className="h-4 w-4" />
+              {filterLabel} ({filteredCount}) belgelerini ZIP indir
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-white">
