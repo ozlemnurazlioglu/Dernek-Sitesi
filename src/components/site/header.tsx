@@ -140,7 +140,7 @@ export function SiteHeader() {
       )}
     >
       <div className="hidden md:block bg-brand-900 text-white/85 text-xs">
-        <div className="mx-auto max-w-7xl px-6 h-9 flex items-center justify-between">
+        <div className="mx-auto max-w-[1500px] px-6 h-9 flex items-center justify-between">
           <div className="flex items-center gap-5">
             {siteSettings.contactPhone && (
               <a
@@ -172,9 +172,16 @@ export function SiteHeader() {
         bırakıyordu. `ml-auto` ile sadece sağ blok itilir, böylece menü
         eklendikçe logo ile yapışık kalır ve boş alan kullanılır.
       */}
+      {/*
+        Header satırı için ÖZEL max-w. Site geneli `max-w-7xl` (1280px) ile
+        çalışır ama o sınır 9+ menü + logo + hesap bloku için darlık yaratır.
+        Burada `max-w-[1500px]` ile header'a 220px nefes veriyoruz. Logo solda,
+        hesap bloku sağda kalmaya devam eder; sadece nav rahatça yerleşir.
+        Adaptif sıkıştırma sistemi yine sığmazsa hamburger açar.
+      */}
       <div
         ref={headerRowRef}
-        className="mx-auto max-w-7xl px-4 sm:px-6 h-16 md:h-[72px] flex items-center gap-4 lg:gap-6"
+        className="mx-auto max-w-[1500px] px-4 sm:px-6 h-16 md:h-[72px] flex items-center gap-3 lg:gap-4"
       >
         <Link href="/" className="shrink-0" data-header-logo>
           <Logo />
@@ -205,7 +212,7 @@ export function SiteHeader() {
             const isSubOpen = openSubmenuIdx === idx;
 
             const linkClasses = cn(
-              "px-2.5 xl:px-3 h-10 inline-flex items-center gap-1 text-sm font-medium rounded-md transition-colors whitespace-nowrap",
+              "px-2 xl:px-2.5 h-10 inline-flex items-center gap-1 text-sm font-medium rounded-md transition-colors whitespace-nowrap",
               active
                 ? "text-brand-900 bg-brand-50"
                 : "text-brand-800/80 hover:text-brand-900 hover:bg-brand-50/60",
@@ -388,7 +395,7 @@ export function SiteHeader() {
             autoCompact === true ? "" : "min-[1400px]:hidden",
           )}
         >
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex flex-col gap-1">
+          <div className="mx-auto max-w-[1500px] px-4 sm:px-6 py-4 flex flex-col gap-1">
             {navigation.map((item, idx) => {
               const active =
                 item.href === "/"
@@ -498,7 +505,7 @@ export function SiteHeader() {
             return (
               <span
                 key={`m-${item.href}-${idx}`}
-                className="px-2.5 xl:px-3 h-10 inline-flex items-center gap-1 text-sm font-medium"
+                className="px-2 xl:px-2.5 h-10 inline-flex items-center gap-1 text-sm font-medium"
               >
                 {item.label}
                 {hasChildren && <ChevronDown className="h-3.5 w-3.5" />}
