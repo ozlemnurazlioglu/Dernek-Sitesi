@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "start:cpanel": "NODE_ENV=production node app.js",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push --force",
     "db:migrate": "tsx --env-file=.env.local scripts/migrate.ts",
