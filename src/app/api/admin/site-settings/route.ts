@@ -33,6 +33,11 @@ const STRING_FIELDS = [
   "seoDescription",
   "seoOgImage",
   "seoFaviconUrl",
+  "gaMeasurementId",
+  "gtmContainerId",
+  "metaPixelId",
+  "adsensePublisherId",
+  "customTrackingHtml",
 ] as const;
 
 const INT_FIELDS = [
@@ -111,6 +116,11 @@ export async function POST(req: NextRequest) {
       seoDescription: String(body.seoDescription ?? ""),
       seoOgImage: String(body.seoOgImage ?? ""),
       seoFaviconUrl: String(body.seoFaviconUrl ?? ""),
+      gaMeasurementId: String(body.gaMeasurementId ?? ""),
+      gtmContainerId: String(body.gtmContainerId ?? ""),
+      metaPixelId: String(body.metaPixelId ?? ""),
+      adsensePublisherId: String(body.adsensePublisherId ?? ""),
+      customTrackingHtml: String(body.customTrackingHtml ?? ""),
       updatedAt: new Date(),
     });
   }

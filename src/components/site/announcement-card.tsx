@@ -1,5 +1,17 @@
-import { Calendar, MapPin } from "lucide-react";
+import { Calendar, MapPin, Phone } from "lucide-react";
 import type { Announcement, AnnouncementCategory } from "@/lib/types";
+
+/** Adres metnini Google Maps arama URL'ine çevirir. */
+function mapsUrl(location: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    location,
+  )}`;
+}
+
+/** Telefon numarasındaki boşluk/tire vb. karakterleri tel: linki için temizler. */
+function telHref(phone: string): string {
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
+}
 
 /**
  * Kategori renk slug'ları → Tailwind sınıf grupları.
@@ -133,7 +145,7 @@ export function AnnouncementCard({
             {item.description}
           </p>
         )}
-        {(item.eventDate || item.location) && (
+        {(item.eventDate || item.location || item.phone) && (
           <div className="mt-4 pt-4 border-t border-border flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
             {item.eventDate && (
               <span className="inline-flex items-center gap-1.5">
@@ -142,10 +154,26 @@ export function AnnouncementCard({
               </span>
             )}
             {item.location && (
-              <span className="inline-flex items-center gap-1.5">
+              <a
+                href={mapsUrl(item.location)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Haritada aç"
+                className="inline-flex items-center gap-1.5 hover:text-brand-700 hover:underline"
+              >
                 <MapPin className="h-3.5 w-3.5 text-brand-600" />
                 {item.location}
-              </span>
+              </a>
+            )}
+            {item.phone && (
+              <a
+                href={telHref(item.phone)}
+                title="Telefonu ara"
+                className="inline-flex items-center gap-1.5 hover:text-brand-700 hover:underline"
+              >
+                <Phone className="h-3.5 w-3.5 text-brand-600" />
+                {item.phone}
+              </a>
             )}
           </div>
         )}

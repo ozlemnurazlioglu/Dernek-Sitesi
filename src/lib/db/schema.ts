@@ -235,6 +235,13 @@ export const siteSettings = mysqlTable("site_settings", {
   seoDescription: text("seo_description").notNull(),
   seoOgImage: varchar("seo_og_image", { length: 512 }).notNull().default(""),
   seoFaviconUrl: varchar("seo_favicon_url", { length: 512 }).notNull().default(""),
+  // Analytics & Reklam — admin panelden girilen ID'ler. Boşsa ilgili
+  // takip/reklam scripti hiç render edilmez.
+  gaMeasurementId: varchar("ga_measurement_id", { length: 64 }).notNull().default(""),
+  gtmContainerId: varchar("gtm_container_id", { length: 64 }).notNull().default(""),
+  metaPixelId: varchar("meta_pixel_id", { length: 64 }).notNull().default(""),
+  adsensePublisherId: varchar("adsense_publisher_id", { length: 64 }).notNull().default(""),
+  customTrackingHtml: text("custom_tracking_html").notNull(),
   updatedAt: datetime("updated_at", { fsp: 3 }).notNull(),
 });
 
@@ -383,6 +390,20 @@ export const donationUses = mysqlTable(
   (t) => [index("uses_sort_idx").on(t.sort)],
 );
 
+// Sponsor türleri (Platin / Altın / Gümüş / Bronz vb.) — admin'den yönetilir,
+// her türün kendi rengi vardır; sponsor logoları bu renkle çerçevelenir.
+export const sponsorTiers = mysqlTable(
+  "sponsor_tiers",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    slug: varchar("slug", { length: 80 }).notNull().unique(),
+    name: varchar("name", { length: 191 }).notNull(),
+    color: varchar("color", { length: 32 }).notNull().default("slate"),
+    sort: int("sort").notNull().default(0),
+  },
+  (t) => [index("sponsor_tiers_sort_idx").on(t.sort)],
+);
+
 // Sponsorlar (anasayfa "Sponsorlarımız" bölümünde gösterilen iş ortakları).
 export const sponsors = mysqlTable(
   "sponsors",
@@ -391,9 +412,14 @@ export const sponsors = mysqlTable(
     name: varchar("name", { length: 191 }).notNull(),
     logoUrl: varchar("logo_url", { length: 512 }).notNull().default(""),
     websiteUrl: varchar("website_url", { length: 512 }).notNull().default(""),
+    /** sponsor_tiers.slug ile eşleşir; boş string → türsüz (nötr çerçeve). */
+    tierSlug: varchar("tier_slug", { length: 80 }).notNull().default(""),
     sort: int("sort").notNull().default(0),
   },
-  (t) => [index("sponsors_sort_idx").on(t.sort)],
+  (t) => [
+    index("sponsors_sort_idx").on(t.sort),
+    index("sponsors_tier_idx").on(t.tierSlug),
+  ],
 );
 
 // Hemşehri duyuru/ilan kategorileri (Vefat, Düğün, Nişan vb.) — renk slug'ları ile.
@@ -419,6 +445,8 @@ export const announcements = mysqlTable(
     description: varchar("description", { length: 2000 }).notNull().default(""),
     eventDate: varchar("event_date", { length: 64 }).notNull().default(""),
     location: varchar("location", { length: 191 }).notNull().default(""),
+    /** İlgili kişiye ulaşmak için telefon (opsiyonel; tel: linki olarak gösterilir). */
+    phone: varchar("phone", { length: 64 }).notNull().default(""),
     sort: int("sort").notNull().default(0),
   },
   (t) => [
@@ -457,6 +485,97 @@ export const agalar = mysqlTable(
     sort: int("sort").notNull().default(0),
   },
   (t) => [index("agalar_sort_idx").on(t.sort)],
+);
+
+// Foto galeri kategorileri (örn. "Dernek Merkezimiz"). slug URL'de kullanılır.
+export const photoCategories = mysqlTable(
+  "photo_categories",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    slug: varchar("slug", { length: 80 }).notNull().unique(),
+    name: varchar("name", { length: 191 }).notNull(),
+    description: varchar("description", { length: 500 }).notNull().default(""),
+    coverUrl: varchar("cover_url", { length: 512 }).notNull().default(""),
+    sort: int("sort").notNull().default(0),
+  },
+  (t) => [index("photo_cats_sort_idx").on(t.sort)],
+);
+
+// Foto galeri öğeleri — admin panelden yüklenen tek tek fotoğraflar.
+export const photos = mysqlTable(
+  "photos",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    categorySlug: varchar("category_slug", { length: 80 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull().default(""),
+    imageUrl: varchar("image_url", { length: 512 }).notNull(),
+    sort: int("sort").notNull().default(0),
+  },
+  (t) => [
+    index("photos_cat_idx").on(t.categorySlug),
+    index("photos_sort_idx").on(t.sort),
+  ],
+);
+
+// Video galeri kategorileri.
+export const videoCategories = mysqlTable(
+  "video_categories",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    slug: varchar("slug", { length: 80 }).notNull().unique(),
+    name: varchar("name", { length: 191 }).notNull(),
+    description: varchar("description", { length: 500 }).notNull().default(""),
+    coverUrl: varchar("cover_url", { length: 512 }).notNull().default(""),
+    sort: int("sort").notNull().default(0),
+  },
+  (t) => [index("video_cats_sort_idx").on(t.sort)],
+);
+
+// Video galeri öğeleri — admin panelden yüklenen MP4/WebM dosyaları.
+export const videos = mysqlTable(
+  "videos",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    categorySlug: varchar("category_slug", { length: 80 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull().default(""),
+    description: varchar("description", { length: 1000 }).notNull().default(""),
+    videoUrl: varchar("video_url", { length: 512 }).notNull(),
+    posterUrl: varchar("poster_url", { length: 512 }).notNull().default(""),
+    sort: int("sort").notNull().default(0),
+  },
+  (t) => [
+    index("videos_cat_idx").on(t.categorySlug),
+    index("videos_sort_idx").on(t.sort),
+  ],
+);
+
+// Mahalle bilgileri — /hakkimizda/mahallelerimiz sayfasındaki tablonun verileri.
+// Her satır bir mahalleyi temsil eder: ad + muhtar + telefon.
+export const neighborhoods = mysqlTable(
+  "neighborhoods",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    name: varchar("name", { length: 191 }).notNull(),
+    headman: varchar("headman", { length: 191 }).notNull().default(""),
+    phone: varchar("phone", { length: 64 }).notNull().default(""),
+    sort: int("sort").notNull().default(0),
+  },
+  (t) => [index("neighborhoods_sort_idx").on(t.sort)],
+);
+
+// Bağışçılar (anasayfa "Bağışçılarımız" bölümünde listelenir).
+// donatedAt: 'YYYY-MM-DD' formatında string olarak saklanır (zone problemi yok).
+// amount: 0 ise UI'da miktar gizlenebilir (anonim bağış).
+export const donors = mysqlTable(
+  "donors",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    name: varchar("name", { length: 191 }).notNull(),
+    donatedAt: varchar("donated_at", { length: 32 }).notNull().default(""),
+    amount: int("amount").notNull().default(0),
+    sort: int("sort").notNull().default(0),
+  },
+  (t) => [index("donors_sort_idx").on(t.sort)],
 );
 
 // Yasal/sabit içerik sayfaları (Gizlilik, KVKK, Çerez, Tüzük vb.).

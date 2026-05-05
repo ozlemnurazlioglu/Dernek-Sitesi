@@ -7,17 +7,24 @@ import {
   seedBoardMembers,
   seedDonationPresets,
   seedDonationUses,
+  seedDonors,
   seedEventCategories,
   seedFaqs,
   seedFinanceItems,
   seedLegalPages,
   seedMilestones,
+  seedNeighborhoods,
   seedNewsCategories,
+  seedPhotoCategories,
+  seedPhotos,
+  seedVideoCategories,
+  seedVideos,
   seedPageBlocks,
   seedRequiredDocuments,
   seedScholarshipPrograms,
   seedScholarshipTimeline,
   seedSiteSettings,
+  seedSponsorTiers,
   seedSponsors,
   seedTestimonials,
 } from "./seed-content";
@@ -42,6 +49,13 @@ export async function clearContentTables() {
   await db.delete(schema.announcements);
   await db.delete(schema.announcementCategories);
   await db.delete(schema.sponsors);
+  await db.delete(schema.sponsorTiers);
+  await db.delete(schema.neighborhoods);
+  await db.delete(schema.donors);
+  await db.delete(schema.videos);
+  await db.delete(schema.videoCategories);
+  await db.delete(schema.photos);
+  await db.delete(schema.photoCategories);
   await db.delete(schema.siteSettings);
 }
 
@@ -111,8 +125,29 @@ export async function seedContent() {
   for (const a of seedAnnouncements) {
     await db.insert(schema.announcements).values(a);
   }
+  for (const t of seedSponsorTiers) {
+    await db.insert(schema.sponsorTiers).values(t);
+  }
   for (const s of seedSponsors) {
     await db.insert(schema.sponsors).values(s);
+  }
+  for (const n of seedNeighborhoods) {
+    await db.insert(schema.neighborhoods).values(n);
+  }
+  for (const d of seedDonors) {
+    await db.insert(schema.donors).values(d);
+  }
+  for (const c of seedPhotoCategories) {
+    await db.insert(schema.photoCategories).values(c);
+  }
+  for (const p of seedPhotos) {
+    await db.insert(schema.photos).values(p);
+  }
+  for (const c of seedVideoCategories) {
+    await db.insert(schema.videoCategories).values(c);
+  }
+  for (const v of seedVideos) {
+    await db.insert(schema.videos).values(v);
   }
 
   for (const [blockKey, data] of Object.entries(seedPageBlocks)) {

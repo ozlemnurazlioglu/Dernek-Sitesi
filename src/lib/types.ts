@@ -161,6 +161,21 @@ export type SiteSettings = {
   seoDescription: string;
   seoOgImage: string;
   seoFaviconUrl: string;
+  // Analytics & Reklam — ID'ler. Boşsa ilgili kod hiç render edilmez.
+  /** Google Analytics 4 ölçüm ID'si, örn. "G-XXXXXXX". */
+  gaMeasurementId: string;
+  /** Google Tag Manager container ID, örn. "GTM-XXXXXX". */
+  gtmContainerId: string;
+  /** Meta (Facebook) Pixel ID — sadece sayısal, örn. "1234567890". */
+  metaPixelId: string;
+  /** Google AdSense Publisher ID, örn. "ca-pub-1234567890123456". */
+  adsensePublisherId: string;
+  /**
+   * Özel takip/reklam HTML kodu — body kapanışından önce site genelinde
+   * render edilir. Yapıştırılan HTML olduğu gibi gösterilir; sadece güvenilir
+   * kaynaklardan kod ekleyin.
+   */
+  customTrackingHtml: string;
 };
 
 /** Sponsor (anasayfa "Sponsorlarımız" bölümünde gösterilen iş ortağı). */
@@ -169,6 +184,25 @@ export type Sponsor = {
   name: string;
   logoUrl: string;
   websiteUrl: string;
+  /**
+   * Sponsor türünün slug'ı (sponsor_tiers tablosundaki slug ile eşleşir).
+   * Boş ise türsüz (nötr çerçeve).
+   */
+  tierSlug: string;
+  sort: number;
+};
+
+/**
+ * Sponsor türü (Platin, Altın, Gümüş, Bronz vb.). Her türün kendi rengi
+ * vardır; sponsor logosunun çevresine bu renkten çerçeve çizilir ve
+ * altında küçük bir tür etiketi gösterilir.
+ */
+export type SponsorTier = {
+  id: string;
+  slug: string;
+  name: string;
+  /** Renk slug'ı: gold, silver, bronze, platinum, amber, slate, brand vb. */
+  color: string;
   sort: number;
 };
 
@@ -199,6 +233,11 @@ export type Announcement = {
   description: string;
   eventDate: string;
   location: string;
+  /**
+   * İlgili kişinin iletişim numarası (opsiyonel). Doluyken duyuru kartında
+   * `tel:` linki olarak gösterilir; tıklandığında telefon tuşlanır.
+   */
+  phone: string;
   sort: number;
 };
 
@@ -220,6 +259,129 @@ export type Aga = {
   photoUrl: string;
   caption: string;
   eventDate: string;
+  sort: number;
+};
+
+/* ====================== Ana Sayfa Düzeni ====================== */
+
+/**
+ * Ana sayfada bulunan blok kimlikleri. Yeni bir blok eklendiğinde buraya da
+ * eklenmelidir; eski layout kayıtlarında bu yeni blok bulunmazsa otomatik
+ * olarak listenin sonuna `enabled: true` ile eklenir (forward compatibility).
+ */
+export type HomeBlockId =
+  | "hero"
+  | "about"
+  | "programs"
+  | "scholarship_cta"
+  | "news"
+  | "events"
+  | "testimonials"
+  | "agalar"
+  | "announcements"
+  | "sponsors"
+  | "donors"
+  | "donate";
+
+export type HomeLayoutItem = {
+  id: HomeBlockId;
+  /** false ise blok ana sayfada hiç render edilmez. */
+  enabled: boolean;
+};
+
+/**
+ * Ana sayfanın blok sırası ve görünürlük ayarları. `home.layout` page block
+ * key'i altında saklanır. Admin panelinden tek tek blokların yerini değiştirip
+ * gizleyebilirsiniz.
+ */
+export type HomeLayout = {
+  items: HomeLayoutItem[];
+};
+
+/* ====================== Galeri (Foto/Video) ====================== */
+
+/**
+ * Foto galeri kategorisi (örn. "Dernek Merkezimiz", "Etkinliklerden Kareler").
+ * `slug`, URL'de `/galeri/foto/<slug>` olarak görünür.
+ */
+export type PhotoCategory = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  /** Kategori kart kapağı için temsili görsel URL'i. Boş olabilir. */
+  coverUrl: string;
+  sort: number;
+};
+
+/** Bir foto kategorisindeki tek fotoğraf. */
+export type Photo = {
+  id: string;
+  /** PhotoCategory.slug — kategori belirteci. */
+  categorySlug: string;
+  /** Görsel açıklaması / başlık (alt metin olarak da kullanılır). */
+  title: string;
+  imageUrl: string;
+  sort: number;
+};
+
+/**
+ * Video galeri kategorisi (örn. "Etkinlik Videoları", "Tanıtım Filmleri").
+ * `slug`, URL'de `/galeri/video/<slug>` olarak görünür.
+ */
+export type VideoCategory = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  /** Kategori kart kapağı için temsili görsel URL'i. Boş olabilir. */
+  coverUrl: string;
+  sort: number;
+};
+
+/** Bir video kategorisindeki tek video. Yüklenen MP4/WebM dosyası. */
+export type Video = {
+  id: string;
+  /** VideoCategory.slug — kategori belirteci. */
+  categorySlug: string;
+  title: string;
+  description: string;
+  /** Yüklenen video dosyasının public URL'i. */
+  videoUrl: string;
+  /** Opsiyonel poster (kapak görseli). Boşsa video ilk frame'i kullanılır. */
+  posterUrl: string;
+  sort: number;
+};
+
+/**
+ * Mahalle kaydı — `/hakkimizda/mahallelerimiz` sayfasındaki tabloda satır
+ * olarak görünür. Admin panelden eklenip çıkarılabilir.
+ */
+export type Neighborhood = {
+  id: string;
+  /** Mahallenin adı (örn. "Yalı Mahallesi"). */
+  name: string;
+  /** Görevli muhtarın tam adı. */
+  headman: string;
+  /** İletişim için telefon (boş bırakılabilir; doluysa tel: linki olur). */
+  phone: string;
+  sort: number;
+};
+
+/**
+ * Bağışçı kaydı — ana sayfadaki "Bağışçılarımız" listesinde gösterilir.
+ * Admin panelinden manuel eklenir; otomatik bir bağış işleme entegrasyonu
+ * yoktur. `donatedAt` ISO string ya da `YYYY-MM-DD` formatında gelebilir;
+ * UI tarafında `formatDateTR` ile insanca formatlanır.
+ */
+export type Donor = {
+  id: string;
+  /** Bağışçının görünen adı (örn. "Ahmet Yılmaz"). */
+  name: string;
+  /** Bağış tarihi — `YYYY-MM-DD` ya da ISO string. */
+  donatedAt: string;
+  /** TL cinsinden bağış miktarı. 0 ise UI'da miktar gizlenir. */
+  amount: number;
   sort: number;
 };
 
@@ -320,6 +482,24 @@ export type DonationUse = {
 };
 
 /* Sayfa blokları (key-value JSON içerikleri) */
+
+/**
+ * Hero kartında dönen tek bir slayt. Admin panelinden dilenen sayıda
+ * eklenebilir; site Hero alanı bu listeyi otomatik kayan + sürüklenebilir
+ * bir slider olarak gösterir.
+ */
+export type HeroSlide = {
+  imageUrl: string;
+  overlayLabel: string;
+  overlayTitle: string;
+  overlayDesc: string;
+  /**
+   * Slayt üzerinde gösterilen küçük bilgi kutusunu (etiket / başlık / açıklama)
+   * göstermek isteyip istemediğini belirler. Tanımlı değilse `true` kabul edilir.
+   */
+  showOverlay?: boolean;
+};
+
 export type HeroBlock = {
   badgeText: string;
   titlePrefix: string;
@@ -328,10 +508,20 @@ export type HeroBlock = {
   subtitle: string;
   primaryButton: { label: string; href: string };
   secondaryButton: { label: string; href: string };
-  imageUrl: string;
-  imageOverlayLabel: string;
-  imageOverlayTitle: string;
-  imageOverlayDesc: string;
+  /**
+   * Yeni — Hero kartında dönen slaytlar. Boş veya tanımsızsa Hero
+   * komponenti aşağıdaki tek-görsel alanlarından (imageUrl / imageOverlay*)
+   * otomatik olarak tek bir slayt türetir (geriye dönük uyumluluk).
+   */
+  slides?: HeroSlide[];
+  /** @deprecated `slides[0].imageUrl` kullanın. Geriye uyumluluk için tutuluyor. */
+  imageUrl?: string;
+  /** @deprecated `slides[0].overlayLabel` kullanın. */
+  imageOverlayLabel?: string;
+  /** @deprecated `slides[0].overlayTitle` kullanın. */
+  imageOverlayTitle?: string;
+  /** @deprecated `slides[0].overlayDesc` kullanın. */
+  imageOverlayDesc?: string;
   floatBadge1: { label: string; value: string };
   floatBadge2: { label: string; value: string };
 };
@@ -399,6 +589,30 @@ export type FooterLinkGroup = {
 export type FooterConfig = {
   groups: FooterLinkGroup[];
   legalLinks: { label: string; href: string }[];
+  /**
+   * Footer'ın ortasında "Destekçilerimiz" başlığı altında listelenen şirket
+   * bağlantıları. Her biri ad + URL içerir; tıklandığında yeni sekmede açılır.
+   * Boş array veya tanımsız ise bu blok hiç gösterilmez. Geri uyumluluk için
+   * opsiyonel.
+   */
+  supporters?: { name: string; href: string }[];
+};
+
+/**
+ * Header'da bir menü öğesi. Tek seviye alt menü desteği vardır:
+ * `children` doluysa öğe üzerine gelindiğinde dropdown açılır. İç içe
+ * (alt-altın altı) submenu desteklenmez — UI sade kalsın diye bilinçli
+ * tercih.
+ */
+export type HeaderMenuItem = {
+  label: string;
+  href: string;
+  enabled?: boolean;
+  /**
+   * Alt menü öğeleri. Tanımsız veya boş array ise submenu yok, öğe
+   * doğrudan link olarak çalışır.
+   */
+  children?: { label: string; href: string; enabled?: boolean }[];
 };
 
 /** Header (üst menü) konfigürasyonu — admin'den yönetilir. */
@@ -408,8 +622,15 @@ export type HeaderConfig = {
     showAdminLink: boolean;
     adminLinkLabel: string;
   };
-  /** Ana navigasyon menüsü. */
-  menu: { label: string; href: string }[];
+  /**
+   * Ana navigasyon menüsü. Sıra dizideki sıraya göredir; admin panelden
+   * yukarı/aşağı taşınarak değiştirilir.
+   *
+   * `enabled` tanımlı değilse veya `true` ise öğe gösterilir.
+   * `enabled === false` olan öğeler menüde **hiç** görünmez (örn. "Burs"
+   * dönemi bittiğinde geçici olarak kapatmak için).
+   */
+  menu: HeaderMenuItem[];
   /** Sağdaki sarı CTA butonu (Burs Başvur). visible=false ise gizlenir. */
   ctaButton: {
     visible: boolean;

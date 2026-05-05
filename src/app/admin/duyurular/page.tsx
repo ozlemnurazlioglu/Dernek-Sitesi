@@ -82,9 +82,15 @@ export default function DuyurularAdminPage() {
         },
         {
           key: "location",
-          label: "Yer",
+          label: "Yer (haritada açılır)",
           type: "text",
           placeholder: "Kumru Düğün Salonu",
+        },
+        {
+          key: "phone",
+          label: "Telefon (tıklanınca aranır)",
+          type: "text",
+          placeholder: "0535 123 45 67",
         },
       ]}
       renderRow={(item) => {

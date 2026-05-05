@@ -112,10 +112,23 @@ export default function EtkinliklerPage() {
                     <Calendar className="h-4 w-4 text-brand-600" />
                     <span>{formatDateTimeTR(event.startsAt)}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="h-4 w-4 text-brand-600" />
-                    <span className="truncate">{event.location}</span>
-                  </div>
+                  {event.location ? (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Haritada aç"
+                      className="flex items-center gap-2 text-muted-foreground hover:text-brand-700 hover:underline min-w-0"
+                    >
+                      <MapPin className="h-4 w-4 text-brand-600 shrink-0" />
+                      <span className="truncate">{event.location}</span>
+                    </a>
+                  ) : (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <MapPin className="h-4 w-4 text-brand-600" />
+                      <span className="truncate">—</span>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-5">
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">

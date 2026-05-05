@@ -1,33 +1,51 @@
 "use client";
 
 import Link from "next/link";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   GraduationCap,
   Heart,
+  HeartHandshake,
   Users,
   CheckCircle2,
   Quote,
   Calendar,
+  ChevronLeft,
   ChevronRight,
   Sparkles,
   HandHeart,
   BookOpen,
   Trophy,
+  LayoutGrid,
+  Layers,
+  Megaphone,
 } from "lucide-react";
 import { Container, SectionHeader } from "@/components/ui/section";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { formatDateTR } from "@/lib/utils";
-import { AnnouncementCard } from "@/components/site/announcement-card";
+import { cn } from "@/lib/utils";
+import {
+  AnnouncementCard,
+  getAnnouncementColors,
+} from "@/components/site/announcement-card";
+import {
+  getSponsorColors,
+  makeTierMap,
+} from "@/components/site/sponsor-card";
 import type {
   AboutCard,
   Aga,
   Announcement,
   AnnouncementCategory,
+  Donor,
   EventItem,
   HeroBlock,
+  HeroSlide,
+  HomeBlockId,
+  HomeLayout,
   HomeProgramCard,
   HomeScholarshipCTA,
   HomeSponsorsBlock,
@@ -35,8 +53,10 @@ import type {
   SectionHeading,
   SiteSettings,
   Sponsor,
+  SponsorTier,
   Testimonial,
 } from "@/lib/types";
+import { mergeHomeLayout } from "@/lib/defaults/home-layout";
 
 export default function HomePage() {
   const store = useStore();
@@ -50,6 +70,8 @@ export default function HomePage() {
     announcements,
     announcementCategories,
     sponsors,
+    sponsorTiers,
+    donors,
   } = store;
 
   const latestNews = [...news]
@@ -93,88 +115,266 @@ export default function HomePage() {
   const announcementsSection = pageBlocks["home.announcements_section"] as
     | SectionHeading
     | undefined;
-  const recentAnnouncements = [...announcements]
-    .sort((a, b) => a.sort - b.sort)
-    .slice(0, 6);
+  const sortedAnnouncements = [...announcements].sort(
+    (a, b) => a.sort - b.sort,
+  );
   const sponsorsBlock = pageBlocks["home.sponsors_section"] as
     | HomeSponsorsBlock
     | undefined;
+  const donorsSection = pageBlocks["home.donors_section"] as
+    | SectionHeading
+    | undefined;
+  /**
+   * Bağışçıları tarihe göre yeniden eskiye sıralarız (kullanıcının seçimi).
+   * Aynı tarihe sahipse `sort` (admin'in girdiği) tiebreak olarak kullanılır.
+   */
+  const sortedDonors = [...donors].sort((a, b) => {
+    const dt = new Date(b.donatedAt).getTime() - new Date(a.donatedAt).getTime();
+    if (!Number.isNaN(dt) && dt !== 0) return dt;
+    return a.sort - b.sort;
+  });
   const donateCta = pageBlocks["home.donate_cta"] as
     | { title: string; description: string; buttonLabel: string; buttonHref: string }
     | undefined;
 
+  /**
+   * Ana sayfa blok düzeni — admin panelinden yönetilir. DB'de yoksa veya
+   * eksik blok içeriyorsa varsayılan sıra ile birleştirilir.
+   */
+  const layout = mergeHomeLayout(pageBlocks["home.layout"] as HomeLayout | undefined);
+
+  /**
+   * Bir blok kimliğine göre uygun bileşeni döndürür. İlgili veri (heading,
+   * liste vb.) yoksa null döner — layout'ta enabled olsa bile görünmez.
+   */
+  function renderBlock(id: HomeBlockId): React.ReactNode {
+    switch (id) {
+      case "hero":
+        return hero ? <Hero hero={hero} settings={siteSettings} /> : null;
+      case "about":
+        return aboutSection ? (
+          <AboutPreview heading={aboutSection} cards={aboutCards} />
+        ) : null;
+      case "programs":
+        return programsSection ? (
+          <Programs heading={programsSection} programs={programs} />
+        ) : null;
+      case "scholarship_cta":
+        return scholarshipCta ? <ScholarshipCTA cta={scholarshipCta} /> : null;
+      case "news":
+        return newsSection ? (
+          <NewsPreview heading={newsSection} items={latestNews} />
+        ) : null;
+      case "events":
+        return eventsSection ? (
+          <EventsPreview heading={eventsSection} items={upcomingEvents} />
+        ) : null;
+      case "testimonials":
+        return testimonialsSection ? (
+          <Testimonials heading={testimonialsSection} items={testimonials} />
+        ) : null;
+      case "agalar":
+        return agalarSection && agalar.length > 0 ? (
+          <AgalarSection heading={agalarSection} items={agalar} />
+        ) : null;
+      case "announcements":
+        return announcementsSection && sortedAnnouncements.length > 0 ? (
+          <AnnouncementsPreview
+            heading={announcementsSection}
+            items={sortedAnnouncements}
+            categories={announcementCategories}
+          />
+        ) : null;
+      case "sponsors":
+        return sponsorsBlock && sponsors.length > 0 ? (
+          <SponsorsSection
+            block={sponsorsBlock}
+            items={sponsors}
+            tiers={sponsorTiers}
+          />
+        ) : null;
+      case "donors":
+        return donorsSection && sortedDonors.length > 0 ? (
+          <DonorsSection heading={donorsSection} items={sortedDonors} />
+        ) : null;
+      case "donate":
+        return donateCta ? <DonateCTA cta={donateCta} /> : null;
+      default:
+        return null;
+    }
+  }
+
   return (
     <>
-      {hero && <Hero hero={hero} settings={siteSettings} />}
-      <Stats settings={siteSettings} />
-      {aboutSection && <AboutPreview heading={aboutSection} cards={aboutCards} />}
-      {programsSection && (
-        <Programs heading={programsSection} programs={programs} />
-      )}
-      {scholarshipCta && <ScholarshipCTA cta={scholarshipCta} />}
-      {newsSection && <NewsPreview heading={newsSection} items={latestNews} />}
-      {eventsSection && (
-        <EventsPreview heading={eventsSection} items={upcomingEvents} />
-      )}
-      {testimonialsSection && (
-        <Testimonials heading={testimonialsSection} items={testimonials} />
-      )}
-      {agalarSection && agalar.length > 0 && (
-        <AgalarSection heading={agalarSection} items={agalar} />
-      )}
-      {announcementsSection && recentAnnouncements.length > 0 && (
-        <AnnouncementsPreview
-          heading={announcementsSection}
-          items={recentAnnouncements}
-          categories={announcementCategories}
-        />
-      )}
-      {sponsorsBlock && sponsors.length > 0 && (
-        <SponsorsSection block={sponsorsBlock} items={sponsors} />
-      )}
-      {donateCta && <DonateCTA cta={donateCta} />}
+      {layout.items
+        .filter((it) => it.enabled)
+        .map((it) => (
+          <Fragment key={it.id}>{renderBlock(it.id)}</Fragment>
+        ))}
     </>
   );
 }
 
+/**
+ * Hero — full-bleed banner.
+ *
+ * Görsel slaytlar bölümün arka planını tamamen kaplar; üstte koyu bir
+ * gradient ile metin okunabilirliği sağlanır. Slaytlar arasında 6 saniyede
+ * bir yumuşak fade + Ken Burns (yavaş yakınlaşma) ile geçiş yapılır.
+ * Slayt sayısı 1 ise oklar/dot'lar gizlenir; otomatik geçiş durur.
+ */
 function Hero({ hero, settings }: { hero: HeroBlock; settings: SiteSettings }) {
   const subtitle = hero.subtitle.replace(
     "{yearsActive}",
     String(settings.statYearsActive),
   );
+
+  // Eski tek-görselli `imageUrl` alanı yerine yeni `slides` listesi kullanılır;
+  // ikisi de boşsa boş bir placeholder slayt çıkarılır.
+  const slides = useMemo<HeroSlide[]>(() => {
+    if (hero.slides && hero.slides.length > 0) return hero.slides;
+    return [
+      {
+        imageUrl: hero.imageUrl ?? "",
+        overlayLabel: hero.imageOverlayLabel ?? "",
+        overlayTitle: hero.imageOverlayTitle ?? "",
+        overlayDesc: hero.imageOverlayDesc ?? "",
+        showOverlay: true,
+      },
+    ];
+  }, [hero]);
+
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  // Aktif slaytın Ken Burns animasyonunu her geçişte baştan başlatmak için
+  // remount tetikleyici. Index değiştikçe artar, key prop'una eklenir.
+  const [cycle, setCycle] = useState(0);
+  const isMulti = slides.length > 1;
+
+  function goTo(target: number) {
+    const next = ((target % slides.length) + slides.length) % slides.length;
+    if (next === index) return;
+    setIndex(next);
+    setCycle((c) => c + 1);
+  }
+
+  useEffect(() => {
+    if (!isMulti || paused) return;
+    const id = window.setInterval(() => {
+      setIndex((i) => (i + 1) % slides.length);
+      setCycle((c) => c + 1);
+    }, 6000);
+    return () => window.clearInterval(id);
+  }, [isMulti, paused, slides.length]);
+
+  const activeSlide = slides[index];
+  const overlayVisible =
+    activeSlide?.showOverlay !== false &&
+    Boolean(
+      activeSlide?.overlayLabel ||
+        activeSlide?.overlayTitle ||
+        activeSlide?.overlayDesc,
+    );
+
   return (
-    <section className="relative overflow-hidden">
-      <div className="absolute inset-0 bg-radial-fade" />
-      <div className="absolute inset-0 bg-grid opacity-50" />
-      <Container className="relative py-20 md:py-28 grid md:grid-cols-12 gap-10 items-center">
-        <div className="md:col-span-7 max-w-2xl">
-          <Badge tone="gold" className="mb-5">
+    <section
+      className="relative isolate overflow-hidden bg-brand-950 text-white"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+      aria-roledescription={isMulti ? "carousel" : undefined}
+    >
+      {/* Slayt katmanı — tüm hero'yu kaplar */}
+      <div className="absolute inset-0">
+        {slides.map((s, i) => {
+          const active = i === index;
+          return (
+            <div
+              key={i}
+              className={cn(
+                "absolute inset-0 ease-out",
+                active
+                  ? "opacity-100 duration-[1500ms] z-[1] transition-opacity"
+                  : "opacity-0 duration-[800ms] z-0 transition-opacity",
+              )}
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`${i + 1} / ${slides.length}`}
+              aria-hidden={!active}
+            >
+              {/*
+                Aktif slayt için key'e cycle eklenir → her geçişte remount
+                olur ve animate-hero-zoom CSS animasyonu baştan başlar. Pasif
+                slaytlar stabil key tutar (gereksiz remount yok).
+              */}
+              <div
+                key={active ? `act-${i}-${cycle}` : `idle-${i}`}
+                className={cn(
+                  "absolute inset-0 h-full w-full",
+                  active && "animate-hero-zoom",
+                )}
+              >
+                {s.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={s.imageUrl}
+                    alt={s.overlayTitle || `Hero görseli ${i + 1}`}
+                    className="absolute inset-0 h-full w-full object-cover select-none"
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-brand-700 via-brand-800 to-brand-950" />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Okunabilirlik için katmanlı gradientler + hafif grid dokusu */}
+      <div className="absolute inset-0 z-[2] bg-gradient-to-r from-brand-950/85 via-brand-950/55 to-brand-950/15" />
+      <div className="absolute inset-0 z-[2] bg-gradient-to-t from-brand-950/80 via-transparent to-brand-950/35" />
+      <div className="absolute inset-0 z-[2] bg-grid opacity-[0.05]" />
+
+      {/* Metin içeriği — görselin üzerinde */}
+      <Container className="relative z-10 py-24 md:py-36 lg:py-44 min-h-[600px] md:min-h-[680px] flex items-center">
+        <div className="max-w-2xl">
+          <Badge
+            tone="gold"
+            className="mb-5 !bg-gold-300/15 !text-gold-100 !border-gold-200/30 backdrop-blur-sm"
+          >
             <Sparkles className="h-3 w-3" /> {settings.founded}
             {hero.badgeText}
           </Badge>
-          <h1 className="text-4xl md:text-6xl font-semibold tracking-tight text-brand-900 leading-[1.05]">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-semibold tracking-tight text-white leading-[1.05] drop-shadow-sm">
             {hero.titlePrefix}{" "}
             <span className="relative inline-block">
-              <span className="relative z-10 text-brand-700">
+              <span className="relative z-10 text-gold-200">
                 {hero.titleHighlight}
               </span>
-              <span className="absolute left-0 right-0 bottom-1 h-3 bg-gold-200 -z-0" />
+              <span className="absolute left-0 right-0 bottom-1 h-3 bg-gold-300/25 -z-0" />
             </span>{" "}
             {hero.titleSuffix}
           </h1>
-          <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-xl">
+          <p className="mt-6 text-lg md:text-xl text-white/85 leading-relaxed max-w-xl">
             {subtitle}
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
             <ButtonLink
               href={hero.primaryButton.href}
               size="lg"
-              variant="primary"
+              variant="gold"
               rightIcon={<ArrowRight className="h-4 w-4" />}
             >
               {hero.primaryButton.label}
             </ButtonLink>
-            <ButtonLink href={hero.secondaryButton.href} size="lg" variant="outline">
+            <ButtonLink
+              href={hero.secondaryButton.href}
+              size="lg"
+              variant="outline"
+              className="!bg-white/10 !text-white !border-white/30 hover:!bg-white/20 hover:!border-white/50 backdrop-blur-sm"
+            >
               {hero.secondaryButton.label}
             </ButtonLink>
           </div>
@@ -192,115 +392,110 @@ function Hero({ hero, settings }: { hero: HeroBlock; settings: SiteSettings }) {
                   key={src}
                   src={src}
                   alt=""
-                  className="h-9 w-9 rounded-full ring-2 ring-white object-cover"
+                  className="h-9 w-9 rounded-full ring-2 ring-white/40 object-cover"
                 />
               ))}
             </div>
-            <div className="text-sm text-muted-foreground">
-              <span className="font-semibold text-brand-900">
+            <div className="text-sm text-white/80">
+              <span className="font-semibold text-white">
                 {settings.statActiveMembers}+ aktif üye
               </span>{" "}
               değişimin parçası oldu.
             </div>
           </div>
         </div>
+      </Container>
 
-        <div className="md:col-span-5 relative">
-          <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-border shadow-xl">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={hero.imageUrl}
-              alt="Eğitime destek"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-brand-950/80 via-brand-900/10 to-transparent" />
-            <div className="absolute bottom-5 left-5 right-5 text-white">
-              <div className="text-xs uppercase tracking-widest text-gold-200">
-                {hero.imageOverlayLabel}
-              </div>
-              <div className="text-2xl font-semibold mt-1">
-                {hero.imageOverlayTitle}
-              </div>
-              <div className="text-sm text-white/75 mt-1">
-                {hero.imageOverlayDesc}
-              </div>
-            </div>
+      {/* Sağ üst — yüzen rozetler (admin'den düzenlenir) */}
+      <div className="pointer-events-none absolute right-6 top-8 hidden md:flex flex-col gap-3 z-10 items-end">
+        <div className="pointer-events-auto flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg p-3 pr-4 animate-float-up">
+          <div className="h-10 w-10 rounded-lg bg-gold-300/20 text-gold-100 flex items-center justify-center">
+            <Trophy className="h-5 w-5" />
           </div>
-
-          <div className="absolute -left-6 top-10 hidden md:flex items-center gap-3 rounded-xl bg-white border border-border shadow-lg p-3 pr-4 animate-float-up">
-            <div className="h-10 w-10 rounded-lg bg-gold-50 text-gold-600 flex items-center justify-center">
-              <Trophy className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">
-                {hero.floatBadge1.label}
-              </div>
-              <div className="text-sm font-semibold text-brand-900">
-                {settings.statScholarshipsGiven}+ {hero.floatBadge1.value}
-              </div>
-            </div>
-          </div>
-          <div className="absolute -right-4 bottom-12 hidden md:flex items-center gap-3 rounded-xl bg-white border border-border shadow-lg p-3 pr-4">
-            <div className="h-10 w-10 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center">
-              <Heart className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">
-                {hero.floatBadge2.label}
-              </div>
-              <div className="text-sm font-semibold text-brand-900">
-                {hero.floatBadge2.value}
-              </div>
+          <div>
+            <div className="text-xs text-white/70">{hero.floatBadge1.label}</div>
+            <div className="text-sm font-semibold text-white">
+              {settings.statScholarshipsGiven}+ {hero.floatBadge1.value}
             </div>
           </div>
         </div>
-      </Container>
-    </section>
-  );
-}
-
-function Stats({ settings }: { settings: SiteSettings }) {
-  const items = [
-    {
-      label: "Faaliyet yılı",
-      value: `${settings.statYearsActive}+`,
-      icon: Calendar,
-    },
-    {
-      label: "Burslu öğrenci",
-      value: `${settings.statScholarshipsGiven.toLocaleString("tr-TR")}+`,
-      icon: GraduationCap,
-    },
-    {
-      label: "Aktif üye",
-      value: `${settings.statActiveMembers}+`,
-      icon: Users,
-    },
-    {
-      label: "Tamamlanan proje",
-      value: `${settings.statCompletedProjects}+`,
-      icon: HandHeart,
-    },
-  ];
-  return (
-    <section className="border-y border-border bg-brand-50/40">
-      <Container className="py-10 grid grid-cols-2 md:grid-cols-4 gap-6">
-        {items.map((item) => (
-          <div key={item.label} className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-white border border-border text-brand-700 flex items-center justify-center shadow-sm">
-              <item.icon className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-2xl md:text-3xl font-semibold text-brand-900 leading-none">
-                {item.value}
-              </div>
-              <div className="text-xs md:text-sm text-muted-foreground mt-1">
-                {item.label}
-              </div>
+        <div className="pointer-events-auto flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg p-3 pr-4">
+          <div className="h-10 w-10 rounded-lg bg-brand-300/20 text-brand-100 flex items-center justify-center">
+            <Heart className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="text-xs text-white/70">{hero.floatBadge2.label}</div>
+            <div className="text-sm font-semibold text-white">
+              {hero.floatBadge2.value}
             </div>
           </div>
-        ))}
-      </Container>
+        </div>
+      </div>
+
+      {/* Sağ alt — slayt başına opsiyonel bilgi kutusu (admin toggle'lı) */}
+      {overlayVisible && (
+        <div
+          key={`overlay-${index}-${cycle}`}
+          className="absolute bottom-20 right-6 hidden lg:block z-10 max-w-xs animate-float-up"
+        >
+          <div className="rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg p-4">
+            {activeSlide.overlayLabel && (
+              <div className="text-xs uppercase tracking-widest text-gold-200">
+                {activeSlide.overlayLabel}
+              </div>
+            )}
+            {activeSlide.overlayTitle && (
+              <div className="text-xl font-semibold mt-1 text-white">
+                {activeSlide.overlayTitle}
+              </div>
+            )}
+            {activeSlide.overlayDesc && (
+              <div className="text-sm text-white/80 mt-1">
+                {activeSlide.overlayDesc}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Ok butonları + nokta indikatörü (yalnızca >1 slayt) */}
+      {isMulti && (
+        <>
+          <button
+            type="button"
+            onClick={() => goTo(index - 1)}
+            aria-label="Önceki slayt"
+            className="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-20 h-11 w-11 md:h-12 md:w-12 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur text-white border border-white/20 shadow-lg flex items-center justify-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <button
+            type="button"
+            onClick={() => goTo(index + 1)}
+            aria-label="Sonraki slayt"
+            className="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-20 h-11 w-11 md:h-12 md:w-12 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur text-white border border-white/20 shadow-lg flex items-center justify-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => goTo(i)}
+                aria-label={`${i + 1}. slayta git`}
+                aria-current={i === index}
+                className={cn(
+                  "h-2 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60",
+                  i === index
+                    ? "bg-white w-8"
+                    : "bg-white/40 hover:bg-white/70 w-2",
+                )}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </section>
   );
 }
@@ -651,16 +846,41 @@ function Testimonials({
 function SponsorsSection({
   block,
   items,
+  tiers,
 }: {
   block: HomeSponsorsBlock;
   items: Sponsor[];
+  tiers: SponsorTier[];
 }) {
   const cta = block.cta ?? {
     visible: false,
     label: "",
     href: "",
   };
-  const sorted = [...items].sort((a, b) => a.sort - b.sort);
+
+  // Slug → SponsorTier eşlemesi.
+  const tierMap = useMemo(() => makeTierMap(tiers), [tiers]);
+  // Slug → tür sırası; sıralamada bilinmeyen / boş → en sona.
+  const tierOrder = useMemo(() => {
+    const map = new Map<string, number>();
+    [...tiers]
+      .sort((a, b) => a.sort - b.sort)
+      .forEach((t, i) => map.set(t.slug, i));
+    return map;
+  }, [tiers]);
+
+  // Önce tür sırasına, sonra sponsor.sort'a göre sırala — Platin önce gelir.
+  const sorted = useMemo(() => {
+    const arr = [...items];
+    arr.sort((a, b) => {
+      const ta = tierOrder.get(a.tierSlug) ?? Number.MAX_SAFE_INTEGER;
+      const tb = tierOrder.get(b.tierSlug) ?? Number.MAX_SAFE_INTEGER;
+      if (ta !== tb) return ta - tb;
+      return a.sort - b.sort;
+    });
+    return arr;
+  }, [items, tierOrder]);
+
   // Liste iki kez render edilir → translate(-50%) ile sıfır-sıçrama döngü.
   const loopItems = [...sorted, ...sorted];
   // Daha uzun listede daha yavaş hız — her sponsor ~5s aksın.
@@ -690,21 +910,42 @@ function SponsorsSection({
             } as React.CSSProperties
           }
         >
-          <div className="animate-marquee flex w-max items-center gap-4 md:gap-6">
+          <div className="animate-marquee flex w-max items-stretch gap-4 md:gap-6 py-2">
             {loopItems.map((s, i) => {
+              const tier = s.tierSlug ? tierMap[s.tierSlug] : undefined;
+              const colors = getSponsorColors(tier?.color);
               const card = (
-                <div className="h-24 md:h-28 w-44 md:w-52 shrink-0 rounded-xl border border-border bg-white p-4 flex items-center justify-center transition-all hover:border-gold-300 hover:shadow-md">
-                  {s.logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={s.logoUrl}
-                      alt={s.name}
-                      className="max-h-full max-w-full object-contain opacity-80 hover:opacity-100 transition"
-                    />
-                  ) : (
-                    <span className="text-sm text-muted-foreground text-center">
-                      {s.name}
-                    </span>
+                <div
+                  className={cn(
+                    "shrink-0 w-44 md:w-52 rounded-xl bg-white border-2 transition-all hover:shadow-md flex flex-col overflow-hidden",
+                    colors.border,
+                  )}
+                >
+                  <div className="h-20 md:h-24 flex items-center justify-center p-4">
+                    {s.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={s.logoUrl}
+                        alt={s.name}
+                        className="max-h-full max-w-full object-contain opacity-90 hover:opacity-100 transition"
+                      />
+                    ) : (
+                      <span className="text-sm text-muted-foreground text-center">
+                        {s.name}
+                      </span>
+                    )}
+                  </div>
+                  {tier && (
+                    <div
+                      className={cn(
+                        "py-1 text-center text-[10px] font-semibold uppercase tracking-wider border-t",
+                        colors.badgeBg,
+                        colors.badgeText,
+                        colors.border,
+                      )}
+                    >
+                      {tier.name}
+                    </div>
                   )}
                 </div>
               );
@@ -714,7 +955,7 @@ function SponsorsSection({
                   href={s.websiteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  title={s.name}
+                  title={tier ? `${s.name} · ${tier.name}` : s.name}
                   aria-hidden={i >= sorted.length}
                   tabIndex={i >= sorted.length ? -1 : 0}
                 >
@@ -723,7 +964,7 @@ function SponsorsSection({
               ) : (
                 <div
                   key={`${s.id}-${i}`}
-                  title={s.name}
+                  title={tier ? `${s.name} · ${tier.name}` : s.name}
                   aria-hidden={i >= sorted.length}
                 >
                   {card}
@@ -751,6 +992,22 @@ function SponsorsSection({
   );
 }
 
+/**
+ * Anasayfa filtre tabları için kategori slug → ikon eşlemesi.
+ * Bilinmeyen slug'larda generic `Layers` ikonu kullanılır.
+ */
+const ANNOUNCEMENT_FILTER_ICONS: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
+  vefat: HeartHandshake,
+  dugun: Heart,
+  nisan: Sparkles,
+  etkinlik: Calendar,
+  duyuru: Megaphone,
+  diger: Layers,
+};
+
 function AnnouncementsPreview({
   heading,
   items,
@@ -760,12 +1017,39 @@ function AnnouncementsPreview({
   items: Announcement[];
   categories: AnnouncementCategory[];
 }) {
-  const catBySlug: Record<string, AnnouncementCategory> = {};
-  for (const c of categories) catBySlug[c.slug] = c;
+  const [active, setActive] = useState<string>("all");
+
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.sort - b.sort),
+    [categories],
+  );
+
+  const catBySlug = useMemo(() => {
+    const m: Record<string, AnnouncementCategory> = {};
+    for (const c of categories) m[c.slug] = c;
+    return m;
+  }, [categories]);
+
+  // Filtre uygula → en fazla 6 öğe göster.
+  const filtered = useMemo(() => {
+    const list =
+      active === "all"
+        ? items
+        : items.filter((a) => a.categorySlug === active);
+    return list.slice(0, 6);
+  }, [items, active]);
+
+  // Anasayfa filtreleri sadece içinde duyuru olan kategorileri gösterir;
+  // boş kategoriler için sekme açmamak ana sayfayı temiz tutar.
+  const availableCategories = useMemo(() => {
+    const slugsWithItems = new Set(items.map((a) => a.categorySlug));
+    return sortedCategories.filter((c) => slugsWithItems.has(c.slug));
+  }, [items, sortedCategories]);
+
   return (
     <section>
       <Container className="py-20">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
           <SectionHeader
             eyebrow={heading.eyebrow}
             title={heading.title}
@@ -775,17 +1059,82 @@ function AnnouncementsPreview({
             Tüm İlanlar
           </ButtonLink>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {items.map((item) => (
-            <AnnouncementCard
-              key={item.id}
-              item={item}
-              category={catBySlug[item.categorySlug]}
-            />
-          ))}
-        </div>
+
+        {availableCategories.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-8">
+            <HomeFilterPill
+              active={active === "all"}
+              onClick={() => setActive("all")}
+              icon={<LayoutGrid className="h-4 w-4" />}
+              color="brand"
+            >
+              Tümü
+            </HomeFilterPill>
+            {availableCategories.map((c) => {
+              const Icon = ANNOUNCEMENT_FILTER_ICONS[c.slug] ?? Layers;
+              return (
+                <HomeFilterPill
+                  key={c.slug}
+                  active={active === c.slug}
+                  onClick={() => setActive(c.slug)}
+                  icon={<Icon className="h-4 w-4" />}
+                  color={c.color}
+                >
+                  {c.name}
+                </HomeFilterPill>
+              );
+            })}
+          </div>
+        )}
+
+        {filtered.length === 0 ? (
+          <div className="rounded-2xl border border-border bg-muted/30 p-12 text-center text-muted-foreground">
+            Bu kategoride henüz ilan yok.
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filtered.map((item) => (
+              <AnnouncementCard
+                key={item.id}
+                item={item}
+                category={catBySlug[item.categorySlug]}
+              />
+            ))}
+          </div>
+        )}
       </Container>
     </section>
+  );
+}
+
+function HomeFilterPill({
+  active,
+  onClick,
+  icon,
+  children,
+  color,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  color: string;
+}) {
+  const colors = getAnnouncementColors(color);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-2 h-10 px-4 rounded-full text-sm font-medium border transition-all",
+        active
+          ? `${colors.badgeBg} ${colors.badgeText} border-transparent shadow-sm`
+          : "bg-white text-brand-900 border-border hover:bg-muted hover:border-brand-200",
+      )}
+    >
+      {icon}
+      {children}
+    </button>
   );
 }
 
@@ -796,6 +1145,14 @@ function AgalarSection({
   heading: SectionHeading;
   items: Aga[];
 }) {
+  // sort alanına göre sırala; sonra listeyi iki kez render et:
+  // marquee animasyonu translateX(-50%) ile ilk kümeyi ekran dışına çıkarınca
+  // ikinci küme aynı görüntüyü vererek sıfır-sıçrama döngü sağlar.
+  const sorted = [...items].sort((a, b) => a.sort - b.sort);
+  const loopItems = [...sorted, ...sorted];
+  // Daha kalabalık listede daha yavaş hız — her ağa için ~6 saniye akış.
+  const duration = Math.max(30, sorted.length * 6);
+
   return (
     <section className="bg-muted/30 border-y border-border">
       <Container className="py-20">
@@ -805,43 +1162,194 @@ function AgalarSection({
           align="center"
           description={heading.description}
         />
-        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map((a) => (
-            <article
-              key={a.id}
-              className="group rounded-2xl overflow-hidden border border-border bg-white shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all"
-            >
-              <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-                {a.photoUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={a.photoUrl}
-                    alt={a.name}
-                    className="absolute inset-0 h-full w-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-                  />
-                )}
-              </div>
-              <div className="p-5 text-center">
-                {a.caption && (
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                    {a.caption}
-                  </p>
-                )}
-                <h3 className="text-lg font-semibold text-brand-900 mt-1.5">
-                  {a.name}
-                </h3>
-                {a.eventDate && (
-                  <p className="text-xs text-gold-600 mt-1 font-medium">
-                    {a.eventDate}
-                  </p>
-                )}
-              </div>
-            </article>
-          ))}
+
+        {/* Yatay marquee — kartlar soldan sağa sürekli kayar; üzerine
+            gelindiğinde animasyon hover ile durur. Kenarlarda yumuşak
+            kaybolma için CSS mask gradient. */}
+        <div
+          className="marquee-pause group relative mt-12 overflow-hidden"
+          style={
+            {
+              maskImage:
+                "linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%)",
+              WebkitMaskImage:
+                "linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%)",
+              ["--marquee-duration" as string]: `${duration}s`,
+            } as React.CSSProperties
+          }
+        >
+          <div className="animate-marquee flex w-max items-stretch gap-6">
+            {loopItems.map((a, i) => (
+              <article
+                key={`${a.id}-${i}`}
+                aria-hidden={i >= sorted.length}
+                className="group/card w-64 sm:w-72 shrink-0 rounded-2xl overflow-hidden border border-border bg-white shadow-sm hover:shadow-lg transition-all"
+              >
+                <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                  {a.photoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={a.photoUrl}
+                      alt={a.name}
+                      className="absolute inset-0 h-full w-full object-cover group-hover/card:scale-[1.03] transition-transform duration-500"
+                    />
+                  )}
+                </div>
+                <div className="p-5 text-center">
+                  {a.caption && (
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                      {a.caption}
+                    </p>
+                  )}
+                  <h3 className="text-lg font-semibold text-brand-900 mt-1.5">
+                    {a.name}
+                  </h3>
+                  {a.eventDate && (
+                    <p className="text-xs text-gold-600 mt-1 font-medium">
+                      {a.eventDate}
+                    </p>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </Container>
     </section>
   );
+}
+
+/**
+ * "Bağışçılarımız" bölümü — ana sayfada kullanılır.
+ *
+ * Görsel: dikey kart, üstte kalp ikonu + başlık + açıklama; altta liste.
+ * Her satır: yuvarlak avatar (baş harfler), isim + tarih, sağda altın renkli
+ * miktar. Liste uzunsa kart içinde dikey scroll yapılır (max-height kontrolü).
+ *
+ * Karar notları:
+ * - `amount === 0` ise miktar gizlenir (anonim bağış görünümü).
+ * - Tarih hatalı/boşsa satır gizlenmez ama tarih satırı gösterilmez.
+ * - Avatar arka planı sırayla rotate edilen ton listesinden seçilir; aynı
+ *   isim her zaman aynı renge denk gelsin diye basit bir hash kullanılır.
+ */
+function DonorsSection({
+  heading,
+  items,
+}: {
+  heading: SectionHeading;
+  items: Donor[];
+}) {
+  return (
+    <section className="border-t border-border bg-muted/30">
+      <Container className="py-14">
+        <div className="max-w-3xl mx-auto">
+          <div className="rounded-3xl border border-border bg-white shadow-sm p-6 sm:p-8">
+            <div className="flex items-start gap-4 pb-5 border-b border-border">
+              <div className="h-11 w-11 rounded-xl bg-rose-50 text-rose-600 inline-flex items-center justify-center shrink-0">
+                <Heart className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                {heading.eyebrow && (
+                  <p className="text-xs font-semibold uppercase tracking-wider text-brand-700">
+                    {heading.eyebrow}
+                  </p>
+                )}
+                <h2 className="text-2xl font-semibold text-brand-900 mt-0.5">
+                  {heading.title}
+                </h2>
+                {heading.description && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {heading.description}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/*
+              Liste — kart içinde max yükseklik 26rem (görseldeki scroll davranışı).
+              custom scrollbar: ince ve gold renkli rail.
+            */}
+            <ul
+              className={cn(
+                "mt-5 space-y-2 pr-2",
+                "max-h-[26rem] overflow-y-auto",
+                "scrollbar-thin scrollbar-thumb-gold-400 scrollbar-track-transparent",
+              )}
+              style={{ scrollbarWidth: "thin", scrollbarColor: "#d4a437 transparent" }}
+            >
+              {items.map((d) => (
+                <DonorRow key={d.id} donor={d} />
+              ))}
+            </ul>
+          </div>
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+function DonorRow({ donor }: { donor: Donor }) {
+  const initials = makeDonorInitials(donor.name);
+  const tone = donorAvatarTone(donor.name);
+  const formattedDate = formatDonorDate(donor.donatedAt);
+  return (
+    <li className="flex items-center gap-3 rounded-xl border border-border/70 bg-white px-3 py-2.5 hover:border-brand-200 transition-colors">
+      <span
+        className={cn(
+          "h-10 w-10 rounded-full inline-flex items-center justify-center text-xs font-bold shrink-0",
+          tone,
+        )}
+      >
+        {initials}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium text-brand-900 truncate">
+          {donor.name}
+        </div>
+        {formattedDate && (
+          <div className="text-xs text-muted-foreground">{formattedDate}</div>
+        )}
+      </div>
+      {donor.amount > 0 && (
+        <span className="text-sm font-bold text-gold-700 shrink-0 tabular-nums">
+          ₺{donor.amount.toLocaleString("tr-TR")}
+        </span>
+      )}
+    </li>
+  );
+}
+
+function makeDonorInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toLocaleUpperCase("tr-TR");
+  }
+  return (parts[0][0] + parts[parts.length - 1][0]).toLocaleUpperCase("tr-TR");
+}
+
+const DONOR_TONES = [
+  "bg-brand-100 text-brand-800",
+  "bg-rose-50 text-rose-700",
+  "bg-emerald-50 text-emerald-700",
+  "bg-amber-50 text-amber-800",
+  "bg-sky-50 text-sky-700",
+  "bg-violet-50 text-violet-700",
+];
+
+/** İsim sabitse aynı renk gelsin diye basit deterministic hash. */
+function donorAvatarTone(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) {
+    h = (h * 31 + name.charCodeAt(i)) | 0;
+  }
+  return DONOR_TONES[Math.abs(h) % DONOR_TONES.length];
+}
+
+/** "2026-05-02" → "2 Mayıs 2026". Geçersiz girdi için boş string döner. */
+function formatDonorDate(value: string): string {
+  if (!value) return "";
+  return formatDateTR(value);
 }
 
 function DonateCTA({

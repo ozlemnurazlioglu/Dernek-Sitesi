@@ -19,22 +19,29 @@ import type {
   ContactMessage,
   DonationPreset,
   DonationUse,
+  Donor,
   EventCategory,
   EventItem,
   Faq,
   FinanceItem,
   LegalPage,
   Milestone,
+  Neighborhood,
   NewsCategory,
   NewsItem,
+  Photo,
+  PhotoCategory,
   RequiredDocument,
   ScholarshipApplication,
   ScholarshipProgram,
   ScholarshipTimelineStep,
   SiteSettings,
   Sponsor,
+  SponsorTier,
   Testimonial,
   User,
+  Video,
+  VideoCategory,
 } from "./types";
 import { uid } from "./utils";
 
@@ -57,7 +64,14 @@ type ContentMap = {
   "finance-items": FinanceItem;
   "announcement-categories": AnnouncementCategory;
   announcements: Announcement;
+  "sponsor-tiers": SponsorTier;
   sponsors: Sponsor;
+  neighborhoods: Neighborhood;
+  donors: Donor;
+  "photo-categories": PhotoCategory;
+  photos: Photo;
+  "video-categories": VideoCategory;
+  videos: Video;
 };
 export type ContentType = keyof ContentMap;
 
@@ -87,7 +101,14 @@ type State = {
   financeItems: FinanceItem[];
   announcementCategories: AnnouncementCategory[];
   announcements: Announcement[];
+  sponsorTiers: SponsorTier[];
   sponsors: Sponsor[];
+  neighborhoods: Neighborhood[];
+  donors: Donor[];
+  photoCategories: PhotoCategory[];
+  photos: Photo[];
+  videoCategories: VideoCategory[];
+  videos: Video[];
 };
 
 type LoginResult =
@@ -113,7 +134,14 @@ const CONTENT_STATE_KEY: Record<ContentType, keyof State> = {
   "finance-items": "financeItems",
   "announcement-categories": "announcementCategories",
   announcements: "announcements",
+  "sponsor-tiers": "sponsorTiers",
   sponsors: "sponsors",
+  neighborhoods: "neighborhoods",
+  donors: "donors",
+  "photo-categories": "photoCategories",
+  photos: "photos",
+  "video-categories": "videoCategories",
+  videos: "videos",
 };
 
 type StoreContextValue = State & {
@@ -223,7 +251,14 @@ const emptyState: State = {
   financeItems: [],
   announcementCategories: [],
   announcements: [],
+  sponsorTiers: [],
   sponsors: [],
+  neighborhoods: [],
+  donors: [],
+  photoCategories: [],
+  photos: [],
+  videoCategories: [],
+  videos: [],
 };
 
 type BootstrapPayload = State & { currentUser: User | null };
@@ -284,7 +319,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         financeItems: data.financeItems ?? [],
         announcementCategories: data.announcementCategories ?? [],
         announcements: data.announcements ?? [],
+        sponsorTiers: data.sponsorTiers ?? [],
         sponsors: data.sponsors ?? [],
+        neighborhoods: data.neighborhoods ?? [],
+        donors: data.donors ?? [],
+        photoCategories: data.photoCategories ?? [],
+        photos: data.photos ?? [],
+        videoCategories: data.videoCategories ?? [],
+        videos: data.videos ?? [],
       });
       setCurrentUser(data.currentUser ?? null);
     } catch (err) {

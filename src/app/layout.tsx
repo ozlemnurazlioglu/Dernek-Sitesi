@@ -1,15 +1,36 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { cache } from "react";
 import "./globals.css";
 import { AppProviders } from "@/components/providers";
+import {
+  AnalyticsNoscriptFallbacks,
+  AnalyticsScripts,
+} from "@/components/site/analytics-scripts";
 import { db } from "@/lib/db";
 import { siteSettings as siteSettingsTable } from "@/lib/db/schema";
 import { rowToSiteSettings } from "@/lib/db/mappers";
 import { seedSiteSettings } from "@/lib/seed-content";
+import type { SiteSettings } from "@/lib/types";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+});
+
+/**
+ * Site ayarlarını DB'den okur; aynı request içinde hem `generateMetadata`
+ * hem de `RootLayout` çağırdığı için React `cache()` ile memoize ediyoruz —
+ * tek SQL query yapılır.
+ */
+const getSiteSettings = cache(async (): Promise<SiteSettings> => {
+  try {
+    const rows = await db.select().from(siteSettingsTable).limit(1);
+    if (rows[0]) return rowToSiteSettings(rows[0]);
+  } catch {
+    // db yoksa seed varsayılanları kullanılır
+  }
+  return seedSiteSettings;
 });
 
 /**
@@ -20,13 +41,7 @@ const geistSans = Geist({
  * fallback yapılır.
  */
 export async function generateMetadata(): Promise<Metadata> {
-  let s = seedSiteSettings;
-  try {
-    const rows = await db.select().from(siteSettingsTable).limit(1);
-    if (rows[0]) s = rowToSiteSettings(rows[0]);
-  } catch {
-    // db yoksa seed varsayılanları kullanılır
-  }
+  const s = await getSiteSettings();
 
   const defaultTitle = s.seoTitle?.trim() || s.name;
   const template = s.seoTitleTemplate?.trim() || `%s | ${s.name}`;
@@ -49,15 +64,18 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const settings = await getSiteSettings();
   return (
     <html lang="tr" className={`${geistSans.variable} h-full antialiased`}>
       <body className="min-h-full bg-background text-foreground">
+        <AnalyticsNoscriptFallbacks settings={settings} />
         <AppProviders>{children}</AppProviders>
+        <AnalyticsScripts settings={settings} />
       </body>
     </html>
   );

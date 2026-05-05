@@ -6,7 +6,7 @@ import { AuthError, requireAdmin } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const SUPPORTED_VERSIONS = [1, 2, 3, 4, 5, 6, 7];
+const SUPPORTED_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
 type Json = Record<string, unknown>;
 type Rows = Record<string, unknown>[];
@@ -88,12 +88,26 @@ export async function POST(req: NextRequest) {
     await db.delete(schema.announcements);
     await db.delete(schema.announcementCategories);
     await db.delete(schema.sponsors);
+    await db.delete(schema.sponsorTiers);
+    await db.delete(schema.neighborhoods);
+    await db.delete(schema.donors);
+    await db.delete(schema.videos);
+    await db.delete(schema.videoCategories);
+    await db.delete(schema.photos);
+    await db.delete(schema.photoCategories);
     await db.delete(schema.siteSettings);
 
     /* ---------- siteSettings ---------- */
     if (siteSettingsRows.length) {
       const settings = { ...(siteSettingsRows[0] as Record<string, unknown>) };
       settings.updatedAt = parseDate(settings.updatedAt) ?? new Date();
+      // v10 öncesi yedeklerde yeni eklenen analytics alanları yok — eksikse
+      // boş string fallback ekle ki NOT NULL ihlali olmasın.
+      settings.gaMeasurementId ??= "";
+      settings.gtmContainerId ??= "";
+      settings.metaPixelId ??= "";
+      settings.adsensePublisherId ??= "";
+      settings.customTrackingHtml ??= "";
       await db.insert(schema.siteSettings).values(settings as never);
     }
 
@@ -131,7 +145,18 @@ export async function POST(req: NextRequest) {
     await bulkInsert(schema.financeItems, content.financeItems);
     await bulkInsert(schema.announcementCategories, content.announcementCategories);
     await bulkInsert(schema.announcements, content.announcements);
+    // sponsorTiers v8'de eklendi — eski yedeklerde olmayabilir, sessizce atlanır.
+    await bulkInsert(schema.sponsorTiers, content.sponsorTiers);
     await bulkInsert(schema.sponsors, content.sponsors);
+    // neighborhoods v9'da eklendi — eski yedeklerde olmayabilir, sessizce atlanır.
+    await bulkInsert(schema.neighborhoods, content.neighborhoods);
+    // donors v11'de eklendi — eski yedeklerde olmayabilir, sessizce atlanır.
+    await bulkInsert(schema.donors, content.donors);
+    // Galeri tabloları v10'da eklendi — eski yedeklerde olmayabilir, sessizce atlanır.
+    await bulkInsert(schema.photoCategories, content.photoCategories);
+    await bulkInsert(schema.photos, content.photos);
+    await bulkInsert(schema.videoCategories, content.videoCategories);
+    await bulkInsert(schema.videos, content.videos);
 
     /* ---------- yayın ---------- */
     await bulkInsert(schema.news, publishing.news, ["publishedAt"]);

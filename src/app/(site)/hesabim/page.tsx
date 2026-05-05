@@ -84,12 +84,24 @@ export default function HesabimPage() {
             <ul className="mt-6 space-y-3 text-sm">
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="truncate">{currentUser.email}</span>
+                <a
+                  href={`mailto:${currentUser.email}`}
+                  className="truncate hover:text-brand-700 underline-offset-2 hover:underline"
+                  title="E-posta gönder"
+                >
+                  {currentUser.email}
+                </a>
               </li>
               {currentUser.phone && (
                 <li className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>{currentUser.phone}</span>
+                  <a
+                    href={`tel:${currentUser.phone.replace(/\s+/g, "")}`}
+                    className="hover:text-brand-700 underline-offset-2 hover:underline"
+                    title="Ara"
+                  >
+                    {currentUser.phone}
+                  </a>
                 </li>
               )}
               {currentUser.city && (

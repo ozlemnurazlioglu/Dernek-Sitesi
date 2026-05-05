@@ -5,7 +5,6 @@ import { Copy, CheckCircle2, Heart, ShieldCheck, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/site/page-header";
 import { Container } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
 import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
@@ -15,8 +14,17 @@ import type {
   PageHeadersMap,
 } from "@/lib/types";
 
+/**
+ * Bağış sayfası — ödeme entegrasyonu içermez.
+ *
+ * Bağışlar manuel havale ile yapılır. Sayfa yalnızca derneğin banka hesap
+ * bilgilerini (banka, şube, hesap sahibi, IBAN) gösterir; bilgiler
+ * `Site Ayarları` üzerinden admin tarafından düzenlenir. Tutar seçimi ve
+ * "Bağış Yap" butonu bilinçli olarak yoktur — kullanıcı IBAN'ı kopyalayıp
+ * dilediği tutarı kendi bankasından yatırır.
+ */
 export default function BagisPage() {
-  const { siteSettings, donationPresets, donationUses, pageBlocks } = useStore();
+  const { siteSettings, donationUses, pageBlocks } = useStore();
   const sidebar = pageBlocks["donate.sidebar"] as DonationSidebar | undefined;
   const headers = (pageBlocks["page.headers"] as PageHeadersMap | undefined)?.bagis;
   const ui =
@@ -26,15 +34,8 @@ export default function BagisPage() {
     ...(ui.donation ?? {}),
   };
 
-  const presetAmounts = donationPresets.map((p) => p.amount);
-  const initialPreset = presetAmounts[Math.floor(presetAmounts.length / 2)] ?? 500;
-
-  const [amount, setAmount] = useState<number>(initialPreset);
-  const [custom, setCustom] = useState("");
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
-
-  const finalAmount = custom ? Number(custom) || 0 : amount;
 
   return (
     <>
@@ -47,61 +48,25 @@ export default function BagisPage() {
         <div className="md:col-span-7">
           <div className="rounded-2xl border border-border bg-white p-7">
             <Badge tone="gold" className="mb-4">
-              <Heart className="h-3 w-3" /> {donationUi.presetBadge}
+              <Heart className="h-3 w-3" /> Manuel Havale
             </Badge>
             <h2 className="text-2xl font-semibold text-brand-900">
-              {donationUi.presetTitle}
+              {donationUi.bankInfoTitle}
             </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Bağışınızı aşağıdaki banka hesabımıza dilediğiniz tutarda
+              havale/EFT ile gönderebilirsiniz.
+            </p>
 
-            <div className="mt-6 grid grid-cols-3 sm:grid-cols-5 gap-2">
-              {presetAmounts.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => {
-                    setAmount(p);
-                    setCustom("");
-                  }}
-                  className={
-                    "h-12 rounded-md border text-sm font-semibold transition-colors " +
-                    (amount === p && !custom
-                      ? "bg-brand-900 text-white border-brand-900"
-                      : "bg-white text-brand-800 border-border hover:border-brand-200")
-                  }
-                >
-                  {p.toLocaleString("tr-TR")} ₺
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-4">
-              <label className="text-sm text-muted-foreground">
-                {donationUi.customAmountLabel}
-              </label>
-              <div className="mt-1.5 relative">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder={donationUi.customAmountPlaceholder}
-                  value={custom}
-                  onChange={(e) => setCustom(e.target.value)}
-                  className="w-full h-12 rounded-md border border-border bg-white pl-3 pr-12 text-base font-medium focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 focus:outline-none"
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  ₺
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-7 rounded-xl bg-muted/60 border border-border p-5">
-              <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wider">
-                {donationUi.bankInfoTitle}
-              </h3>
-              <dl className="mt-4 grid sm:grid-cols-2 gap-4 text-sm">
+            <div className="mt-6 rounded-xl bg-muted/60 border border-border p-5">
+              <dl className="grid sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <dt className="text-muted-foreground">Banka</dt>
                   <dd className="font-medium text-brand-900 mt-0.5">
-                    {siteSettings.bankName} – {siteSettings.bankBranch}
+                    {siteSettings.bankName}
+                    {siteSettings.bankBranch
+                      ? ` – ${siteSettings.bankBranch}`
+                      : ""}
                   </dd>
                 </div>
                 <div>
@@ -152,32 +117,6 @@ export default function BagisPage() {
               <p className="mt-4 text-xs text-muted-foreground">
                 {donationUi.bankNote}
               </p>
-            </div>
-
-            <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <div className="flex-1 rounded-md border border-border bg-white px-4 h-12 inline-flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {donationUi.summaryLabel}
-                </span>
-                <span className="text-base font-semibold text-brand-900">
-                  {finalAmount > 0
-                    ? `${finalAmount.toLocaleString("tr-TR")} ₺`
-                    : "—"}
-                </span>
-              </div>
-              <Button
-                variant="gold"
-                size="lg"
-                onClick={() =>
-                  toast({
-                    tone: "info",
-                    title: donationUi.submitToastTitle,
-                    description: donationUi.submitToastMessage,
-                  })
-                }
-              >
-                {donationUi.submitButton}
-              </Button>
             </div>
           </div>
         </div>

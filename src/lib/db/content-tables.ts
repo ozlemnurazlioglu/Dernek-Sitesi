@@ -10,17 +10,24 @@ import {
   boardMembers,
   donationPresets,
   donationUses,
+  donors,
   eventCategories,
   faqs,
   financeItems,
   legalPages,
   milestones,
+  neighborhoods,
   newsCategories,
+  photoCategories,
+  photos,
   requiredDocuments,
   scholarshipPrograms,
   scholarshipTimeline,
+  sponsorTiers,
   sponsors,
   testimonials,
+  videoCategories,
+  videos,
 } from "./schema";
 
 export const contentLists = {
@@ -129,12 +136,49 @@ export const contentLists = {
       "description",
       "eventDate",
       "location",
+      "phone",
       "sort",
     ] as const,
   },
+  "sponsor-tiers": {
+    table: sponsorTiers,
+    fields: ["id", "slug", "name", "color", "sort"] as const,
+  },
   sponsors: {
     table: sponsors,
-    fields: ["id", "name", "logoUrl", "websiteUrl", "sort"] as const,
+    fields: ["id", "name", "logoUrl", "websiteUrl", "tierSlug", "sort"] as const,
+  },
+  neighborhoods: {
+    table: neighborhoods,
+    fields: ["id", "name", "headman", "phone", "sort"] as const,
+  },
+  donors: {
+    table: donors,
+    fields: ["id", "name", "donatedAt", "amount", "sort"] as const,
+  },
+  "photo-categories": {
+    table: photoCategories,
+    fields: ["id", "slug", "name", "description", "coverUrl", "sort"] as const,
+  },
+  photos: {
+    table: photos,
+    fields: ["id", "categorySlug", "title", "imageUrl", "sort"] as const,
+  },
+  "video-categories": {
+    table: videoCategories,
+    fields: ["id", "slug", "name", "description", "coverUrl", "sort"] as const,
+  },
+  videos: {
+    table: videos,
+    fields: [
+      "id",
+      "categorySlug",
+      "title",
+      "description",
+      "videoUrl",
+      "posterUrl",
+      "sort",
+    ] as const,
   },
 } as const;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, useState, type DragEvent } from "react";
-import { AlertCircle, FileText, Image as ImageIcon, Upload, X } from "lucide-react";
+import { AlertCircle, FileText, Film, Image as ImageIcon, Upload, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 
@@ -9,8 +9,11 @@ type Props = {
   /** Mevcut URL (boşsa input boş gösterilir) */
   value: string;
   onChange: (url: string) => void;
-  /** "image" → sadece görsel, "file" → sadece PDF, "any" → her ikisi */
-  kind?: "image" | "file" | "any";
+  /**
+   * "image" → sadece görsel, "file" → sadece PDF,
+   * "video" → MP4/WebM/MOV, "any" → görsel veya PDF
+   */
+  kind?: "image" | "file" | "video" | "any";
   placeholder?: string;
   /** İsteğe bağlı: önizleme göster (görsel için) */
   preview?: boolean;
@@ -19,10 +22,17 @@ type Props = {
 const ACCEPT: Record<NonNullable<Props["kind"]>, string> = {
   image: "image/png,image/jpeg,image/webp,image/gif,image/svg+xml",
   file: "application/pdf",
+  video: "video/mp4,video/webm,video/quicktime",
   any: "image/png,image/jpeg,image/webp,image/gif,image/svg+xml,application/pdf",
 };
 
-const MAX_BYTES = 8 * 1024 * 1024; // 8 MB — backend ile eş
+// Backend ile eş — video çok daha geniş bir limit alır.
+const MAX_BYTES_BY_KIND: Record<NonNullable<Props["kind"]>, number> = {
+  image: 8 * 1024 * 1024,
+  file: 8 * 1024 * 1024,
+  video: 100 * 1024 * 1024,
+  any: 8 * 1024 * 1024,
+};
 
 const ALLOWED_TYPES: Record<NonNullable<Props["kind"]>, Set<string>> = {
   image: new Set([
@@ -33,6 +43,7 @@ const ALLOWED_TYPES: Record<NonNullable<Props["kind"]>, Set<string>> = {
     "image/svg+xml",
   ]),
   file: new Set(["application/pdf"]),
+  video: new Set(["video/mp4", "video/webm", "video/quicktime"]),
   any: new Set([
     "image/png",
     "image/jpeg",
@@ -46,6 +57,7 @@ const ALLOWED_TYPES: Record<NonNullable<Props["kind"]>, Set<string>> = {
 const KIND_HINT: Record<NonNullable<Props["kind"]>, string> = {
   image: "Görsel: PNG, JPG, WEBP, GIF veya SVG. En fazla 8MB.",
   file: "PDF dosyası. En fazla 8MB.",
+  video: "Video: MP4, WebM veya MOV. En fazla 100MB.",
   any: "Görsel (PNG/JPG/WEBP/GIF/SVG) veya PDF. En fazla 8MB.",
 };
 
@@ -85,9 +97,11 @@ export function UploadInput({
       toast({ tone: "error", title: "Yükleme hatası", description: msg });
       return;
     }
-    if (file.size > MAX_BYTES) {
+    const maxBytes = MAX_BYTES_BY_KIND[kind];
+    if (file.size > maxBytes) {
       const mb = (file.size / 1024 / 1024).toFixed(1);
-      const msg = `Dosya çok büyük (${mb} MB). En fazla 8 MB yükleyebilirsiniz.`;
+      const limitMb = Math.round(maxBytes / 1024 / 1024);
+      const msg = `Dosya çok büyük (${mb} MB). En fazla ${limitMb} MB yükleyebilirsiniz.`;
       setError(msg);
       toast({ tone: "error", title: "Dosya çok büyük", description: msg });
       return;
@@ -156,8 +170,10 @@ export function UploadInput({
     setDragOver(false);
   }
 
-  const showImagePreview = preview && kind !== "file" && isImageUrl(value);
-  const showFileLink = preview && kind !== "image" && isPdfUrl(value);
+  const showImagePreview =
+    preview && kind !== "file" && kind !== "video" && isImageUrl(value);
+  const showFileLink = preview && kind !== "image" && kind !== "video" && isPdfUrl(value);
+  const showVideoPreview = preview && kind === "video" && isVideoUrl(value);
 
   return (
     <div
@@ -293,6 +309,22 @@ export function UploadInput({
           </div>
         </div>
       )}
+
+      {showVideoPreview && (
+        <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-2">
+          <video
+            src={value}
+            controls
+            className="w-full max-h-56 rounded bg-black"
+            preload="metadata"
+          />
+          <div className="flex items-center gap-1.5 text-xs text-brand-800 font-medium">
+            <Film className="h-3.5 w-3.5" />
+            Video önizleme
+          </div>
+          <div className="text-xs text-muted-foreground truncate">{value}</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -305,4 +337,9 @@ function isImageUrl(url: string) {
 function isPdfUrl(url: string) {
   if (!url) return false;
   return /\.pdf(\?.*)?$/i.test(url);
+}
+
+function isVideoUrl(url: string) {
+  if (!url) return false;
+  return /\.(mp4|webm|mov)(\?.*)?$/i.test(url);
 }

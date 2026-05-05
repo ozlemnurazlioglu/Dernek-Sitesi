@@ -124,33 +124,53 @@ export default function IletisimPage() {
                 <div className="h-9 w-9 rounded-md bg-brand-50 text-brand-700 flex items-center justify-center shrink-0">
                   <MapPin className="h-4 w-4" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-xs text-muted-foreground">Adres</div>
-                  <div className="text-brand-900 mt-0.5 leading-relaxed">
-                    {siteSettings.contactAddress}
-                  </div>
+                  {siteSettings.contactAddress ? (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(siteSettings.contactAddress)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-brand-900 mt-0.5 leading-relaxed block hover:text-brand-700 underline-offset-2 hover:underline"
+                      title="Haritada aç"
+                    >
+                      {siteSettings.contactAddress}
+                    </a>
+                  ) : null}
                 </div>
               </li>
               <li className="flex items-start gap-3">
                 <div className="h-9 w-9 rounded-md bg-brand-50 text-brand-700 flex items-center justify-center shrink-0">
                   <Phone className="h-4 w-4" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-xs text-muted-foreground">Telefon</div>
-                  <div className="text-brand-900 mt-0.5">
-                    {siteSettings.contactPhone}
-                  </div>
+                  {siteSettings.contactPhone ? (
+                    <a
+                      href={`tel:${siteSettings.contactPhone.replace(/\s+/g, "")}`}
+                      className="text-brand-900 mt-0.5 block hover:text-brand-700 underline-offset-2 hover:underline"
+                      title="Ara"
+                    >
+                      {siteSettings.contactPhone}
+                    </a>
+                  ) : null}
                 </div>
               </li>
               <li className="flex items-start gap-3">
                 <div className="h-9 w-9 rounded-md bg-brand-50 text-brand-700 flex items-center justify-center shrink-0">
                   <Mail className="h-4 w-4" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-xs text-muted-foreground">E-posta</div>
-                  <div className="text-brand-900 mt-0.5">
-                    {siteSettings.contactEmail}
-                  </div>
+                  {siteSettings.contactEmail ? (
+                    <a
+                      href={`mailto:${siteSettings.contactEmail}`}
+                      className="text-brand-900 mt-0.5 block break-all hover:text-brand-700 underline-offset-2 hover:underline"
+                      title="E-posta gönder"
+                    >
+                      {siteSettings.contactEmail}
+                    </a>
+                  ) : null}
                 </div>
               </li>
               <li className="flex items-start gap-3">

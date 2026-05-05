@@ -16,16 +16,31 @@ export const runtime = "nodejs";
  * - Yoksa (yerel geliştirme) → `public/uploads/<yıl>/<ay>/` altına yazar.
  */
 
-const ALLOWED: Record<string, { kind: "image" | "file"; ext: string }> = {
+type UploadKind = "image" | "file" | "video";
+
+const ALLOWED: Record<string, { kind: UploadKind; ext: string }> = {
   "image/png": { kind: "image", ext: "png" },
   "image/jpeg": { kind: "image", ext: "jpg" },
   "image/webp": { kind: "image", ext: "webp" },
   "image/gif": { kind: "image", ext: "gif" },
   "image/svg+xml": { kind: "image", ext: "svg" },
   "application/pdf": { kind: "file", ext: "pdf" },
+  // Galeri için yüklenen video dosyaları. MP4 her tarayıcıda en geniş desteğe
+  // sahip; WebM modern alternatif. QuickTime (.mov) iPhone'lardan gelebilir.
+  "video/mp4": { kind: "video", ext: "mp4" },
+  "video/webm": { kind: "video", ext: "webm" },
+  "video/quicktime": { kind: "video", ext: "mov" },
 };
 
-const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
+/**
+ * Maksimum dosya boyutu — kind'a göre değişir. Video dosyaları doğal
+ * olarak çok daha büyük olabildiği için onlara daha geniş bir limit veriyoruz.
+ */
+const MAX_BYTES_BY_KIND: Record<UploadKind, number> = {
+  image: 8 * 1024 * 1024,        // 8 MB
+  file: 8 * 1024 * 1024,         // 8 MB (PDF)
+  video: 100 * 1024 * 1024,      // 100 MB
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,35 +73,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Dosya boş" }, { status: 400 });
   }
 
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json(
-      { error: `Dosya çok büyük (en fazla ${Math.round(MAX_BYTES / 1024 / 1024)} MB)` },
-      { status: 413 },
-    );
-  }
-
   const meta = ALLOWED[file.type];
   if (!meta) {
     return NextResponse.json(
       {
-        error: `Desteklenmeyen dosya tipi: ${file.type || "bilinmiyor"}. PNG, JPG, WEBP, GIF, SVG veya PDF yükleyin.`,
+        error: `Desteklenmeyen dosya tipi: ${file.type || "bilinmiyor"}. PNG, JPG, WEBP, GIF, SVG, PDF veya MP4/WebM yükleyin.`,
       },
       { status: 415 },
     );
   }
 
+  // kind'a göre boyut limiti uygula — video çok daha büyük olabilir.
+  const limit = MAX_BYTES_BY_KIND[meta.kind];
+  if (file.size > limit) {
+    return NextResponse.json(
+      { error: `Dosya çok büyük (en fazla ${Math.round(limit / 1024 / 1024)} MB)` },
+      { status: 413 },
+    );
+  }
+
   if (
     typeof kindHint === "string" &&
-    (kindHint === "image" || kindHint === "file") &&
+    (kindHint === "image" || kindHint === "file" || kindHint === "video") &&
     kindHint !== meta.kind
   ) {
+    const messages: Record<string, string> = {
+      image: "Buraya sadece görsel yüklenebilir",
+      file: "Buraya sadece PDF yüklenebilir",
+      video: "Buraya sadece video dosyası (MP4/WebM) yüklenebilir",
+    };
     return NextResponse.json(
-      {
-        error:
-          kindHint === "image"
-            ? "Buraya sadece görsel yüklenebilir"
-            : "Buraya sadece PDF yüklenebilir",
-      },
+      { error: messages[kindHint] ?? "Bu alana bu tip dosya yüklenemez" },
       { status: 415 },
     );
   }

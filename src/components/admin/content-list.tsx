@@ -43,7 +43,7 @@ export type FieldDef =
   | {
       key: string;
       label: string;
-      type: "image" | "file"; // dosya yükleme (görsel veya PDF)
+      type: "image" | "file" | "video"; // dosya yükleme (görsel, PDF veya video)
       placeholder?: string;
       required?: boolean;
     }
@@ -79,7 +79,8 @@ export function ContentListAdmin({
   renderRow: (item: Item) => ReactNode;
 }) {
   const store = useStore();
-  // store içinden ilgili listeyi çek
+  // store içinden ilgili listeyi çek — yeni içerik tipi eklerken buraya da
+  // satır eklemeyi unutma (TypeScript bu Record'un eksiksiz olmasını zorlar).
   const stateMap: Record<ContentType, keyof typeof store> = {
     "board-members": "boardMembers",
     milestones: "milestones",
@@ -98,7 +99,14 @@ export function ContentListAdmin({
     "finance-items": "financeItems",
     "announcement-categories": "announcementCategories",
     announcements: "announcements",
+    "sponsor-tiers": "sponsorTiers",
     sponsors: "sponsors",
+    neighborhoods: "neighborhoods",
+    donors: "donors",
+    "photo-categories": "photoCategories",
+    photos: "photos",
+    "video-categories": "videoCategories",
+    videos: "videos",
   };
   const list = (store[stateMap[type]] as Item[]) ?? [];
 
@@ -270,6 +278,7 @@ export function ContentListAdmin({
               f.type === "list" ||
               f.type === "image" ||
               f.type === "file" ||
+              f.type === "video" ||
               f.type === "boolean"
                 ? "sm:col-span-2"
                 : "";
@@ -321,7 +330,7 @@ export function ContentListAdmin({
                       value={value}
                       onChange={(e) => onChange(e.target.value)}
                     />
-                  ) : f.type === "image" || f.type === "file" ? (
+                  ) : f.type === "image" || f.type === "file" || f.type === "video" ? (
                     <UploadInput
                       value={value}
                       onChange={onChange}

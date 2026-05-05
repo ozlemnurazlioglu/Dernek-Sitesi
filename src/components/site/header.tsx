@@ -21,7 +21,12 @@ import { useStore } from "@/lib/store";
 import { cn, initials } from "@/lib/utils";
 import { DEFAULT_HEADER_CONFIG } from "@/lib/defaults/header";
 import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
-import type { CommonUiText, HeaderConfig } from "@/lib/types";
+import type { CommonUiText, HeaderConfig, HeaderMenuItem } from "@/lib/types";
+
+/** Verilen menü öğesinin görünür alt menü öğelerini döner. */
+function visibleChildren(item: HeaderMenuItem) {
+  return (item.children ?? []).filter((c) => c.enabled !== false);
+}
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -29,6 +34,8 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [accountMenu, setAccountMenu] = useState(false);
+  /** Desktop'ta açık olan dropdown'un index'i; null ise hiçbiri açık değil. */
+  const [openSubmenuIdx, setOpenSubmenuIdx] = useState<number | null>(null);
 
   const cfg =
     (pageBlocks["header.config"] as HeaderConfig | undefined) ??
@@ -36,7 +43,11 @@ export function SiteHeader() {
   const ui =
     (pageBlocks["ui.common"] as CommonUiText | undefined) ?? DEFAULT_COMMON_UI;
   const headerUi = { ...DEFAULT_COMMON_UI.header, ...(ui.header ?? {}) };
-  const navigation = cfg.menu ?? DEFAULT_HEADER_CONFIG.menu;
+  // Yalnızca aktif (enabled !== false) öğeler kullanıcılara gösterilir.
+  // Eski kayıtlarla geri uyumluluk için `enabled` tanımlı değilse aktif sayılır.
+  const navigation = (cfg.menu ?? DEFAULT_HEADER_CONFIG.menu).filter(
+    (item) => item.enabled !== false,
+  );
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -48,6 +59,7 @@ export function SiteHeader() {
   useEffect(() => {
     setOpen(false);
     setAccountMenu(false);
+    setOpenSubmenuIdx(null);
   }, [pathname]);
 
   return (
@@ -91,24 +103,81 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1">
-          {navigation.map((item) => {
+          {navigation.map((item, idx) => {
             const active =
               item.href === "/"
                 ? pathname === "/"
                 : pathname.startsWith(item.href);
+            const children = visibleChildren(item);
+            const hasChildren = children.length > 0;
+            const isSubOpen = openSubmenuIdx === idx;
+
+            const linkClasses = cn(
+              "px-2.5 xl:px-3 h-10 inline-flex items-center gap-1 text-sm font-medium rounded-md transition-colors whitespace-nowrap",
+              active
+                ? "text-brand-900 bg-brand-50"
+                : "text-brand-800/80 hover:text-brand-900 hover:bg-brand-50/60",
+            );
+
+            if (!hasChildren) {
+              return (
+                <Link key={item.href} href={item.href} className={linkClasses}>
+                  {item.label}
+                </Link>
+              );
+            }
+
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "px-2.5 xl:px-3 h-10 inline-flex items-center text-sm font-medium rounded-md transition-colors whitespace-nowrap",
-                  active
-                    ? "text-brand-900 bg-brand-50"
-                    : "text-brand-800/80 hover:text-brand-900 hover:bg-brand-50/60",
-                )}
+              <div
+                key={item.href + idx}
+                className="relative"
+                onMouseEnter={() => setOpenSubmenuIdx(idx)}
+                onMouseLeave={() => setOpenSubmenuIdx(null)}
               >
-                {item.label}
-              </Link>
+                <Link
+                  href={item.href}
+                  className={linkClasses}
+                  aria-haspopup="menu"
+                  aria-expanded={isSubOpen}
+                  onFocus={() => setOpenSubmenuIdx(idx)}
+                >
+                  {item.label}
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 transition-transform",
+                      isSubOpen && "rotate-180",
+                    )}
+                  />
+                </Link>
+                {isSubOpen && (
+                  <div
+                    className="absolute left-0 top-full pt-2 z-50"
+                    role="menu"
+                  >
+                    <ul className="min-w-[220px] rounded-xl border border-border bg-white shadow-lg overflow-hidden py-1.5 animate-float-up">
+                      {children.map((child) => {
+                        const childActive = pathname.startsWith(child.href);
+                        return (
+                          <li key={child.href}>
+                            <Link
+                              href={child.href}
+                              role="menuitem"
+                              className={cn(
+                                "block px-4 py-2 text-sm transition-colors",
+                                childActive
+                                  ? "bg-brand-50 text-brand-900 font-medium"
+                                  : "text-brand-800/85 hover:bg-brand-50 hover:text-brand-900",
+                              )}
+                            >
+                              {child.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
@@ -217,24 +286,48 @@ export function SiteHeader() {
       {open && (
         <div className="lg:hidden border-t border-border bg-white">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex flex-col gap-1">
-            {navigation.map((item) => {
+            {navigation.map((item, idx) => {
               const active =
                 item.href === "/"
                   ? pathname === "/"
                   : pathname.startsWith(item.href);
+              const children = visibleChildren(item);
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "h-11 px-3 inline-flex items-center text-sm font-medium rounded-md",
-                    active
-                      ? "bg-brand-50 text-brand-900"
-                      : "text-brand-800 hover:bg-brand-50",
+                <div key={item.href + idx} className="flex flex-col">
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "h-11 px-3 inline-flex items-center text-sm font-medium rounded-md",
+                      active
+                        ? "bg-brand-50 text-brand-900"
+                        : "text-brand-800 hover:bg-brand-50",
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                  {children.length > 0 && (
+                    <ul className="ml-3 mt-0.5 mb-1 border-l border-border pl-3 flex flex-col gap-0.5">
+                      {children.map((child) => {
+                        const childActive = pathname.startsWith(child.href);
+                        return (
+                          <li key={child.href}>
+                            <Link
+                              href={child.href}
+                              className={cn(
+                                "h-10 px-3 inline-flex items-center text-sm rounded-md w-full",
+                                childActive
+                                  ? "bg-brand-50 text-brand-900 font-medium"
+                                  : "text-brand-800/85 hover:bg-brand-50",
+                              )}
+                            >
+                              {child.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   )}
-                >
-                  {item.label}
-                </Link>
+                </div>
               );
             })}
             <div className="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-border">

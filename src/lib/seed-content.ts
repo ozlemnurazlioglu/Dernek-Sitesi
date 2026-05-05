@@ -6,6 +6,7 @@
 import { DEFAULT_AUTH_UI } from "./defaults/auth";
 import { DEFAULT_COMMON_UI } from "./defaults/ui-common";
 import { DEFAULT_HEADER_CONFIG } from "./defaults/header";
+import { DEFAULT_HOME_LAYOUT } from "./defaults/home-layout";
 import type {
   ActivityReport,
   AboutCard,
@@ -31,13 +32,20 @@ import type {
   HomeProgramCard,
   HomeScholarshipCTA,
   Milestone,
+  Donor,
+  Neighborhood,
   PageHeadersMap,
+  PhotoCategory,
+  Photo,
+  VideoCategory,
+  Video,
   RequiredDocument,
   ScholarshipProgram,
   ScholarshipTimelineStep,
   SectionHeading,
   SiteSettings,
   Sponsor,
+  SponsorTier,
   Testimonial,
 } from "./types";
 
@@ -76,6 +84,11 @@ export const seedSiteSettings: SiteSettings = {
     "Ordu Kumru'dan yola çıkan; eğitim, kültür ve yardımlaşma temelli projelerle hemşehrilerini bir araya getiren bir sivil toplum kuruluşu.",
   seoOgImage: "/logo.png",
   seoFaviconUrl: "/logo.png",
+  gaMeasurementId: "",
+  gtmContainerId: "",
+  metaPixelId: "",
+  adsensePublisherId: "",
+  customTrackingHtml: "",
 };
 
 export const seedBoardMembers: BoardMember[] = [
@@ -495,6 +508,7 @@ export const seedAnnouncements: Announcement[] = [
       "Geleneksel Kumru Şenliğimiz bu yıl da düzenlenecek. Tüm hemşehrilerimizi bekliyoruz.",
     eventDate: "1 Temmuz 2026",
     location: "Kumru Mesire Alanı",
+    phone: "",
     sort: 10,
   },
   {
@@ -505,6 +519,7 @@ export const seedAnnouncements: Announcement[] = [
       "Kızımız Ayşe ile Mehmet'in düğün törenine tüm hemşehrilerimizi davet ediyoruz.",
     eventDate: "15 Haziran 2026",
     location: "Kumru Düğün Salonu",
+    phone: "0535 123 45 67",
     sort: 20,
   },
   {
@@ -515,6 +530,7 @@ export const seedAnnouncements: Announcement[] = [
       "Kızımız Zeynep ile Ali'nin nişan törenine tüm hemşehrilerimizi davetlisiniz.",
     eventDate: "20 Mayıs 2026",
     location: "Kumru Kültür Merkezi",
+    phone: "0532 987 65 43",
     sort: 30,
   },
   {
@@ -525,6 +541,7 @@ export const seedAnnouncements: Announcement[] = [
       "Köyümüzün ana yolunun asfaltlanması için başlatılan çalışmalar hakkında detaylar.",
     eventDate: "10 Mayıs 2026",
     location: "Kumru Köyü",
+    phone: "",
     sort: 40,
   },
   {
@@ -535,6 +552,7 @@ export const seedAnnouncements: Announcement[] = [
       "Değerli hemşehrimiz Fatma Demir'in vefat haberini üzüntüyle aldık. Allah rahmet eylesin.",
     eventDate: "8 Mayıs 2026",
     location: "Kumru Merkez Camii",
+    phone: "",
     sort: 50,
   },
   {
@@ -545,11 +563,98 @@ export const seedAnnouncements: Announcement[] = [
       "Değerli hemşehrimiz Ahmet Yılmaz'ın vefat haberini üzüntüyle aldık. Allah rahmet eylesin.",
     eventDate: "5 Mayıs 2026",
     location: "Kumru Merkez Camii",
+    phone: "",
     sort: 60,
   },
 ];
 
+/* ====================== Galeri (Foto/Video) ====================== */
+
+export const seedPhotoCategories: PhotoCategory[] = [
+  {
+    id: "pc-merkez",
+    slug: "dernek-merkezimiz",
+    name: "Dernek Merkezimiz",
+    description: "Dernek binamızdan ve mekanlarımızdan kareler.",
+    coverUrl: "",
+    sort: 10,
+  },
+  {
+    id: "pc-yonetim",
+    slug: "yonetimden",
+    name: "Yönetimden Fotoğraflar",
+    description: "Yönetim kurulu toplantıları ve etkinlikleri.",
+    coverUrl: "",
+    sort: 20,
+  },
+  {
+    id: "pc-etkinlik",
+    slug: "etkinliklerden",
+    name: "Etkinliklerden Kareler",
+    description: "Düzenlediğimiz etkinliklerden anlar.",
+    coverUrl: "",
+    sort: 30,
+  },
+];
+
+export const seedPhotos: Photo[] = [];
+
+export const seedVideoCategories: VideoCategory[] = [
+  {
+    id: "vc-tanitim",
+    slug: "tanitim",
+    name: "Tanıtım Filmleri",
+    description: "Derneğimizi tanıtan kısa videolar.",
+    coverUrl: "",
+    sort: 10,
+  },
+  {
+    id: "vc-etkinlik",
+    slug: "etkinlik",
+    name: "Etkinlik Videoları",
+    description: "Etkinliklerimizden video kayıtlar.",
+    coverUrl: "",
+    sort: 20,
+  },
+];
+
+export const seedVideos: Video[] = [];
+
+/* ====================== Mahallelerimiz ====================== */
+
+/**
+ * `/hakkimizda/mahallelerimiz` sayfasındaki tablonun başlangıç verisi.
+ * Admin panelden satır eklenip çıkarılabilir.
+ */
+export const seedNeighborhoods: Neighborhood[] = [
+  { id: "mh-1", name: "Yalı Mahallesi", headman: "Ahmet Yılmaz", phone: "0535 111 22 33", sort: 10 },
+  { id: "mh-2", name: "Bucak Mahallesi", headman: "Mehmet Demir", phone: "0535 222 33 44", sort: 20 },
+  { id: "mh-3", name: "Şahinli Mahallesi", headman: "Ali Kara", phone: "0535 333 44 55", sort: 30 },
+];
+
+/* ====================== Bağışçılar ====================== */
+
+/**
+ * Ana sayfa "Bağışçılarımız" bölümünün başlangıç verisi. Tarih `YYYY-MM-DD`
+ * formatında saklanır; UI tarafında `formatDateTR` ile insanca formatlanır.
+ * `sort` küçükten büyüğe; aynı sort'ta tarih sırası baz alınır.
+ */
+export const seedDonors: Donor[] = [
+  { id: "dn-1", name: "Ahmet Yılmaz", donatedAt: "2026-05-02", amount: 5000, sort: 10 },
+  { id: "dn-2", name: "Mehmet Kaya", donatedAt: "2026-05-01", amount: 2500, sort: 20 },
+  { id: "dn-3", name: "Fatma Demir", donatedAt: "2026-04-30", amount: 1000, sort: 30 },
+  { id: "dn-4", name: "Ali Özkan", donatedAt: "2026-04-28", amount: 10000, sort: 40 },
+  { id: "dn-5", name: "Zeynep Tekin", donatedAt: "2026-04-25", amount: 500, sort: 50 },
+];
+
 /* ====================== Sponsorlar ====================== */
+
+export const seedSponsorTiers: SponsorTier[] = [
+  { id: "st-platin", slug: "platin", name: "Platin", color: "platinum", sort: 10 },
+  { id: "st-altin", slug: "altin", name: "Altın", color: "gold", sort: 20 },
+  { id: "st-gumus", slug: "gumus", name: "Gümüş", color: "silver", sort: 30 },
+  { id: "st-bronz", slug: "bronz", name: "Bronz", color: "bronze", sort: 40 },
+];
 
 export const seedSponsors: Sponsor[] = [
   {
@@ -557,6 +662,7 @@ export const seedSponsors: Sponsor[] = [
     name: "Sponsor 1",
     logoUrl: "https://placehold.co/200x80/F8FAFC/475569?text=Sponsor+1",
     websiteUrl: "",
+    tierSlug: "platin",
     sort: 10,
   },
   {
@@ -564,6 +670,7 @@ export const seedSponsors: Sponsor[] = [
     name: "Sponsor 2",
     logoUrl: "https://placehold.co/200x80/F8FAFC/475569?text=Sponsor+2",
     websiteUrl: "",
+    tierSlug: "platin",
     sort: 20,
   },
   {
@@ -571,6 +678,7 @@ export const seedSponsors: Sponsor[] = [
     name: "Sponsor 3",
     logoUrl: "https://placehold.co/200x80/F8FAFC/475569?text=Sponsor+3",
     websiteUrl: "",
+    tierSlug: "altin",
     sort: 30,
   },
   {
@@ -578,6 +686,7 @@ export const seedSponsors: Sponsor[] = [
     name: "Sponsor 4",
     logoUrl: "https://placehold.co/200x80/F8FAFC/475569?text=Sponsor+4",
     websiteUrl: "",
+    tierSlug: "altin",
     sort: 40,
   },
   {
@@ -585,6 +694,7 @@ export const seedSponsors: Sponsor[] = [
     name: "Sponsor 5",
     logoUrl: "https://placehold.co/200x80/F8FAFC/475569?text=Sponsor+5",
     websiteUrl: "",
+    tierSlug: "gumus",
     sort: 50,
   },
   {
@@ -592,6 +702,7 @@ export const seedSponsors: Sponsor[] = [
     name: "Sponsor 6",
     logoUrl: "https://placehold.co/200x80/F8FAFC/475569?text=Sponsor+6",
     websiteUrl: "",
+    tierSlug: "bronz",
     sort: 60,
   },
 ];
@@ -614,6 +725,7 @@ export const seedDonationUses: DonationUse[] = [
 /* ============== Sayfa blokları (key-value JSON) ============== */
 
 export const seedPageBlocks: Record<string, unknown> = {
+  "home.layout": DEFAULT_HOME_LAYOUT,
   "home.hero": {
     badgeText: "'den bu yana hemşehri dayanışması",
     titlePrefix: "Kumru'dan",
@@ -623,11 +735,32 @@ export const seedPageBlocks: Record<string, unknown> = {
       "Kumrulular Ordu Eğitim Kültür Yardımlaşma Derneği olarak {yearsActive} yılı aşkın süredir hemşehrilerimizi bir araya getiriyor; eğitim, kültür ve yardımlaşma projeleriyle yan yana yürüyoruz.",
     primaryButton: { label: "Bize Katıl", href: "/kayit" },
     secondaryButton: { label: "Destek Ol", href: "/bagis" },
-    imageUrl:
-      "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1200&q=80",
-    imageOverlayLabel: "Memleket",
-    imageOverlayTitle: "Kumru / Ordu",
-    imageOverlayDesc: "Karadeniz'in yeşil ilçesi",
+    slides: [
+      {
+        imageUrl:
+          "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1920&q=80",
+        overlayLabel: "Memleket",
+        overlayTitle: "Kumru / Ordu",
+        overlayDesc: "Karadeniz'in yeşil ilçesi",
+        showOverlay: true,
+      },
+      {
+        imageUrl:
+          "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1920&q=80",
+        overlayLabel: "Eğitim",
+        overlayTitle: "Burs Programı",
+        overlayDesc: "Hemşehri öğrencilerin yanındayız",
+        showOverlay: true,
+      },
+      {
+        imageUrl:
+          "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=1920&q=80",
+        overlayLabel: "Dayanışma",
+        overlayTitle: "Geleneksel Piknik",
+        overlayDesc: "Her yıl yüzlerce hemşehrimizi buluşturuyoruz",
+        showOverlay: true,
+      },
+    ],
     floatBadge1: { label: "1998'den beri", value: "Hemşehri Dayanışması" },
     floatBadge2: { label: "Şeffaflık", value: "Yıllık Faaliyet Raporu" },
   } satisfies HeroBlock,
@@ -727,6 +860,12 @@ export const seedPageBlocks: Record<string, unknown> = {
       "Tek seferlik veya düzenli bağışlarınız doğrudan burs fonumuza aktarılır. IBAN bilgilerimize bağış sayfamızdan ulaşabilirsiniz.",
     buttonLabel: "Bağış Bilgileri",
     buttonHref: "/bagis",
+  },
+
+  "home.donors_section": {
+    eyebrow: "Teşekkürler",
+    title: "Bağışçılarımız",
+    description: "Değerli destekçilerimize teşekkür ederiz",
   },
 
   "about.values": [
@@ -885,7 +1024,7 @@ export const seedPageBlocks: Record<string, unknown> = {
         title: "Kurumsal",
         links: [
           { label: "Hakkımızda", href: "/hakkimizda" },
-          { label: "Yönetim Kurulu", href: "/hakkimizda#yonetim" },
+          { label: "Yönetim Kurulu", href: "/yonetim" },
           { label: "Tüzük", href: "/tuzuk" },
           { label: "Faaliyet Raporları", href: "/hakkimizda#raporlar" },
           { label: "İletişim", href: "/iletisim" },
@@ -907,6 +1046,7 @@ export const seedPageBlocks: Record<string, unknown> = {
       { label: "KVKK", href: "/kvkk" },
       { label: "Çerez Politikası", href: "/cerez" },
     ],
+    supporters: [],
   } satisfies FooterConfig,
 };
 

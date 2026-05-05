@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Plus, Save, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
 import { UploadInput } from "@/components/admin/upload-input";
@@ -18,10 +19,15 @@ import type {
   BurseHero,
   CommonUiText,
   HeaderConfig,
+  HeaderMenuItem,
   DonationSidebar,
   FooterConfig,
   FooterLinkGroup,
   HeroBlock,
+  HeroSlide,
+  HomeBlockId,
+  HomeLayout,
+  HomeLayoutItem,
   HomeProgramCard,
   HomeScholarshipCTA,
   HomeSponsorsBlock,
@@ -30,6 +36,11 @@ import type {
   ScholarshipCalendarRow,
   SectionHeading,
 } from "@/lib/types";
+import {
+  DEFAULT_HOME_LAYOUT,
+  HOME_BLOCK_LABELS,
+  mergeHomeLayout,
+} from "@/lib/defaults/home-layout";
 
 /* --------------- Genel saracı --------------- */
 
@@ -124,6 +135,39 @@ export function SectionHeadingEditor({
 
 /* --------------- Hero (ana sayfa) --------------- */
 
+/**
+ * Eski tek-görselli hero verisini yeni `slides` formatına çevirir.
+ * `slides` zaten doluysa olduğu gibi döndürür; boşsa eski
+ * imageUrl/imageOverlay* alanlarından tek slayt türetir; ikisi de boşsa
+ * boş bir başlangıç slaytı verir.
+ */
+function normalizeHeroSlides(block: HeroBlock | undefined): HeroSlide[] {
+  if (block?.slides && block.slides.length > 0) {
+    // Eski kayıtlar showOverlay alanı içermeyebilir; varsayılanı `true` kabul ederiz.
+    return block.slides.map((s) => ({ showOverlay: true, ...s }));
+  }
+  if (block && (block.imageUrl || block.imageOverlayTitle)) {
+    return [
+      {
+        imageUrl: block.imageUrl ?? "",
+        overlayLabel: block.imageOverlayLabel ?? "",
+        overlayTitle: block.imageOverlayTitle ?? "",
+        overlayDesc: block.imageOverlayDesc ?? "",
+        showOverlay: true,
+      },
+    ];
+  }
+  return [
+    {
+      imageUrl: "",
+      overlayLabel: "",
+      overlayTitle: "",
+      overlayDesc: "",
+      showOverlay: true,
+    },
+  ];
+}
+
 export function HeroEditor() {
   const { pageBlocks, updatePageBlock } = useStore();
   const fallback: HeroBlock = {
@@ -134,26 +178,93 @@ export function HeroEditor() {
     subtitle: "",
     primaryButton: { label: "", href: "" },
     secondaryButton: { label: "", href: "" },
-    imageUrl: "",
-    imageOverlayLabel: "",
-    imageOverlayTitle: "",
-    imageOverlayDesc: "",
+    slides: [
+      {
+        imageUrl: "",
+        overlayLabel: "",
+        overlayTitle: "",
+        overlayDesc: "",
+        showOverlay: true,
+      },
+    ],
     floatBadge1: { label: "", value: "" },
     floatBadge2: { label: "", value: "" },
   };
-  const [v, setV] = useState<HeroBlock>(
-    (pageBlocks["home.hero"] as HeroBlock) ?? fallback,
-  );
+
+  function init(): HeroBlock {
+    const stored = pageBlocks["home.hero"] as HeroBlock | undefined;
+    if (!stored) return fallback;
+    return { ...stored, slides: normalizeHeroSlides(stored) };
+  }
+
+  const [v, setV] = useState<HeroBlock>(init);
   useEffect(() => {
-    setV((pageBlocks["home.hero"] as HeroBlock) ?? fallback);
+    setV(init());
+    // pageBlocks referans değişimine bağlı olarak yenile
   }, [pageBlocks["home.hero"]]);
+
+  const slides = v.slides ?? [];
+
+  function updateSlide(i: number, patch: Partial<HeroSlide>) {
+    setV((prev) => ({
+      ...prev,
+      slides: (prev.slides ?? []).map((s, idx) =>
+        idx === i ? { ...s, ...patch } : s,
+      ),
+    }));
+  }
+  function addSlide() {
+    setV((prev) => ({
+      ...prev,
+      slides: [
+        ...(prev.slides ?? []),
+        {
+          imageUrl: "",
+          overlayLabel: "",
+          overlayTitle: "",
+          overlayDesc: "",
+          showOverlay: true,
+        },
+      ],
+    }));
+  }
+  function removeSlide(i: number) {
+    setV((prev) => ({
+      ...prev,
+      slides: (prev.slides ?? []).filter((_, idx) => idx !== i),
+    }));
+  }
+  function moveSlide(i: number, dir: -1 | 1) {
+    setV((prev) => {
+      const list = [...(prev.slides ?? [])];
+      const j = i + dir;
+      if (j < 0 || j >= list.length) return prev;
+      [list[i], list[j]] = [list[j], list[i]];
+      return { ...prev, slides: list };
+    });
+  }
+
+  function handleSave() {
+    // Geri uyumluluk: ilk slaytı eski tekil alanlara da yansıtırız;
+    // böylece eski sürüm Hero'ları varsa veya başka bir yerde okunuyorsa bozulmaz.
+    const first = (v.slides ?? [])[0];
+    const payload: HeroBlock = {
+      ...v,
+      slides: v.slides ?? [],
+      imageUrl: first?.imageUrl ?? "",
+      imageOverlayLabel: first?.overlayLabel ?? "",
+      imageOverlayTitle: first?.overlayTitle ?? "",
+      imageOverlayDesc: first?.overlayDesc ?? "",
+    };
+    updatePageBlock("home.hero", payload);
+  }
 
   return (
     <BlockCard
       title="Ana Sayfa Hero (Üst Bölüm)"
-      description="Sitenin en üstündeki büyük başlık ve görsel alanı."
+      description="Sitenin en üstündeki büyük başlık alanı ve sağdaki görsel slider'ı."
       blockKey="home.hero"
-      onSave={() => updatePageBlock("home.hero", v)}
+      onSave={handleSave}
     >
       <div className="grid sm:grid-cols-2 gap-4">
         <Field label="Rozet sonrası metin">
@@ -239,34 +350,143 @@ export function HeroEditor() {
         </Field>
 
         <div className="sm:col-span-2">
-          <Field label="Görsel">
-            <UploadInput
-              value={v.imageUrl}
-              onChange={(url) => setV({ ...v, imageUrl: url })}
-              kind="image"
-            />
-          </Field>
-        </div>
+          <div className="flex items-center justify-between mb-3 mt-2">
+            <div>
+              <h4 className="text-sm font-semibold text-brand-900">
+                Slaytlar (Hero kart slider'ı)
+              </h4>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Eklediğiniz görseller hero kartında otomatik olarak değişerek
+                gösterilir. Ziyaretçi swipe / sürükleme ile de kaydırabilir.
+                Tek slayt eklerseniz slider devre dışı kalır.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              leftIcon={<Plus className="h-4 w-4" />}
+              onClick={addSlide}
+            >
+              Slayt ekle
+            </Button>
+          </div>
 
-        <Field label="Görsel etiket (üst yazı)">
-          <Input
-            value={v.imageOverlayLabel}
-            onChange={(e) => setV({ ...v, imageOverlayLabel: e.target.value })}
-          />
-        </Field>
-        <Field label="Görsel başlık">
-          <Input
-            value={v.imageOverlayTitle}
-            onChange={(e) => setV({ ...v, imageOverlayTitle: e.target.value })}
-          />
-        </Field>
-        <div className="sm:col-span-2">
-          <Field label="Görsel açıklama">
-            <Input
-              value={v.imageOverlayDesc}
-              onChange={(e) => setV({ ...v, imageOverlayDesc: e.target.value })}
-            />
-          </Field>
+          <div className="space-y-3">
+            {slides.length === 0 && (
+              <p className="text-sm text-muted-foreground italic">
+                Henüz slayt yok. "Slayt ekle" butonuyla başlayın.
+              </p>
+            )}
+            {slides.map((slide, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-border p-4 bg-muted/30"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Slayt #{i + 1}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => moveSlide(i, -1)}
+                      disabled={i === 0}
+                      aria-label="Yukarı taşı"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => moveSlide(i, 1)}
+                      disabled={i === slides.length - 1}
+                      aria-label="Aşağı taşı"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => removeSlide(i)}
+                      disabled={slides.length <= 1}
+                      aria-label="Slaytı sil"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <Field label="Görsel">
+                      <UploadInput
+                        value={slide.imageUrl}
+                        onChange={(url) => updateSlide(i, { imageUrl: url })}
+                        kind="image"
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="sm:col-span-2 rounded-lg border border-border bg-white p-3">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={slide.showOverlay !== false}
+                        onChange={(e) =>
+                          updateSlide(i, { showOverlay: e.target.checked })
+                        }
+                        className="mt-0.5 h-4 w-4 rounded border-border accent-brand-700"
+                      />
+                      <span>
+                        <span className="block text-sm font-medium text-brand-900">
+                          Slayt üzerinde bilgi kutusunu göster
+                        </span>
+                        <span className="block text-xs text-muted-foreground mt-0.5">
+                          Hero görselinin sağ alt köşesinde gösterilen üst
+                          etiket / başlık / açıklama kutusunu açıp kapatır.
+                          Kapalıyken yalnızca görsel görünür.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <Field label="Üst etiket">
+                    <Input
+                      value={slide.overlayLabel}
+                      onChange={(e) =>
+                        updateSlide(i, { overlayLabel: e.target.value })
+                      }
+                      placeholder="ör. Memleket"
+                      disabled={slide.showOverlay === false}
+                    />
+                  </Field>
+                  <Field label="Başlık">
+                    <Input
+                      value={slide.overlayTitle}
+                      onChange={(e) =>
+                        updateSlide(i, { overlayTitle: e.target.value })
+                      }
+                      placeholder="ör. Kumru / Ordu"
+                      disabled={slide.showOverlay === false}
+                    />
+                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="Açıklama">
+                      <Input
+                        value={slide.overlayDesc}
+                        onChange={(e) =>
+                          updateSlide(i, { overlayDesc: e.target.value })
+                        }
+                        placeholder="ör. Karadeniz'in yeşil ilçesi"
+                        disabled={slide.showOverlay === false}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <Field label="Yüzen rozet 1 — etiket">
@@ -1119,12 +1339,15 @@ export function ApplicationFormEditor() {
 
 export function FooterEditor() {
   const { pageBlocks, updatePageBlock } = useStore();
-  const fb: FooterConfig = { groups: [], legalLinks: [] };
+  const fb: FooterConfig = { groups: [], legalLinks: [], supporters: [] };
   const [v, setV] = useState<FooterConfig>((pageBlocks["footer"] as FooterConfig) ?? fb);
   useEffect(
     () => setV((pageBlocks["footer"] as FooterConfig) ?? fb),
     [pageBlocks["footer"]],
   );
+
+  // v.supporters eski kayıtlarda olmayabilir; her zaman dizi olarak çalış.
+  const supporters = v.supporters ?? [];
 
   function updateGroup(i: number, patch: Partial<FooterLinkGroup>) {
     setV({
@@ -1137,6 +1360,31 @@ export function FooterEditor() {
   }
   function removeGroup(i: number) {
     setV({ ...v, groups: v.groups.filter((_, idx) => idx !== i) });
+  }
+
+  function updateSupporter(
+    idx: number,
+    patch: Partial<{ name: string; href: string }>,
+  ) {
+    setV({
+      ...v,
+      supporters: supporters.map((s, i) =>
+        i === idx ? { ...s, ...patch } : s,
+      ),
+    });
+  }
+  function addSupporter() {
+    setV({ ...v, supporters: [...supporters, { name: "", href: "" }] });
+  }
+  function removeSupporter(idx: number) {
+    setV({ ...v, supporters: supporters.filter((_, i) => i !== idx) });
+  }
+  function moveSupporter(idx: number, dir: -1 | 1) {
+    const target = idx + dir;
+    if (target < 0 || target >= supporters.length) return;
+    const next = [...supporters];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    setV({ ...v, supporters: next });
   }
 
   return (
@@ -1215,6 +1463,96 @@ export function FooterEditor() {
               }
             />
           </Field>
+        </div>
+
+        <div className="rounded-xl border border-border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="text-xs uppercase tracking-wider text-gold-600 font-semibold">
+                Destekçilerimiz
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Footer'ın ortasında "Destekçilerimiz" başlığı altında listelenen
+                şirket bağlantıları. Boş bırakılırsa bu blok gösterilmez.
+                Bağlantı dış link (https://...) veya site içi yol (/yonetim)
+                olabilir.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={addSupporter}
+              leftIcon={<Plus className="h-4 w-4" />}
+            >
+              Destekçi Ekle
+            </Button>
+          </div>
+
+          {supporters.length === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-6 border border-dashed border-border rounded-lg">
+              Henüz destekçi eklenmedi.
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {supporters.map((s, idx) => (
+                <li
+                  key={idx}
+                  className="rounded-lg border border-border bg-white p-3"
+                >
+                  <div className="flex items-stretch gap-2">
+                    <div className="flex flex-col items-center justify-between gap-1 shrink-0 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => moveSupporter(idx, -1)}
+                        disabled={idx === 0}
+                        aria-label="Yukarı taşı"
+                        className="h-6 w-6 inline-flex items-center justify-center rounded text-brand-700 hover:bg-brand-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </button>
+                      <span className="text-[10px] font-mono text-muted-foreground">
+                        {idx + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => moveSupporter(idx, 1)}
+                        disabled={idx === supporters.length - 1}
+                        aria-label="Aşağı taşı"
+                        className="h-6 w-6 inline-flex items-center justify-center rounded text-brand-700 hover:bg-brand-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex-1 grid sm:grid-cols-[1fr_1.4fr] gap-2 min-w-0">
+                      <Input
+                        placeholder="Şirket adı (örn. ABC Yazılım)"
+                        value={s.name}
+                        onChange={(e) =>
+                          updateSupporter(idx, { name: e.target.value })
+                        }
+                      />
+                      <Input
+                        placeholder="Bağlantı (https://www.abc.com)"
+                        value={s.href}
+                        onChange={(e) =>
+                          updateSupporter(idx, { href: e.target.value })
+                        }
+                        className="font-mono text-xs"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSupporter(idx)}
+                      aria-label="Sil"
+                      className="shrink-0 h-9 w-9 inline-flex items-center justify-center rounded-md border border-border text-red-600 hover:bg-red-50 self-start"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </BlockCard>
@@ -2045,20 +2383,78 @@ export function HeaderEditor() {
     );
   }, [pageBlocks["header.config"]]);
 
-  const updateMenuLine = (lines: string) => {
+  /**
+   * Hangi parent menü item'ın alt menü düzenleyicisi açık.
+   * `null` → hiçbir submenu paneli açık değil.
+   */
+  const [openSubmenuIdx, setOpenSubmenuIdx] = useState<number | null>(null);
+
+  const updateMenuItem = (
+    idx: number,
+    patch: Partial<HeaderMenuItem>,
+  ) => {
     setV({
       ...v,
-      menu: lines
-        .split("\n")
-        .map((line) => {
-          const [label, href] = line.split("|").map((s) => s?.trim());
-          return { label: label ?? "", href: href ?? "" };
-        })
-        .filter((l) => l.label || l.href),
+      menu: v.menu.map((m, i) => (i === idx ? { ...m, ...patch } : m)),
     });
   };
 
-  const menuText = v.menu.map((m) => `${m.label} | ${m.href}`).join("\n");
+  const moveMenuItem = (idx: number, dir: -1 | 1) => {
+    const target = idx + dir;
+    if (target < 0 || target >= v.menu.length) return;
+    const next = [...v.menu];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    setV({ ...v, menu: next });
+    if (openSubmenuIdx === idx) setOpenSubmenuIdx(target);
+    else if (openSubmenuIdx === target) setOpenSubmenuIdx(idx);
+  };
+
+  const removeMenuItem = (idx: number) => {
+    setV({ ...v, menu: v.menu.filter((_, i) => i !== idx) });
+    if (openSubmenuIdx === idx) setOpenSubmenuIdx(null);
+  };
+
+  const addMenuItem = () => {
+    setV({
+      ...v,
+      menu: [...v.menu, { label: "Yeni Öğe", href: "/", enabled: true }],
+    });
+  };
+
+  // ----- Alt menü (children) yardımcıları -----
+
+  const getChildren = (idx: number) => v.menu[idx]?.children ?? [];
+
+  const updateChild = (
+    parentIdx: number,
+    childIdx: number,
+    patch: Partial<{ label: string; href: string; enabled: boolean }>,
+  ) => {
+    const children = [...getChildren(parentIdx)];
+    children[childIdx] = { ...children[childIdx], ...patch };
+    updateMenuItem(parentIdx, { children });
+  };
+
+  const moveChild = (parentIdx: number, childIdx: number, dir: -1 | 1) => {
+    const children = [...getChildren(parentIdx)];
+    const target = childIdx + dir;
+    if (target < 0 || target >= children.length) return;
+    [children[childIdx], children[target]] = [children[target], children[childIdx]];
+    updateMenuItem(parentIdx, { children });
+  };
+
+  const removeChild = (parentIdx: number, childIdx: number) => {
+    const children = getChildren(parentIdx).filter((_, i) => i !== childIdx);
+    updateMenuItem(parentIdx, { children });
+  };
+
+  const addChild = (parentIdx: number) => {
+    const children = [
+      ...getChildren(parentIdx),
+      { label: "Yeni Alt Öğe", href: "/", enabled: true },
+    ];
+    updateMenuItem(parentIdx, { children });
+  };
 
   return (
     <BlockCard
@@ -2110,19 +2506,286 @@ export function HeaderEditor() {
         </div>
 
         <div className="rounded-xl border border-border p-4">
-          <div className="text-xs uppercase tracking-wider text-gold-600 mb-3 font-semibold">
-            Ana Menü
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="text-xs uppercase tracking-wider text-gold-600 font-semibold">
+                Ana Menü
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Menüde gösterilecek bağlantılar. <strong>Aktif</strong> kapalıysa
+                öğe menüden tamamen gizlenir (silinmez). Sıralamayı yukarı/aşağı
+                oklarıyla değiştirebilirsiniz.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={addMenuItem}
+              leftIcon={<Plus className="h-4 w-4" />}
+            >
+              Yeni Öğe
+            </Button>
           </div>
-          <Field
-            label="Menü öğeleri (her satıra bir tane: 'Etiket | href')"
-            hint="Örn: Hakkımızda | /hakkimizda"
-          >
-            <Textarea
-              rows={Math.max(7, v.menu.length + 1)}
-              value={menuText}
-              onChange={(e) => updateMenuLine(e.target.value)}
-            />
-          </Field>
+
+          {v.menu.length === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-8 border border-dashed border-border rounded-lg">
+              Henüz menü öğesi yok. "Yeni Öğe" butonuyla ekleyin.
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {v.menu.map((item, idx) => {
+                const enabled = item.enabled !== false;
+                return (
+                  <li
+                    key={idx}
+                    className={cn(
+                      "rounded-lg border p-3 transition-colors",
+                      enabled
+                        ? "border-border bg-white"
+                        : "border-border/60 bg-muted/40",
+                    )}
+                  >
+                    <div className="flex items-stretch gap-2">
+                      {/* Sıra göstergesi + taşıma okları */}
+                      <div className="flex flex-col items-center justify-between gap-1 shrink-0 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => moveMenuItem(idx, -1)}
+                          disabled={idx === 0}
+                          aria-label="Yukarı taşı"
+                          className="h-6 w-6 inline-flex items-center justify-center rounded text-brand-700 hover:bg-brand-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => moveMenuItem(idx, 1)}
+                          disabled={idx === v.menu.length - 1}
+                          aria-label="Aşağı taşı"
+                          className="h-6 w-6 inline-flex items-center justify-center rounded text-brand-700 hover:bg-brand-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Aktif checkbox */}
+                      <label
+                        className={cn(
+                          "flex flex-col items-center justify-center gap-1 px-2 cursor-pointer shrink-0 rounded border text-center min-w-[64px]",
+                          enabled
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-border bg-muted text-muted-foreground",
+                        )}
+                        title={enabled ? "Aktif — menüde gösteriliyor" : "Pasif — menüden gizli"}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={enabled}
+                          onChange={(e) =>
+                            updateMenuItem(idx, { enabled: e.target.checked })
+                          }
+                          className="h-4 w-4 accent-emerald-600"
+                        />
+                        <span className="text-[10px] font-semibold uppercase tracking-wider">
+                          {enabled ? "Aktif" : "Pasif"}
+                        </span>
+                      </label>
+
+                      {/* Etiket + href */}
+                      <div className="flex-1 grid sm:grid-cols-[1fr_1.4fr] gap-2 min-w-0">
+                        <Input
+                          placeholder="Etiket (örn. Burs)"
+                          value={item.label}
+                          onChange={(e) =>
+                            updateMenuItem(idx, { label: e.target.value })
+                          }
+                          className={cn(!enabled && "opacity-60")}
+                        />
+                        <Input
+                          placeholder="Bağlantı (örn. /burs)"
+                          value={item.href}
+                          onChange={(e) =>
+                            updateMenuItem(idx, { href: e.target.value })
+                          }
+                          className={cn("font-mono text-xs", !enabled && "opacity-60")}
+                        />
+                      </div>
+
+                      {/* Sil butonu */}
+                      <button
+                        type="button"
+                        onClick={() => removeMenuItem(idx)}
+                        aria-label="Sil"
+                        className="shrink-0 h-9 w-9 inline-flex items-center justify-center rounded-md border border-border text-red-600 hover:bg-red-50 self-start"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Alt menü düzenleyicisi: aç/kapa toggle + liste */}
+                    {(() => {
+                      const subOpen = openSubmenuIdx === idx;
+                      const children = item.children ?? [];
+                      const childCount = children.length;
+                      return (
+                        <div className="mt-2 ml-12 pl-4 border-l-2 border-dashed border-border/70">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOpenSubmenuIdx(subOpen ? null : idx)
+                            }
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-700 hover:text-brand-900 py-1"
+                          >
+                            {subOpen ? (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            )}
+                            Alt menü{" "}
+                            <span className="text-muted-foreground font-normal">
+                              ({childCount})
+                            </span>
+                          </button>
+
+                          {subOpen && (
+                            <div className="pt-2 pb-1 space-y-2">
+                              {childCount === 0 ? (
+                                <div className="text-xs text-muted-foreground py-2 px-3 rounded-md bg-muted/40">
+                                  Alt menü öğesi yok. Üzerine gelince dropdown
+                                  açılması için en az bir alt öğe ekleyin.
+                                </div>
+                              ) : (
+                                <ul className="space-y-1.5">
+                                  {children.map((child, ci) => {
+                                    const cEnabled = child.enabled !== false;
+                                    return (
+                                      <li
+                                        key={ci}
+                                        className={cn(
+                                          "rounded-md border p-2 transition-colors",
+                                          cEnabled
+                                            ? "border-border bg-white"
+                                            : "border-border/60 bg-muted/40",
+                                        )}
+                                      >
+                                        <div className="flex items-stretch gap-1.5">
+                                          <div className="flex flex-col items-center justify-between gap-0.5 shrink-0">
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                moveChild(idx, ci, -1)
+                                              }
+                                              disabled={ci === 0}
+                                              aria-label="Yukarı taşı"
+                                              className="h-5 w-5 inline-flex items-center justify-center rounded text-brand-700 hover:bg-brand-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                                            >
+                                              <ArrowUp className="h-3 w-3" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                moveChild(idx, ci, 1)
+                                              }
+                                              disabled={ci === childCount - 1}
+                                              aria-label="Aşağı taşı"
+                                              className="h-5 w-5 inline-flex items-center justify-center rounded text-brand-700 hover:bg-brand-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                                            >
+                                              <ArrowDown className="h-3 w-3" />
+                                            </button>
+                                          </div>
+
+                                          <label
+                                            className={cn(
+                                              "flex items-center gap-1 px-1.5 cursor-pointer shrink-0 rounded border text-center min-w-[52px]",
+                                              cEnabled
+                                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                : "border-border bg-muted text-muted-foreground",
+                                            )}
+                                            title={
+                                              cEnabled
+                                                ? "Aktif — alt menüde gösteriliyor"
+                                                : "Pasif — gizli"
+                                            }
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={cEnabled}
+                                              onChange={(e) =>
+                                                updateChild(idx, ci, {
+                                                  enabled: e.target.checked,
+                                                })
+                                              }
+                                              className="h-3.5 w-3.5 accent-emerald-600"
+                                            />
+                                            <span className="text-[10px] font-semibold uppercase tracking-wider">
+                                              {cEnabled ? "Aktif" : "Pasif"}
+                                            </span>
+                                          </label>
+
+                                          <div className="flex-1 grid sm:grid-cols-[1fr_1.4fr] gap-1.5 min-w-0">
+                                            <Input
+                                              placeholder="Etiket"
+                                              value={child.label}
+                                              onChange={(e) =>
+                                                updateChild(idx, ci, {
+                                                  label: e.target.value,
+                                                })
+                                              }
+                                              className={cn(
+                                                "h-8 text-sm",
+                                                !cEnabled && "opacity-60",
+                                              )}
+                                            />
+                                            <Input
+                                              placeholder="Bağlantı"
+                                              value={child.href}
+                                              onChange={(e) =>
+                                                updateChild(idx, ci, {
+                                                  href: e.target.value,
+                                                })
+                                              }
+                                              className={cn(
+                                                "h-8 font-mono text-xs",
+                                                !cEnabled && "opacity-60",
+                                              )}
+                                            />
+                                          </div>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => removeChild(idx, ci)}
+                                            aria-label="Alt öğeyi sil"
+                                            className="shrink-0 h-8 w-8 inline-flex items-center justify-center rounded border border-border text-red-600 hover:bg-red-50"
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </button>
+                                        </div>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => addChild(idx)}
+                                leftIcon={<Plus className="h-3.5 w-3.5" />}
+                              >
+                                Alt Öğe Ekle
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
 
         <div className="rounded-xl border border-border p-4">
@@ -2278,3 +2941,158 @@ export function HomeSponsorsEditor() {
     </BlockCard>
   );
 }
+
+/* --------------- Ana Sayfa Düzeni (sıra + aktif/pasif) --------------- */
+
+/**
+ * Ana sayfada görünen blokların sırasını yukarı/aşağı butonları ile değiştirir,
+ * her bloğu aktif/pasif yapabilir. `home.layout` page block'una kaydeder.
+ *
+ * - Eksik veya bozuk veride `mergeHomeLayout` ile varsayılana fallback edilir.
+ * - "Varsayılana sıfırla" butonu listenin başlangıç sırasına döndürür.
+ * - Pasif edilen blok ana sayfada hiç render edilmez (DOM'da bile yer almaz).
+ */
+export function HomeLayoutEditor() {
+  const { pageBlocks, updatePageBlock } = useStore();
+  const init = mergeHomeLayout(pageBlocks["home.layout"] as HomeLayout | undefined);
+  const [v, setV] = useState<HomeLayout>(init);
+
+  useEffect(() => {
+    setV(mergeHomeLayout(pageBlocks["home.layout"] as HomeLayout | undefined));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageBlocks["home.layout"]]);
+
+  function move(idx: number, dir: -1 | 1) {
+    setV((prev) => {
+      const items = [...prev.items];
+      const target = idx + dir;
+      if (target < 0 || target >= items.length) return prev;
+      [items[idx], items[target]] = [items[target], items[idx]];
+      return { items };
+    });
+  }
+
+  function toggle(idx: number) {
+    setV((prev) => {
+      const items = prev.items.map((it, i) =>
+        i === idx ? { ...it, enabled: !it.enabled } : it,
+      );
+      return { items };
+    });
+  }
+
+  function resetToDefault() {
+    setV({ items: DEFAULT_HOME_LAYOUT.items.map((i) => ({ ...i })) });
+  }
+
+  const activeCount = v.items.filter((i) => i.enabled).length;
+
+  return (
+    <BlockCard
+      title="Ana Sayfa Blok Düzeni"
+      description="Ana sayfadaki bölümlerin sırasını değiştirin ve istediklerinizi pasif yapın. Pasif bölümler ana sayfada hiç görünmez."
+      blockKey="home.layout"
+      onSave={() => updatePageBlock("home.layout", v)}
+    >
+      <div className="flex items-center justify-between gap-3 mb-4 text-xs text-muted-foreground">
+        <span>
+          <span className="font-semibold text-brand-900">{activeCount}</span> /{" "}
+          {v.items.length} blok aktif
+        </span>
+        <button
+          type="button"
+          onClick={resetToDefault}
+          className="text-brand-700 hover:text-brand-800 underline-offset-2 hover:underline"
+        >
+          Varsayılan sıraya sıfırla
+        </button>
+      </div>
+
+      <ul className="space-y-2">
+        {v.items.map((item, idx) => {
+          const meta = HOME_BLOCK_LABELS[item.id];
+          const isFirst = idx === 0;
+          const isLast = idx === v.items.length - 1;
+          return (
+            <li
+              key={item.id}
+              className={cn(
+                "flex items-center gap-3 rounded-lg border p-3 transition-colors",
+                item.enabled
+                  ? "border-border bg-white"
+                  : "border-dashed border-border bg-muted/40",
+              )}
+            >
+              {/* Sıra numarası + taşıma butonları */}
+              <div className="flex items-center gap-1">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-brand-50 text-brand-800 text-xs font-semibold shrink-0">
+                  {idx + 1}
+                </span>
+                <div className="flex flex-col">
+                  <button
+                    type="button"
+                    onClick={() => move(idx, -1)}
+                    disabled={isFirst}
+                    className="h-5 w-5 inline-flex items-center justify-center rounded text-muted-foreground hover:text-brand-700 hover:bg-brand-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Yukarı taşı"
+                  >
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => move(idx, 1)}
+                    disabled={isLast}
+                    className="h-5 w-5 inline-flex items-center justify-center rounded text-muted-foreground hover:text-brand-700 hover:bg-brand-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Aşağı taşı"
+                  >
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Blok bilgisi */}
+              <div className="flex-1 min-w-0">
+                <div
+                  className={cn(
+                    "text-sm font-medium",
+                    item.enabled ? "text-brand-900" : "text-muted-foreground",
+                  )}
+                >
+                  {meta?.label ?? item.id}
+                </div>
+                {meta?.description && (
+                  <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {meta.description}
+                  </div>
+                )}
+              </div>
+
+              {/* Aktif/Pasif toggle */}
+              <label className="inline-flex items-center gap-2 text-xs cursor-pointer select-none shrink-0">
+                <input
+                  type="checkbox"
+                  checked={item.enabled}
+                  onChange={() => toggle(idx)}
+                  className="h-4 w-4 rounded border-border accent-brand-700"
+                />
+                <span
+                  className={cn(
+                    "font-medium",
+                    item.enabled ? "text-brand-700" : "text-muted-foreground",
+                  )}
+                >
+                  {item.enabled ? "Aktif" : "Pasif"}
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </BlockCard>
+  );
+}
+
+// HomeBlockId / HomeLayoutItem TypeScript "unused import" lint'inden kaçınmak
+// için type-only re-export — runtime'da tüketilmez ama dosya içinde başka
+// editor'larda kullanılabilir hale getirir.
+export type { HomeBlockId, HomeLayoutItem };

@@ -11,7 +11,16 @@
     "db:migrate": "tsx --env-file=.env.local scripts/migrate.ts",
     "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
     "db:reset": "tsx --env-file=.env.local scripts/reset.ts",
-    "db:setup": "npm run db:migrate && npm run db:seed"
+    "db:setup": "npm run db:migrate && npm run db:seed",
+    "db:add-sponsor-tiers": "tsx --env-file=.env.local scripts/add-sponsor-tiers.ts",
+    "db:add-announcement-phone": "tsx --env-file=.env.local scripts/add-announcement-phone.ts",
+    "db:fix-footer-yonetim-link": "tsx --env-file=.env.local scripts/fix-footer-yonetim-link.ts",
+    "db:add-neighborhoods": "tsx --env-file=.env.local scripts/add-neighborhoods.ts",
+    "db:add-hakkimizda-mahalleler-submenu": "tsx --env-file=.env.local scripts/add-hakkimizda-mahalleler-submenu.ts",
+    "db:add-galleries": "tsx --env-file=.env.local scripts/add-galleries.ts",
+    "db:add-galeri-submenu": "tsx --env-file=.env.local scripts/add-galeri-submenu.ts",
+    "db:add-analytics-fields": "tsx --env-file=.env.local scripts/add-analytics-fields.ts",
+    "db:add-donors": "tsx --env-file=.env.local scripts/add-donors.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.3.3",

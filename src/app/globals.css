@@ -182,6 +182,28 @@ body {
   }
 }
 
+/* İlk açılış splash ekranı: logo etrafındaki altın kesikli halka yavaşça
+ * döner. Dakikada birkaç tur — göz yormayan, "yaşayan" hafif bir hareket. */
+@keyframes splash-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-splash-spin {
+  animation: splash-spin 14s linear infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-splash-spin {
+    animation: none;
+  }
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -192,4 +214,40 @@ body {
 }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: var(--brand-200);
+}
+
+/* Hero kart slider'ı: native scroll-snap kullanır ama görsel sebeple
+ * çubuğu gizleriz. Erişilebilirlik için klavye ok butonları ve nokta
+ * indikatörü Hero komponentinde sağlanır. */
+.hero-slider-track {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
+}
+.hero-slider-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hero full-bleed banner için Ken Burns yakınlaşma efekti.
+ * Aktif slayt monte edildiğinde 1.05'ten 1.18'e yavaşça yakınlaşır.
+ * Anahtar bazlı remount ile her aktif olduğunda baştan başlar. */
+@keyframes hero-zoom {
+  from {
+    transform: scale(1.05);
+  }
+  to {
+    transform: scale(1.18);
+  }
+}
+.animate-hero-zoom {
+  animation: hero-zoom 9s ease-out forwards;
+  transform-origin: center;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hero-zoom {
+    animation: none;
+    transform: scale(1.05);
+  }
 }

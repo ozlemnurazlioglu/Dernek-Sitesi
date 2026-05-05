@@ -71,7 +71,7 @@ export default function HakkimizdaPage() {
         <Container className="py-20">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <Badge tone="gold" className="mb-3">
-              <Award className="h-3 w-3" /> Yönetim Kurulu
+              <Award className="h-3 w-3" /> Geçmiş Dönem Başkanlarımız
             </Badge>
             <h2 className="text-3xl md:text-4xl font-semibold text-brand-900">
               Bu yolda birlikte yürüdüğümüz isimler

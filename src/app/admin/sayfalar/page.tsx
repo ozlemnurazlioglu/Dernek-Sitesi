@@ -14,6 +14,7 @@ import {
   FooterEditor,
   HeaderEditor,
   HeroEditor,
+  HomeLayoutEditor,
   HomeProgramsEditor,
   HomeSponsorsEditor,
   PageHeadersEditor,
@@ -73,6 +74,7 @@ export default function SayfalarPage() {
 
       {tab === "home" && (
         <>
+          <HomeLayoutEditor />
           <HeroEditor />
           <SectionHeadingEditor
             blockKey="home.about_section"
@@ -113,6 +115,11 @@ export default function SayfalarPage() {
             description="İlan içeriklerini soldaki 'Duyurular' menüsünden yönetin."
           />
           <HomeSponsorsEditor />
+          <SectionHeadingEditor
+            blockKey="home.donors_section"
+            title="Ana Sayfa — Bağışçılarımız Başlığı"
+            description="Bağışçı listesini soldaki 'Bağışçılar' menüsünden yönetin."
+          />
           <DonateCTAEditor />
         </>
       )}

@@ -10,6 +10,7 @@ import {
   boardMembers,
   donationPresets,
   donationUses,
+  donors,
   eventCategories,
   events,
   faqs,
@@ -17,16 +18,22 @@ import {
   legalPages,
   messages,
   milestones,
+  neighborhoods,
   news,
   newsCategories,
   pageBlocks,
+  photoCategories,
+  photos,
   requiredDocuments,
   scholarshipPrograms,
   scholarshipTimeline,
   siteSettings,
+  sponsorTiers,
   sponsors,
   testimonials,
   users,
+  videoCategories,
+  videos,
 } from "@/lib/db/schema";
 import { AuthError, requireAdmin } from "@/lib/auth";
 
@@ -34,7 +41,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /** Sürüm — şema değişirse bumplanmalı, import bunu kontrol eder. */
-const EXPORT_VERSION = 7;
+const EXPORT_VERSION = 11;
 
 /**
  * Tüm site içeriğini ve uygulama verisini tek bir JSON paketi olarak döndürür.
@@ -76,7 +83,14 @@ export async function GET() {
     financeItemsRows,
     announcementCategoriesRows,
     announcementsRows,
+    sponsorTiersRows,
     sponsorsRows,
+    neighborhoodsRows,
+    donorsRows,
+    photoCategoriesRows,
+    photosRows,
+    videoCategoriesRows,
+    videosRows,
     newsRows,
     eventsRows,
     messagesRows,
@@ -103,7 +117,14 @@ export async function GET() {
     db.select().from(financeItems),
     db.select().from(announcementCategories),
     db.select().from(announcements),
+    db.select().from(sponsorTiers),
     db.select().from(sponsors),
+    db.select().from(neighborhoods),
+    db.select().from(donors),
+    db.select().from(photoCategories),
+    db.select().from(photos),
+    db.select().from(videoCategories),
+    db.select().from(videos),
     db.select().from(news),
     db.select().from(events),
     db.select().from(messages),
@@ -141,7 +162,14 @@ export async function GET() {
       financeItems: financeItemsRows,
       announcementCategories: announcementCategoriesRows,
       announcements: announcementsRows,
+      sponsorTiers: sponsorTiersRows,
       sponsors: sponsorsRows,
+      neighborhoods: neighborhoodsRows,
+      donors: donorsRows,
+      photoCategories: photoCategoriesRows,
+      photos: photosRows,
+      videoCategories: videoCategoriesRows,
+      videos: videosRows,
     },
     publishing: {
       news: newsRows,

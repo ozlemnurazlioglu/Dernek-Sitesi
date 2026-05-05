@@ -49,3 +49,5 @@ next-env.d.ts
 /*.png
 # Playwright MCP çıktıları (otomatik testler)
 .playwright-mcp/
+
+.vercel

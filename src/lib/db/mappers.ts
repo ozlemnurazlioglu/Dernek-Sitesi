@@ -174,6 +174,11 @@ export function rowToSiteSettings(r: DbSiteSettingsRow): SiteSettings {
     seoDescription: r.seoDescription,
     seoOgImage: r.seoOgImage,
     seoFaviconUrl: r.seoFaviconUrl,
+    gaMeasurementId: r.gaMeasurementId,
+    gtmContainerId: r.gtmContainerId,
+    metaPixelId: r.metaPixelId,
+    adsensePublisherId: r.adsensePublisherId,
+    customTrackingHtml: r.customTrackingHtml,
   };
 }
 
