@@ -20,7 +20,8 @@
     "db:add-galleries": "tsx --env-file=.env.local scripts/add-galleries.ts",
     "db:add-galeri-submenu": "tsx --env-file=.env.local scripts/add-galeri-submenu.ts",
     "db:add-analytics-fields": "tsx --env-file=.env.local scripts/add-analytics-fields.ts",
-    "db:add-donors": "tsx --env-file=.env.local scripts/add-donors.ts"
+    "db:add-donors": "tsx --env-file=.env.local scripts/add-donors.ts",
+    "db:migrate-all": "tsx scripts/migrate-all.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.3.3",
