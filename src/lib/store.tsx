@@ -224,6 +224,11 @@ const fallbackSettings: SiteSettings = {
   seoDescription: "",
   seoOgImage: "",
   seoFaviconUrl: "",
+  gaMeasurementId: "",
+  gtmContainerId: "",
+  metaPixelId: "",
+  adsensePublisherId: "",
+  customTrackingHtml: "",
 };
 
 const emptyState: State = {
