@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   GraduationCap,
@@ -37,6 +37,31 @@ export function SiteHeader() {
   /** Desktop'ta açık olan dropdown'un index'i; null ise hiçbiri açık değil. */
   const [openSubmenuIdx, setOpenSubmenuIdx] = useState<number | null>(null);
 
+  /**
+   * Adaptif (içerik-farkındalı) header sıkıştırma.
+   *
+   * Sorun: Admin panelden menüye yeni öğeler eklendikçe (Bağış, Mali Tablo
+   * gibi) sabit bir CSS breakpoint'i (örn. 1400px) artık yetmez — ekrana
+   * sığmayan öğeler hesap blokunu sağa iter, yatay kaydırma çubuğu çıkar.
+   *
+   * Çözüm: Aşağıdaki off-screen ölçüm konteyneri ile nav'ın "doğal"
+   * genişliğini (ne kadar yer ister) her zaman bilebiliyoruz. Görünür
+   * header satırının kullanılabilir genişliği ile karşılaştırıp; logo +
+   * nav + sağ blok gerçekten sığmıyorsa otomatik olarak hamburger moduna
+   * geçiyoruz. Admin yeni öğe ekler eklemez (veya kaldırır kaldırmaz)
+   * davranış kendiliğinden adapte olur.
+   */
+  const headerRowRef = useRef<HTMLDivElement>(null);
+  const measureNavRef = useRef<HTMLDivElement>(null);
+  const logoMeasureRef = useRef<HTMLDivElement>(null);
+  const rightMeasureRef = useRef<HTMLDivElement>(null);
+  /**
+   * `null` = SSR / henüz ölçülmedi → CSS-only davranış uygulanır.
+   * `true` = içerik sığmıyor, hamburger zorla açılır.
+   * `false` = sığıyor, normal desktop nav görünür.
+   */
+  const [autoCompact, setAutoCompact] = useState<boolean | null>(null);
+
   const cfg =
     (pageBlocks["header.config"] as HeaderConfig | undefined) ??
     DEFAULT_HEADER_CONFIG;
@@ -61,6 +86,49 @@ export function SiteHeader() {
     setAccountMenu(false);
     setOpenSubmenuIdx(null);
   }, [pathname]);
+
+  // Adaptif sıkıştırma: row + nav + sağ blok genişliklerini ölç, gerekirse
+  // hamburger moduna geç. Off-screen ölçüm konteyneri sayesinde nav görünür
+  // değilken bile "sığar mıydı?" sorusuna cevap verebiliyoruz (state flicker
+  // olmaz; tek yönlü karar değil, gerçek geometri).
+  useEffect(() => {
+    const row = headerRowRef.current;
+    const measureNav = measureNavRef.current;
+    if (!row || !measureNav) return;
+
+    const measure = () => {
+      const rowW = row.clientWidth;
+      const navNeededW = measureNav.scrollWidth;
+      const logoW =
+        logoMeasureRef.current?.getBoundingClientRect().width ?? 200;
+      const rightW =
+        rightMeasureRef.current?.getBoundingClientRect().width ?? 240;
+      // Header satırı: gap-4 (lg:gap-6) ile 3 child arası 2 gap → ortalama 40
+      // güvenlik payı ile birlikte. Hamburger butonu sağ blok ölçüsüne dahil
+      // değil — full mod'da görünmediği için sadece eşik hesabını şişirmesin.
+      const reserveGap = 40;
+      const safetyBuffer = 12;
+      const required = logoW + navNeededW + rightW + reserveGap + safetyBuffer;
+      setAutoCompact(required > rowW);
+    };
+
+    measure();
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(row);
+    ro.observe(measureNav);
+    if (logoMeasureRef.current) ro.observe(logoMeasureRef.current);
+    if (rightMeasureRef.current) ro.observe(rightMeasureRef.current);
+
+    // Geç yüklenen iconlar / fontlar layout'u biraz kaydırabilir; bir geri
+    // çağrı turu daha yapalım ki ilk frame doğru kararı versin.
+    const t = window.setTimeout(measure, 120);
+
+    return () => {
+      ro.disconnect();
+      window.clearTimeout(t);
+    };
+  }, [navigation, currentUser?.id, cfg.ctaButton.visible, cfg.ctaButton.label]);
 
   return (
     <header
@@ -104,19 +172,29 @@ export function SiteHeader() {
         bırakıyordu. `ml-auto` ile sadece sağ blok itilir, böylece menü
         eklendikçe logo ile yapışık kalır ve boş alan kullanılır.
       */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 md:h-[72px] flex items-center gap-4 lg:gap-6">
-        <Link href="/" className="shrink-0">
+      <div
+        ref={headerRowRef}
+        className="mx-auto max-w-7xl px-4 sm:px-6 h-16 md:h-[72px] flex items-center gap-4 lg:gap-6"
+      >
+        <Link href="/" className="shrink-0" data-header-logo>
           <Logo />
         </Link>
 
         {/*
-          Desktop nav yalnızca 1400px+ ekranlarda görünür. Bu eşiğin altında
-          (yani çoğu 1366px laptop ekranı dahil) menü öğeleri + sağ blok (Giriş
-          Yap, Üye Ol, Burs Başvur) sığmıyor ve yatay scroll bar tetikliyordu.
-          Standart `xl` (1280px) yerine custom `[1400px]` kullanıyoruz — 1280
-          breakpoint'inde hesap dropdown'u kesiliyordu. 1399 altında hamburger.
+          Desktop nav: SSR'da CSS breakpoint (`min-[1400px]:flex`) varsayılan
+          davranışı verir. Mount sonrası `autoCompact` ölçüldüğünde:
+          - true ise zorla gizlenir (hamburger açılır), CSS breakpoint'in
+            üstündeki ekranda bile kalabalık menüde adapte oluruz.
+          - false ise CSS davranışı geçerli (1400+ göster).
+          - null ise (henüz ölçülmedi) CSS davranışı geçerli — ilk paint
+            mantıklı bir varsayılanla başlar.
         */}
-        <nav className="hidden min-[1400px]:flex items-center gap-0.5 xl:gap-1">
+        <nav
+          className={cn(
+            "items-center gap-0.5 xl:gap-1",
+            autoCompact === true ? "hidden" : "hidden min-[1400px]:flex",
+          )}
+        >
           {navigation.map((item, idx) => {
             const active =
               item.href === "/"
@@ -196,7 +274,10 @@ export function SiteHeader() {
           })}
         </nav>
 
-        <div className="flex items-center gap-1 shrink-0 ml-auto">
+        <div
+          className="flex items-center gap-1 shrink-0 ml-auto"
+          data-header-right
+        >
           <div className="hidden md:flex items-center gap-1.5">
             {currentUser ? (
               <div className="relative">
@@ -289,7 +370,10 @@ export function SiteHeader() {
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="min-[1400px]:hidden inline-flex items-center justify-center h-10 w-10 rounded-md border border-border text-brand-900"
+            className={cn(
+              "inline-flex items-center justify-center h-10 w-10 rounded-md border border-border text-brand-900",
+              autoCompact === true ? "" : "min-[1400px]:hidden",
+            )}
             aria-label={headerUi.menuLabel}
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -298,7 +382,12 @@ export function SiteHeader() {
       </div>
 
       {open && (
-        <div className="min-[1400px]:hidden border-t border-border bg-white">
+        <div
+          className={cn(
+            "border-t border-border bg-white",
+            autoCompact === true ? "" : "min-[1400px]:hidden",
+          )}
+        >
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex flex-col gap-1">
             {navigation.map((item, idx) => {
               const active =
@@ -381,6 +470,74 @@ export function SiteHeader() {
           </div>
         </div>
       )}
+
+      {/*
+        Off-screen ölçüm konteynerleri.
+        ----------------------------------------------------------------
+        Adaptif sıkıştırma için nav, logo ve sağ blok'un "doğal" (tam
+        açık) genişliğini her zaman bilebilmemiz gerekir. Görünür nav
+        autoCompact=true durumunda gizlenirse `scrollWidth = 0` olurdu;
+        bu yüzden ayrı, görünmez bir kopya tutuyoruz. Hem `position:
+        fixed` ile layout'u etkilemez, hem `pointer-events: none` ve
+        `aria-hidden` ile erişilebilirlik / etkileşime karışmaz.
+        Burada nav öğelerinin gerçek görünür halinin kullandığı padding
+        ve font ayarlarını birebir taklit ediyoruz; aksi takdirde ölçüm
+        gerçek genişliği yansıtmazdı.
+      */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none invisible fixed top-0 left-0"
+        style={{ transform: "translateX(-200vw)" }}
+      >
+        <div
+          ref={measureNavRef}
+          className="flex items-center gap-0.5 xl:gap-1 whitespace-nowrap"
+        >
+          {navigation.map((item, idx) => {
+            const hasChildren = visibleChildren(item).length > 0;
+            return (
+              <span
+                key={`m-${item.href}-${idx}`}
+                className="px-2.5 xl:px-3 h-10 inline-flex items-center gap-1 text-sm font-medium"
+              >
+                {item.label}
+                {hasChildren && <ChevronDown className="h-3.5 w-3.5" />}
+              </span>
+            );
+          })}
+        </div>
+        <div ref={logoMeasureRef} className="inline-block">
+          <Logo />
+        </div>
+        <div
+          ref={rightMeasureRef}
+          className="inline-flex items-center gap-1.5"
+        >
+          {currentUser ? (
+            <span className="inline-flex items-center gap-2 h-10 px-2 pr-3">
+              <span className="h-8 w-8 rounded-full" />
+              <span className="text-sm font-medium max-w-[140px] truncate">
+                {currentUser.fullName.split(" ")[0]}
+              </span>
+              <ChevronDown className="h-4 w-4" />
+            </span>
+          ) : (
+            <>
+              <span className="px-2.5 h-10 inline-flex items-center text-sm font-medium whitespace-nowrap">
+                {headerUi.loginButton}
+              </span>
+              <span className="px-2.5 h-10 inline-flex items-center text-sm font-semibold whitespace-nowrap">
+                {headerUi.registerButton}
+              </span>
+            </>
+          )}
+          {cfg.ctaButton.visible && (
+            <span className="inline-flex items-center h-9 px-4 text-sm font-medium whitespace-nowrap rounded-md">
+              {cfg.ctaButton.label}
+            </span>
+          )}
+        </div>
+      </div>
     </header>
   );
 }
