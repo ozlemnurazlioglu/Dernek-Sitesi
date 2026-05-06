@@ -257,10 +257,10 @@ export function ApplicationForm() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setSubmitting(true);
-    setTimeout(() => {
-      const application = submitApplication({
+    try {
+      const application = await submitApplication({
         applicantId: currentUser?.id,
         fullName: data.fullName,
         nationalId: data.nationalId,
@@ -295,8 +295,17 @@ export function ApplicationForm() {
         title: "Başvurunuz alındı",
         description: `Başvuru numaranız: ${application.id}`,
       });
+    } catch (err) {
+      console.error("Başvuru gönderilemedi:", err);
+      toast({
+        tone: "error",
+        title: "Başvuru gönderilemedi",
+        description:
+          "Bir aksilik oldu. Lütfen birkaç saniye sonra tekrar deneyin.",
+      });
+    } finally {
       setSubmitting(false);
-    }, 800);
+    }
   };
 
   const handleFile = async (

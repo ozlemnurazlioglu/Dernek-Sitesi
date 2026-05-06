@@ -158,7 +158,7 @@ type StoreContextValue = State & {
       ScholarshipApplication,
       "id" | "status" | "submittedAt" | "applicantId"
     > & { applicantId?: string },
-  ) => ScholarshipApplication;
+  ) => Promise<ScholarshipApplication>;
   updateApplicationStatus: (
     id: string,
     status: ApplicationStatus,
@@ -420,28 +420,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const submitApplication: StoreContextValue["submitApplication"] = useCallback(
-    (payload) => {
-      const application: ScholarshipApplication = {
-        id: `a-${uid()}`,
+    async (payload) => {
+      // ID'yi sunucu üretir (yıllık sıralı: 2026burs01 vs.); body'de id yollamıyoruz.
+      const requestBody = {
         applicantId: payload.applicantId ?? currentUser?.id ?? "guest",
-        status: "submitted",
-        submittedAt: new Date().toISOString(),
         ...payload,
       };
+      const res = await fetch("/api/applications", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = (await res.json()) as { application: ScholarshipApplication };
+      const application = json.application;
       setState((prev) => ({
         ...prev,
         applications: [application, ...prev.applications],
       }));
-      void fetch("/api/applications", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(application),
-      })
-        .then((r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        })
-        .catch(logBgError("submitApplication"));
       return application;
     },
     [currentUser],
