@@ -50,7 +50,7 @@ import type {
 } from "./types";
 
 export const seedSiteSettings: SiteSettings = {
-  name: "Kumrulular Ordu Eğitim Kültür Yardımlaşma Derneği",
+  name: "Ordu Kumrulular Eğitim Kültür Yardımlaşma Derneği",
   shortName: "Kumrulular Derneği",
   founded: 1998,
   slogan: "Kumru'dan yola çıkıyoruz, dayanışmayla büyüyoruz",
@@ -66,7 +66,7 @@ export const seedSiteSettings: SiteSettings = {
   mapEmbedUrl:
     "https://maps.google.com/maps?q=Fevzi+%C3%87akmak+Mahallesi+1119+Sokak+Esenler+%C4%B0stanbul&t=&z=15&ie=UTF8&iwloc=&output=embed",
   bankName: "Ziraat Bankası",
-  bankAccountHolder: "Kumrulular Ordu Eğitim Kültür Yardımlaşma Derneği",
+  bankAccountHolder: "Ordu Kumrulular Eğitim Kültür Yardımlaşma Derneği",
   bankIban: "TR00 0000 0000 0000 0000 0000 00",
   bankBranch: "Ordu Şubesi",
   socialFacebook: "https://www.facebook.com/groups/106129852752913/",
@@ -78,7 +78,7 @@ export const seedSiteSettings: SiteSettings = {
   statScholarshipsGiven: 0,
   statActiveMembers: 0,
   statCompletedProjects: 0,
-  seoTitle: "Kumrulular Ordu Eğitim Kültür Yardımlaşma Derneği",
+  seoTitle: "Ordu Kumrulular Eğitim Kültür Yardımlaşma Derneği",
   seoTitleTemplate: "%s | Kumrulular Derneği",
   seoDescription:
     "Ordu Kumru'dan yola çıkan; eğitim, kültür ve yardımlaşma temelli projelerle hemşehrilerini bir araya getiren bir sivil toplum kuruluşu.",
@@ -732,7 +732,7 @@ export const seedPageBlocks: Record<string, unknown> = {
     titleHighlight: "dayanışmaya",
     titleSuffix: "bir adım",
     subtitle:
-      "Kumrulular Ordu Eğitim Kültür Yardımlaşma Derneği olarak {yearsActive} yılı aşkın süredir hemşehrilerimizi bir araya getiriyor; eğitim, kültür ve yardımlaşma projeleriyle yan yana yürüyoruz.",
+      "Ordu Kumrulular Eğitim Kültür Yardımlaşma Derneği olarak {yearsActive} yılı aşkın süredir hemşehrilerimizi bir araya getiriyor; eğitim, kültür ve yardımlaşma projeleriyle yan yana yürüyoruz.",
     primaryButton: { label: "Bize Katıl", href: "/kayit" },
     secondaryButton: { label: "Destek Ol", href: "/bagis" },
     slides: [
@@ -1062,7 +1062,7 @@ export const seedLegalPages: LegalPage[] = [
     content: [
       "## Giriş",
       "",
-      "Kumrulular Ordu Eğitim Kültür Yardımlaşma Derneği olarak ziyaretçilerimizin gizliliğine önem veriyoruz. Bu metin, web sitemizi ziyaret ettiğinizde topladığımız bilgileri ve bunları nasıl kullandığımızı açıklar.",
+      "Ordu Kumrulular Eğitim Kültür Yardımlaşma Derneği olarak ziyaretçilerimizin gizliliğine önem veriyoruz. Bu metin, web sitemizi ziyaret ettiğinizde topladığımız bilgileri ve bunları nasıl kullandığımızı açıklar.",
       "",
       "## Topladığımız Bilgiler",
       "",
@@ -1090,7 +1090,7 @@ export const seedLegalPages: LegalPage[] = [
     content: [
       "## Veri Sorumlusu",
       "",
-      "**Kumrulular Ordu Eğitim Kültür Yardımlaşma Derneği**, 6698 sayılı Kişisel Verilerin Korunması Kanunu (\"KVKK\") uyarınca veri sorumlusu sıfatıyla hareket eder.",
+      "**Ordu Kumrulular Eğitim Kültür Yardımlaşma Derneği**, 6698 sayılı Kişisel Verilerin Korunması Kanunu (\"KVKK\") uyarınca veri sorumlusu sıfatıyla hareket eder.",
       "",
       "## İşlenen Veri Kategorileri",
       "",
@@ -1147,11 +1147,11 @@ export const seedLegalPages: LegalPage[] = [
     slug: "tuzuk",
     title: "Dernek Tüzüğü",
     description:
-      "Kumrulular Ordu Eğitim Kültür Yardımlaşma Derneği'nin resmi tüzüğü.",
+      "Ordu Kumrulular Eğitim Kültür Yardımlaşma Derneği'nin resmi tüzüğü.",
     content: [
       "## Madde 1 — Derneğin Adı ve Merkezi",
       "",
-      "Derneğin adı **\"Kumrulular Ordu Eğitim Kültür Yardımlaşma Derneği\"** dir. Derneğin merkezi Ordu'dadır.",
+      "Derneğin adı **\"Ordu Kumrulular Eğitim Kültür Yardımlaşma Derneği\"** dir. Derneğin merkezi Ordu'dadır.",
       "",
       "## Madde 2 — Derneğin Amacı",
       "",
