@@ -81,6 +81,18 @@ export default function DuyurularAdminPage() {
           placeholder: "15 Haziran 2026",
         },
         {
+          key: "startTime",
+          label: "Başlangıç saati",
+          type: "time",
+          placeholder: "14:00",
+        },
+        {
+          key: "endTime",
+          label: "Bitiş saati",
+          type: "time",
+          placeholder: "18:00",
+        },
+        {
           key: "location",
           label: "Yer (haritada açılır)",
           type: "text",

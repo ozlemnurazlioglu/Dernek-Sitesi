@@ -14,6 +14,29 @@ function telHref(phone: string): string {
 }
 
 /**
+ * Tarih + opsiyonel başlangıç/bitiş saatini birleştirir.
+ *  - Hepsi yoksa "" döner (üstteki conditional bunu zaten kontrol ediyor).
+ *  - Tarih + bitiş + başlangıç → "1 Temmuz 2026 · 14:00 – 18:00"
+ *  - Tarih + sadece başlangıç → "1 Temmuz 2026 · 14:00"
+ *  - Sadece tarih → "1 Temmuz 2026"
+ *  - Sadece saat (tarih boş, az olası) → "14:00 – 18:00" / "14:00"
+ */
+function formatAnnouncementDate(item: Announcement): string {
+  const parts: string[] = [];
+  if (item.eventDate) parts.push(item.eventDate);
+  let timePart = "";
+  if (item.startTime && item.endTime) {
+    timePart = `${item.startTime} – ${item.endTime}`;
+  } else if (item.startTime) {
+    timePart = item.startTime;
+  } else if (item.endTime) {
+    timePart = item.endTime;
+  }
+  if (timePart) parts.push(timePart);
+  return parts.join(" · ");
+}
+
+/**
  * Kategori renk slug'ları → Tailwind sınıf grupları.
  * "color" alanına bilinen bir slug girilmemişse `slate` fallback kullanılır.
  */
@@ -145,12 +168,16 @@ export function AnnouncementCard({
             {item.description}
           </p>
         )}
-        {(item.eventDate || item.location || item.phone) && (
+        {(item.eventDate ||
+          item.startTime ||
+          item.endTime ||
+          item.location ||
+          item.phone) && (
           <div className="mt-4 pt-4 border-t border-border flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
-            {item.eventDate && (
+            {(item.eventDate || item.startTime || item.endTime) && (
               <span className="inline-flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5 text-brand-600" />
-                {item.eventDate}
+                {formatAnnouncementDate(item)}
               </span>
             )}
             {item.location && (

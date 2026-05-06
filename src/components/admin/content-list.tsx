@@ -14,7 +14,7 @@ export type FieldDef =
   | {
       key: string;
       label: string;
-      type: "text" | "url" | "emoji";
+      type: "text" | "url" | "emoji" | "time";
       placeholder?: string;
       required?: boolean;
     }
@@ -350,6 +350,13 @@ export function ContentListAdmin({
                         </option>
                       ))}
                     </select>
+                  ) : f.type === "time" ? (
+                    <Input
+                      type="time"
+                      placeholder={f.placeholder}
+                      value={value}
+                      onChange={(e) => onChange(e.target.value)}
+                    />
                   ) : (
                     <Input
                       type={f.type === "url" ? "url" : "text"}

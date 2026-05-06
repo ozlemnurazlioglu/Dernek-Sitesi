@@ -235,6 +235,16 @@ export type Announcement = {
   title: string;
   description: string;
   eventDate: string;
+  /**
+   * "HH:mm" formatında, opsiyonel. Vefatlarda cenaze namazı saati,
+   * düğün/nişan/etkinlikte başlangıç saati olarak kullanılır.
+   */
+  startTime: string;
+  /**
+   * "HH:mm" formatında, opsiyonel. Bitiş saati anlamlıysa doldurulur
+   * (vefat duyurularında genelde boş kalır).
+   */
+  endTime: string;
   location: string;
   /**
    * İlgili kişinin iletişim numarası (opsiyonel). Doluyken duyuru kartında

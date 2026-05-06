@@ -507,6 +507,8 @@ export const seedAnnouncements: Announcement[] = [
     description:
       "Geleneksel Kumru Şenliğimiz bu yıl da düzenlenecek. Tüm hemşehrilerimizi bekliyoruz.",
     eventDate: "1 Temmuz 2026",
+    startTime: "10:00",
+    endTime: "18:00",
     location: "Kumru Mesire Alanı",
     phone: "",
     sort: 10,
@@ -518,6 +520,8 @@ export const seedAnnouncements: Announcement[] = [
     description:
       "Kızımız Ayşe ile Mehmet'in düğün törenine tüm hemşehrilerimizi davet ediyoruz.",
     eventDate: "15 Haziran 2026",
+    startTime: "19:00",
+    endTime: "23:00",
     location: "Kumru Düğün Salonu",
     phone: "0535 123 45 67",
     sort: 20,
@@ -529,6 +533,8 @@ export const seedAnnouncements: Announcement[] = [
     description:
       "Kızımız Zeynep ile Ali'nin nişan törenine tüm hemşehrilerimizi davetlisiniz.",
     eventDate: "20 Mayıs 2026",
+    startTime: "18:30",
+    endTime: "22:00",
     location: "Kumru Kültür Merkezi",
     phone: "0532 987 65 43",
     sort: 30,
@@ -540,6 +546,8 @@ export const seedAnnouncements: Announcement[] = [
     description:
       "Köyümüzün ana yolunun asfaltlanması için başlatılan çalışmalar hakkında detaylar.",
     eventDate: "10 Mayıs 2026",
+    startTime: "",
+    endTime: "",
     location: "Kumru Köyü",
     phone: "",
     sort: 40,
@@ -551,6 +559,8 @@ export const seedAnnouncements: Announcement[] = [
     description:
       "Değerli hemşehrimiz Fatma Demir'in vefat haberini üzüntüyle aldık. Allah rahmet eylesin.",
     eventDate: "8 Mayıs 2026",
+    startTime: "13:30",
+    endTime: "",
     location: "Kumru Merkez Camii",
     phone: "",
     sort: 50,
@@ -562,6 +572,8 @@ export const seedAnnouncements: Announcement[] = [
     description:
       "Değerli hemşehrimiz Ahmet Yılmaz'ın vefat haberini üzüntüyle aldık. Allah rahmet eylesin.",
     eventDate: "5 Mayıs 2026",
+    startTime: "12:30",
+    endTime: "",
     location: "Kumru Merkez Camii",
     phone: "",
     sort: 60,

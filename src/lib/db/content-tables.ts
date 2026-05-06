@@ -135,6 +135,8 @@ export const contentLists = {
       "title",
       "description",
       "eventDate",
+      "startTime",
+      "endTime",
       "location",
       "phone",
       "sort",

@@ -479,6 +479,12 @@ export const announcements = mysqlTable(
     title: varchar("title", { length: 255 }).notNull(),
     description: varchar("description", { length: 2000 }).notNull().default(""),
     eventDate: varchar("event_date", { length: 64 }).notNull().default(""),
+    /** "HH:mm" formatında, opsiyonel. Vefatlarda cenaze namazı saati,
+     * düğün/nişan/etkinlikte başlangıç saati olarak kullanılır. */
+    startTime: varchar("start_time", { length: 5 }).notNull().default(""),
+    /** "HH:mm" formatında, opsiyonel. Sadece bitiş saati anlamlıysa
+     * doldurulur (vefat duyurularında genelde boş bırakılır). */
+    endTime: varchar("end_time", { length: 5 }).notNull().default(""),
     location: varchar("location", { length: 191 }).notNull().default(""),
     /** İlgili kişiye ulaşmak için telefon (opsiyonel; tel: linki olarak gösterilir). */
     phone: varchar("phone", { length: 64 }).notNull().default(""),
