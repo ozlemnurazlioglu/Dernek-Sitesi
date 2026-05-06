@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-time-input";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
@@ -211,14 +212,10 @@ export default function AdminNewsPage() {
               />
             </Field>
             <Field label="Yayın Tarihi">
-              <Input
-                type="date"
-                value={editing.publishedAt.slice(0, 10)}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    publishedAt: new Date(e.target.value).toISOString(),
-                  })
+              <DateInput
+                valueIso={editing.publishedAt}
+                onChangeIso={(iso) =>
+                  setEditing({ ...editing, publishedAt: iso })
                 }
               />
             </Field>

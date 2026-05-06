@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Calendar, MapPin, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
+import { DateTimeInput } from "@/components/ui/date-time-input";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
@@ -26,13 +27,6 @@ const emptyItem = (defaultCategory: string): EventItem => ({
   registered: 0,
   category: defaultCategory,
 });
-
-const toLocalDateTime = (iso: string) => {
-  const d = new Date(iso);
-  const offset = d.getTimezoneOffset();
-  const localTime = new Date(d.getTime() - offset * 60 * 1000);
-  return localTime.toISOString().slice(0, 16);
-};
 
 export default function AdminEventsPage() {
   const { events, eventCategories, upsertEvent, removeEvent } = useStore();
@@ -199,27 +193,17 @@ export default function AdminEventsPage() {
               />
             </Field>
             <Field label="Başlangıç">
-              <Input
-                type="datetime-local"
-                value={toLocalDateTime(editing.startsAt)}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    startsAt: new Date(e.target.value).toISOString(),
-                  })
+              <DateTimeInput
+                valueIso={editing.startsAt}
+                onChangeIso={(iso) =>
+                  setEditing({ ...editing, startsAt: iso })
                 }
               />
             </Field>
             <Field label="Bitiş">
-              <Input
-                type="datetime-local"
-                value={toLocalDateTime(editing.endsAt)}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    endsAt: new Date(e.target.value).toISOString(),
-                  })
-                }
+              <DateTimeInput
+                valueIso={editing.endsAt}
+                onChangeIso={(iso) => setEditing({ ...editing, endsAt: iso })}
               />
             </Field>
             <Field label="Kontenjan">
