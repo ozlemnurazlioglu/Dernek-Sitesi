@@ -52,5 +52,6 @@ next-env.d.ts
 
 # cPanel'e yüklemek üzere üretilen build tarball'ı (her release için yeniden üretilir)
 /next-build.tar.gz
+/migration-*.tar.gz
 
 .vercel

@@ -99,6 +99,7 @@ export function ContentListAdmin({
     "finance-items": "financeItems",
     "announcement-categories": "announcementCategories",
     announcements: "announcements",
+    "bank-accounts": "bankAccounts",
     "sponsor-tiers": "sponsorTiers",
     sponsors: "sponsors",
     neighborhoods: "neighborhoods",

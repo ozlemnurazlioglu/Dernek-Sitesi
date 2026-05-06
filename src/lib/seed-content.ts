@@ -15,6 +15,7 @@ import type {
   Announcement,
   AnnouncementCategory,
   ApplicationFormText,
+  BankAccount,
   AuthUiText,
   CommonUiText,
   FinanceItem,
@@ -65,10 +66,6 @@ export const seedSiteSettings: SiteSettings = {
   contactWorkingHours: "Hafta içi 09:00 – 18:00",
   mapEmbedUrl:
     "https://maps.google.com/maps?q=Fevzi+%C3%87akmak+Mahallesi+1119+Sokak+Esenler+%C4%B0stanbul&t=&z=15&ie=UTF8&iwloc=&output=embed",
-  bankName: "Ziraat Bankası",
-  bankAccountHolder: "Ordu Kumrulular Eğitim Kültür Yardımlaşma Derneği",
-  bankIban: "TR00 0000 0000 0000 0000 0000 00",
-  bankBranch: "Ordu Şubesi",
   socialFacebook: "https://www.facebook.com/groups/106129852752913/",
   socialInstagram: "https://www.instagram.com/kumrululardernegi",
   socialTwitter: "",
@@ -577,6 +574,21 @@ export const seedAnnouncements: Announcement[] = [
     location: "Kumru Merkez Camii",
     phone: "",
     sort: 60,
+  },
+];
+
+/* ====================== Banka Hesapları ====================== */
+
+export const seedBankAccounts: BankAccount[] = [
+  {
+    id: "bk-1",
+    label: "Genel Bağış Hesabı",
+    bankName: "Ziraat Bankası",
+    bankBranch: "Ordu Şubesi",
+    accountHolder: "Ordu Kumrulular Eğitim Kültür Yardımlaşma Derneği",
+    iban: "TR00 0000 0000 0000 0000 0000 00",
+    note: "Açıklama kısmına 'Bağış' yazmayı unutmayın.",
+    sort: 10,
   },
 ];
 

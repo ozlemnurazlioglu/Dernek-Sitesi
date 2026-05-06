@@ -9,6 +9,7 @@ import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
 import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
 import type {
+  BankAccount,
   CommonUiText,
   DonationSidebar,
   PageHeadersMap,
@@ -17,14 +18,13 @@ import type {
 /**
  * Bağış sayfası — ödeme entegrasyonu içermez.
  *
- * Bağışlar manuel havale ile yapılır. Sayfa yalnızca derneğin banka hesap
- * bilgilerini (banka, şube, hesap sahibi, IBAN) gösterir; bilgiler
- * `Site Ayarları` üzerinden admin tarafından düzenlenir. Tutar seçimi ve
- * "Bağış Yap" butonu bilinçli olarak yoktur — kullanıcı IBAN'ı kopyalayıp
- * dilediği tutarı kendi bankasından yatırır.
+ * Bağışlar manuel havale ile yapılır. Sayfa, derneğin banka hesaplarını
+ * (Bağış / Burs vb.) liste halinde gösterir. Hesaplar admin panelden
+ * (`/admin/banka-hesaplari`) yönetilir; her hesap için Hesap Sahibi ve
+ * IBAN'ın yanında "Kopyala" butonu vardır.
  */
 export default function BagisPage() {
-  const { siteSettings, donationUses, pageBlocks } = useStore();
+  const { bankAccounts, donationUses, pageBlocks } = useStore();
   const sidebar = pageBlocks["donate.sidebar"] as DonationSidebar | undefined;
   const headers = (pageBlocks["page.headers"] as PageHeadersMap | undefined)?.bagis;
   const ui =
@@ -34,8 +34,7 @@ export default function BagisPage() {
     ...(ui.donation ?? {}),
   };
 
-  const [copied, setCopied] = useState(false);
-  const { toast } = useToast();
+  const accounts = [...bankAccounts].sort((a, b) => a.sort - b.sort);
 
   return (
     <>
@@ -45,7 +44,7 @@ export default function BagisPage() {
         breadcrumbs={[{ label: "Ana Sayfa", href: "/" }, { label: "Bağış" }]}
       />
       <Container className="py-10 sm:py-14 grid md:grid-cols-12 gap-6 md:gap-8">
-        <div className="md:col-span-7 min-w-0">
+        <div className="md:col-span-7 min-w-0 space-y-5">
           <div className="rounded-2xl border border-border bg-white p-5 sm:p-7">
             <Badge tone="gold" className="mb-4">
               <Heart className="h-3 w-3" /> Manuel Havale
@@ -54,79 +53,24 @@ export default function BagisPage() {
               {donationUi.bankInfoTitle}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Bağışınızı aşağıdaki banka hesabımıza dilediğiniz tutarda
+              Bağışınızı aşağıdaki banka hesaplarımıza dilediğiniz tutarda
               havale/EFT ile gönderebilirsiniz.
             </p>
-
-            <div className="mt-6 rounded-xl bg-muted/60 border border-border p-4 sm:p-5">
-              <dl className="grid sm:grid-cols-2 gap-4 text-sm">
-                <div className="min-w-0">
-                  <dt className="text-muted-foreground">Banka</dt>
-                  <dd className="font-medium text-brand-900 mt-0.5 break-words">
-                    {siteSettings.bankName}
-                    {siteSettings.bankBranch
-                      ? ` – ${siteSettings.bankBranch}`
-                      : ""}
-                  </dd>
-                </div>
-                <div className="min-w-0">
-                  <dt className="text-muted-foreground">Hesap Sahibi</dt>
-                  <dd className="font-medium text-brand-900 mt-0.5 break-words">
-                    {siteSettings.bankAccountHolder}
-                  </dd>
-                </div>
-                <div className="sm:col-span-2 min-w-0">
-                  <dt className="text-muted-foreground">IBAN</dt>
-                  {/*
-                    Mobil davranış: IBAN ve "Kopyala" butonu alt alta
-                    (column) geçer, IBAN `break-all` ile tüm karakterleriyle
-                    görünür — eski `truncate` IBAN'ı kesip kullanıcıya yarım
-                    gösteriyordu. sm+ ekranda yan yana eski tasarım korunur.
-                  */}
-                  <dd className="mt-1.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 rounded-md bg-white border border-border px-3 py-2.5 sm:py-0 sm:h-11">
-                    <span className="font-mono text-[13px] sm:text-sm font-medium text-brand-900 break-all leading-snug">
-                      {siteSettings.bankIban}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(
-                            siteSettings.bankIban.replace(/\s/g, ""),
-                          );
-                          setCopied(true);
-                          toast({
-                            tone: "success",
-                            title: donationUi.copyToastTitle,
-                          });
-                          setTimeout(() => setCopied(false), 1500);
-                        } catch {
-                          toast({
-                            tone: "error",
-                            title: donationUi.copyToastError,
-                          });
-                        }
-                      }}
-                      className="self-end sm:self-auto inline-flex items-center gap-1.5 text-brand-700 hover:text-brand-900 text-xs font-medium shrink-0"
-                    >
-                      {copied ? (
-                        <>
-                          <CheckCircle2 className="h-4 w-4" /> Kopyalandı
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-4 w-4" /> Kopyala
-                        </>
-                      )}
-                    </button>
-                  </dd>
-                </div>
-              </dl>
-              <p className="mt-4 text-xs text-muted-foreground">
-                {donationUi.bankNote}
-              </p>
-            </div>
           </div>
+
+          {accounts.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-white p-5 sm:p-7 text-sm text-muted-foreground">
+              Henüz banka hesabı eklenmemiş.
+            </div>
+          ) : (
+            accounts.map((acc) => (
+              <BankAccountCard
+                key={acc.id}
+                account={acc}
+                fallbackNote={donationUi.bankNote}
+              />
+            ))
+          )}
         </div>
 
         <aside className="md:col-span-5 min-w-0 space-y-6">
@@ -158,5 +102,124 @@ export default function BagisPage() {
         </aside>
       </Container>
     </>
+  );
+}
+
+/**
+ * Tek bir banka hesabı kartı. Hesap Sahibi ve IBAN için ayrı "Kopyala"
+ * butonları sunar; geri bildirim her alan için bağımsız çalışsın diye
+ * `copiedKey` state'i hangi alanın kopyalandığını izler.
+ */
+function BankAccountCard({
+  account,
+  fallbackNote,
+}: {
+  account: BankAccount;
+  fallbackNote: string;
+}) {
+  const { toast } = useToast();
+  const [copiedKey, setCopiedKey] = useState<"holder" | "iban" | null>(null);
+
+  const copy = async (
+    key: "holder" | "iban",
+    raw: string,
+    cleaned?: string,
+  ) => {
+    try {
+      await navigator.clipboard.writeText(cleaned ?? raw);
+      setCopiedKey(key);
+      toast({ tone: "success", title: "Kopyalandı" });
+      setTimeout(
+        () => setCopiedKey((prev) => (prev === key ? null : prev)),
+        1500,
+      );
+    } catch {
+      toast({ tone: "error", title: "Kopyalanamadı" });
+    }
+  };
+
+  const note = account.note?.trim() || fallbackNote;
+
+  return (
+    <div className="rounded-2xl border border-border bg-white p-5 sm:p-7">
+      {account.label && (
+        <Badge tone="gold" className="mb-3">
+          {account.label}
+        </Badge>
+      )}
+
+      <div className="rounded-xl bg-muted/60 border border-border p-4 sm:p-5">
+        <dl className="grid sm:grid-cols-2 gap-4 text-sm">
+          {(account.bankName || account.bankBranch) && (
+            <div className="min-w-0">
+              <dt className="text-muted-foreground">Banka</dt>
+              <dd className="font-medium text-brand-900 mt-0.5 break-words">
+                {account.bankName}
+                {account.bankBranch ? ` – ${account.bankBranch}` : ""}
+              </dd>
+            </div>
+          )}
+
+          {account.accountHolder && (
+            <div className="min-w-0">
+              <dt className="text-muted-foreground">Hesap Sahibi</dt>
+              <dd className="mt-1.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 rounded-md bg-white border border-border px-3 py-2.5 sm:py-0 sm:h-11">
+                <span className="text-[13px] sm:text-sm font-medium text-brand-900 break-words leading-snug">
+                  {account.accountHolder}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => copy("holder", account.accountHolder)}
+                  className="self-end sm:self-auto inline-flex items-center gap-1.5 text-brand-700 hover:text-brand-900 text-xs font-medium shrink-0"
+                >
+                  {copiedKey === "holder" ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" /> Kopyalandı
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" /> Kopyala
+                    </>
+                  )}
+                </button>
+              </dd>
+            </div>
+          )}
+
+          {account.iban && (
+            <div className="sm:col-span-2 min-w-0">
+              <dt className="text-muted-foreground">IBAN</dt>
+              <dd className="mt-1.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 rounded-md bg-white border border-border px-3 py-2.5 sm:py-0 sm:h-11">
+                <span className="font-mono text-[13px] sm:text-sm font-medium text-brand-900 break-all leading-snug">
+                  {account.iban}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    copy("iban", account.iban, account.iban.replace(/\s/g, ""))
+                  }
+                  className="self-end sm:self-auto inline-flex items-center gap-1.5 text-brand-700 hover:text-brand-900 text-xs font-medium shrink-0"
+                >
+                  {copiedKey === "iban" ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" /> Kopyalandı
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" /> Kopyala
+                    </>
+                  )}
+                </button>
+              </dd>
+            </div>
+          )}
+        </dl>
+        {note && (
+          <p className="mt-4 text-xs text-muted-foreground break-words">
+            {note}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

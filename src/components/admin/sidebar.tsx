@@ -37,6 +37,7 @@ import {
   Home,
   Image as ImageIcon,
   Film,
+  Landmark,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { useStore } from "@/lib/store";
@@ -89,6 +90,7 @@ const contentItems: ContentItem[] = [
   },
   { href: "/admin/bagis-tutarlari", label: "Bağış Tutarları", icon: HandHeart },
   { href: "/admin/bagis-kullanimi", label: "Bağış Kullanımı", icon: HandHeart },
+  { href: "/admin/banka-hesaplari", label: "Banka Hesapları", icon: Landmark },
   {
     id: "kategoriler",
     label: "Kategoriler",

@@ -145,10 +145,6 @@ export type SiteSettings = {
   contactEmail: string;
   contactWorkingHours: string;
   mapEmbedUrl: string;
-  bankName: string;
-  bankAccountHolder: string;
-  bankIban: string;
-  bankBranch: string;
   socialFacebook: string;
   socialInstagram: string;
   socialTwitter: string;
@@ -251,6 +247,23 @@ export type Announcement = {
    * `tel:` linki olarak gösterilir; tıklandığında telefon tuşlanır.
    */
   phone: string;
+  sort: number;
+};
+
+/**
+ * Banka hesabı — /bagis sayfasında liste halinde gösterilir. Dernek
+ * birden fazla amaca yönelik hesap tutabilir (bağış / burs vb.).
+ */
+export type BankAccount = {
+  id: string;
+  /** Kullanıcıya gösterilen başlık: "Bağış Hesabı", "Burs Hesabı" vb. */
+  label: string;
+  bankName: string;
+  bankBranch: string;
+  accountHolder: string;
+  iban: string;
+  /** Hesap kartının altında gösterilen serbest açıklama notu (opsiyonel). */
+  note: string;
   sort: number;
 };
 

@@ -246,11 +246,9 @@ export const siteSettings = mysqlTable("site_settings", {
   contactEmail: varchar("contact_email", { length: 191 }).notNull(),
   contactWorkingHours: varchar("contact_working_hours", { length: 191 }).notNull(),
   mapEmbedUrl: text("map_embed_url").notNull(),
-  // Banka
-  bankName: varchar("bank_name", { length: 191 }).notNull(),
-  bankAccountHolder: varchar("bank_account_holder", { length: 191 }).notNull(),
-  bankIban: varchar("bank_iban", { length: 64 }).notNull(),
-  bankBranch: varchar("bank_branch", { length: 191 }).notNull(),
+  // Banka bilgileri artık ayrı `bank_accounts` tablosunda tutulur (çoklu
+  // hesap: bağış / burs vb.). Eski `bank_*` kolonları DB'de kalmış olabilir
+  // ama uygulama kullanmıyor.
   // Sosyal
   socialFacebook: varchar("social_facebook", { length: 512 }).notNull().default(""),
   socialInstagram: varchar("social_instagram", { length: 512 }).notNull().default(""),
@@ -494,6 +492,28 @@ export const announcements = mysqlTable(
     index("announcements_cat_idx").on(t.categorySlug),
     index("announcements_sort_idx").on(t.sort),
   ],
+);
+
+/**
+ * Banka hesapları — derneğin birden fazla amaca yönelik hesabı olabilir
+ * (Bağış / Burs / Yardım vb.). /bagis sayfasında liste halinde gösterilir;
+ * her hesabın kendi açıklama notu olabilir (ör. "Açıklamaya Burs Bağışı yazın").
+ */
+export const bankAccounts = mysqlTable(
+  "bank_accounts",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    /** Kullanıcıya gösterilen başlık: "Bağış Hesabı", "Burs Hesabı" vb. */
+    label: varchar("label", { length: 191 }).notNull(),
+    bankName: varchar("bank_name", { length: 191 }).notNull().default(""),
+    bankBranch: varchar("bank_branch", { length: 191 }).notNull().default(""),
+    accountHolder: varchar("account_holder", { length: 191 }).notNull().default(""),
+    iban: varchar("iban", { length: 64 }).notNull().default(""),
+    /** Hesap kartının altında gösterilen serbest açıklama notu (opsiyonel). */
+    note: varchar("note", { length: 500 }).notNull().default(""),
+    sort: int("sort").notNull().default(0),
+  },
+  (t) => [index("bank_accounts_sort_idx").on(t.sort)],
 );
 
 // Mali tablo kalemleri (gelir/gider). /mali-tablo sayfasında yıl bazında listelenir.

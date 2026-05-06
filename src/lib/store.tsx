@@ -15,6 +15,7 @@ import type {
   Announcement,
   AnnouncementCategory,
   ApplicationStatus,
+  BankAccount,
   BoardMember,
   ContactMessage,
   DonationPreset,
@@ -64,6 +65,7 @@ type ContentMap = {
   "finance-items": FinanceItem;
   "announcement-categories": AnnouncementCategory;
   announcements: Announcement;
+  "bank-accounts": BankAccount;
   "sponsor-tiers": SponsorTier;
   sponsors: Sponsor;
   neighborhoods: Neighborhood;
@@ -101,6 +103,7 @@ type State = {
   financeItems: FinanceItem[];
   announcementCategories: AnnouncementCategory[];
   announcements: Announcement[];
+  bankAccounts: BankAccount[];
   sponsorTiers: SponsorTier[];
   sponsors: Sponsor[];
   neighborhoods: Neighborhood[];
@@ -134,6 +137,7 @@ const CONTENT_STATE_KEY: Record<ContentType, keyof State> = {
   "finance-items": "financeItems",
   "announcement-categories": "announcementCategories",
   announcements: "announcements",
+  "bank-accounts": "bankAccounts",
   "sponsor-tiers": "sponsorTiers",
   sponsors: "sponsors",
   neighborhoods: "neighborhoods",
@@ -206,10 +210,6 @@ const fallbackSettings: SiteSettings = {
   contactEmail: "",
   contactWorkingHours: "",
   mapEmbedUrl: "",
-  bankName: "",
-  bankAccountHolder: "",
-  bankIban: "",
-  bankBranch: "",
   socialFacebook: "",
   socialInstagram: "",
   socialTwitter: "",
@@ -256,6 +256,7 @@ const emptyState: State = {
   financeItems: [],
   announcementCategories: [],
   announcements: [],
+  bankAccounts: [],
   sponsorTiers: [],
   sponsors: [],
   neighborhoods: [],
@@ -324,6 +325,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         financeItems: data.financeItems ?? [],
         announcementCategories: data.announcementCategories ?? [],
         announcements: data.announcements ?? [],
+        bankAccounts: data.bankAccounts ?? [],
         sponsorTiers: data.sponsorTiers ?? [],
         sponsors: data.sponsors ?? [],
         neighborhoods: data.neighborhoods ?? [],
