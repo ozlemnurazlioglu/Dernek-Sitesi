@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
-import { formatDateTimeTR } from "@/lib/utils";
+import { formatEventRangeTR } from "@/lib/utils";
 import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
 import type { CommonUiText, PageHeadersMap } from "@/lib/types";
 
@@ -107,10 +107,12 @@ export default function EtkinliklerPage() {
                 <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
                   {event.description}
                 </p>
-                <div className="mt-5 grid sm:grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="h-4 w-4 text-brand-600" />
-                    <span>{formatDateTimeTR(event.startsAt)}</span>
+                <div className="mt-5 space-y-2 text-sm">
+                  <div className="flex items-start gap-2 text-muted-foreground">
+                    <Calendar className="h-4 w-4 text-brand-600 shrink-0 mt-0.5" />
+                    <span className="break-words">
+                      {formatEventRangeTR(event.startsAt, event.endsAt)}
+                    </span>
                   </div>
                   {event.location ? (
                     <a
@@ -118,15 +120,15 @@ export default function EtkinliklerPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       title="Haritada aç"
-                      className="flex items-center gap-2 text-muted-foreground hover:text-brand-700 hover:underline min-w-0"
+                      className="flex items-start gap-2 text-muted-foreground hover:text-brand-700 hover:underline min-w-0"
                     >
-                      <MapPin className="h-4 w-4 text-brand-600 shrink-0" />
-                      <span className="truncate">{event.location}</span>
+                      <MapPin className="h-4 w-4 text-brand-600 shrink-0 mt-0.5" />
+                      <span className="break-words">{event.location}</span>
                     </a>
                   ) : (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <MapPin className="h-4 w-4 text-brand-600" />
-                      <span className="truncate">—</span>
+                    <div className="flex items-start gap-2 text-muted-foreground">
+                      <MapPin className="h-4 w-4 text-brand-600 shrink-0 mt-0.5" />
+                      <span>—</span>
                     </div>
                   )}
                 </div>

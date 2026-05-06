@@ -24,6 +24,40 @@ export function formatDateTimeTR(value: string | Date) {
   }).format(date);
 }
 
+/**
+ * Etkinlikler için başlangıç–bitiş aralığını derli toplu yazar.
+ *  - Aynı gün → "21 Haziran 2026 · 08:00 – 18:00"
+ *  - Farklı gün → "21 Haziran 2026 08:00 – 22 Haziran 2026 18:00"
+ *  - Bitiş yoksa veya geçersizse sadece başlangıcı döner.
+ * Türkçe `Intl.DateTimeFormat` aynı locale'i kullandığı için tarayıcı
+ * locale'inden bağımsız aynı sonucu üretir.
+ */
+export function formatEventRangeTR(
+  startValue: string | Date,
+  endValue?: string | Date | null,
+) {
+  const start = typeof startValue === "string" ? new Date(startValue) : startValue;
+  if (!endValue) return formatDateTimeTR(start);
+  const end = typeof endValue === "string" ? new Date(endValue) : endValue;
+  if (Number.isNaN(end.getTime())) return formatDateTimeTR(start);
+
+  const sameDay =
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getDate() === end.getDate();
+
+  const time = (d: Date) =>
+    new Intl.DateTimeFormat("tr-TR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(d);
+
+  if (sameDay) {
+    return `${formatDateTR(start)} · ${time(start)} – ${time(end)}`;
+  }
+  return `${formatDateTimeTR(start)} – ${formatDateTimeTR(end)}`;
+}
+
 export function formatCurrencyTR(amount: number) {
   return new Intl.NumberFormat("tr-TR", {
     style: "currency",
