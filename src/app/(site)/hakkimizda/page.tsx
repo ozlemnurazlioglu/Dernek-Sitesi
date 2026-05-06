@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Award,
   Building2,
   Eye,
   HandHeart,
@@ -20,8 +19,7 @@ import type {
 } from "@/lib/types";
 
 export default function HakkimizdaPage() {
-  const { siteSettings, pageBlocks, boardMembers, milestones, activityReports } =
-    useStore();
+  const { siteSettings, pageBlocks, milestones, activityReports } = useStore();
 
   const values = (pageBlocks["about.values"] as AboutCard[]) ?? [];
   const historyIntro = pageBlocks["about.history_intro"] as
@@ -64,41 +62,6 @@ export default function HakkimizdaPage() {
               </div>
             );
           })}
-        </Container>
-      </section>
-
-      <section className="bg-muted/40 border-y border-border" id="yonetim">
-        <Container className="py-20">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <Badge tone="gold" className="mb-3">
-              <Award className="h-3 w-3" /> Geçmiş Dönem Başkanlarımız
-            </Badge>
-            <h2 className="text-3xl md:text-4xl font-semibold text-brand-900">
-              Bu yolda birlikte yürüdüğümüz isimler
-            </h2>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {boardMembers.map((m) => (
-              <div
-                key={m.id}
-                className="rounded-2xl bg-white border border-border p-6"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={m.avatar}
-                  alt={m.name}
-                  className="h-20 w-20 rounded-full object-cover ring-4 ring-brand-50"
-                />
-                <h3 className="text-base font-semibold text-brand-900 mt-4">
-                  {m.name}
-                </h3>
-                <div className="text-sm text-gold-600 font-medium">{m.role}</div>
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                  {m.bio}
-                </p>
-              </div>
-            ))}
-          </div>
         </Container>
       </section>
 
