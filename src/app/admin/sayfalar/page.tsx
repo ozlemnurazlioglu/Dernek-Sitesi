@@ -82,6 +82,11 @@ export default function SayfalarPage() {
             title="Ana Sayfa — Hakkımızda Bölüm Başlığı"
             description="Hakkımızda kartlarının üst başlık alanı."
           />
+          <SectionHeadingEditor
+            blockKey="home.about_cards_heading"
+            title="Ana Sayfa — Hakkımızda Kartları Üst Başlığı"
+            description="Sağdaki 4 kartın hemen üstünde çıkan ikinci bir başlık (üst etiket + başlık + açıklama). Üçü de boş bırakılırsa bu blok gizlenir."
+          />
           <AboutCardListEditor
             blockKey="home.about_cards"
             title="Ana Sayfa — Hakkımızda Kartları"

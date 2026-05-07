@@ -87,6 +87,25 @@ export function SiteHeader() {
     setOpenSubmenuIdx(null);
   }, [pathname]);
 
+  /**
+   * Mobil menü (overlay) açıkken arka plandaki sayfa scroll'unu kilitleriz.
+   * Aksi halde menü uzun olduğunda kullanıcı menünün altına ulaşmak için
+   * tüm sayfayı kaydırmak zorunda kalıyordu (header üzerine geliyor diye
+   * şikayet edildi). Body lock + menü kendi içinde overflow-y-auto ile
+   * artık menü kendi içinde kayar, header sabit kalır.
+   */
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const body = document.body;
+    if (open) {
+      const prev = body.style.overflow;
+      body.style.overflow = "hidden";
+      return () => {
+        body.style.overflow = prev;
+      };
+    }
+  }, [open]);
+
   // Adaptif sıkıştırma: row + nav + sağ blok genişliklerini ölç, gerekirse
   // hamburger moduna geç. Off-screen ölçüm konteyneri sayesinde nav görünür
   // değilken bile "sığar mıydı?" sorusuna cevap verebiliyoruz (state flicker
@@ -391,11 +410,21 @@ export function SiteHeader() {
       {open && (
         <div
           className={cn(
-            "border-t border-border bg-white",
+            // Mobil menü: header altına yapışan, kendi içinde scrollable bir
+            // overlay panel. `fixed` ile sayfa scroll'undan bağımsız; alt
+            // sınırı viewport'a dayanır → menü çok uzun olsa bile sadece
+            // panel içinde kayar, sayfa hareket etmez.
+            // Top değeri sticky header'ın yüksekliğine eşit:
+            //   - Mobil (<md): topbar gizli, sadece h-16 nav → 64px
+            //   - md+: topbar h-9 (36px) + nav h-[72px] → 108px
+            // Header `sticky top-0` olduğu için bu değerler scroll'dan
+            // bağımsız sabit kalır.
+            "fixed left-0 right-0 top-16 md:top-[108px] bottom-0 z-50",
+            "border-t border-border bg-white overflow-y-auto overscroll-contain",
             autoCompact === true ? "" : "min-[1400px]:hidden",
           )}
         >
-          <div className="mx-auto max-w-[1500px] px-4 sm:px-6 py-4 flex flex-col gap-1">
+          <div className="mx-auto max-w-[1500px] px-4 sm:px-6 py-4 flex flex-col gap-1 pb-10">
             {navigation.map((item, idx) => {
               const active =
                 item.href === "/"

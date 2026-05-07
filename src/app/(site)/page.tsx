@@ -96,6 +96,12 @@ export default function HomePage() {
     | SectionHeading
     | undefined;
   const aboutCards = (pageBlocks["home.about_cards"] as AboutCard[]) ?? [];
+  // Sağ taraftaki kart grid'inin üstüne çıkan opsiyonel mini başlık.
+  // Kullanıcı "Faaliyet Alanlarımız" gibi bir alt-başlık + açıklama yazdırmak
+  // istedi. Block tanımlı değilse hiç render edilmez (geriye dönük uyum).
+  const aboutCardsHeading = pageBlocks["home.about_cards_heading"] as
+    | SectionHeading
+    | undefined;
   const programsSection = pageBlocks["home.programs_section"] as
     | SectionHeading
     | undefined;
@@ -159,7 +165,11 @@ export default function HomePage() {
         return hero ? <Hero hero={hero} settings={siteSettings} /> : null;
       case "about":
         return aboutSection ? (
-          <AboutPreview heading={aboutSection} cards={aboutCards} />
+          <AboutPreview
+            heading={aboutSection}
+            cards={aboutCards}
+            cardsHeading={aboutCardsHeading}
+          />
         ) : null;
       case "programs":
         return programsSection ? (
@@ -618,12 +628,21 @@ function Hero({ hero, settings }: { hero: HeroBlock; settings: SiteSettings }) {
 function AboutPreview({
   heading,
   cards,
+  cardsHeading,
 }: {
   heading: SectionHeading;
   cards: AboutCard[];
+  cardsHeading?: SectionHeading;
 }) {
   // İkonlar emoji olarak saklanır; eski kart yapısını korumak için fallback ikon var.
   const fallbackIcons = [GraduationCap, BookOpen, HandHeart, Users];
+  // cardsHeading bloğu: en az bir alanı doluysa kartların üstüne mini başlık
+  // bloğu çıkarırız. Üçü de boşsa eski tek-kolonlu görünüm korunur.
+  const showCardsHeading = Boolean(
+    cardsHeading?.eyebrow?.trim() ||
+      cardsHeading?.title?.trim() ||
+      cardsHeading?.description?.trim(),
+  );
   return (
     <section>
       <Container className="py-20 grid md:grid-cols-12 gap-10 items-start">
@@ -642,26 +661,47 @@ function AboutPreview({
             Detaylı Bilgi
           </ButtonLink>
         </div>
-        <div className="md:col-span-7 grid sm:grid-cols-2 gap-4">
-          {cards.map((card, i) => {
-            const Icon = fallbackIcons[i % fallbackIcons.length];
-            return (
-              <div
-                key={card.title}
-                className="rounded-xl border border-border bg-white p-5 hover:shadow-md hover:-translate-y-0.5 transition-all"
-              >
-                <div className="h-10 w-10 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center text-xl">
-                  {card.icon ? card.icon : <Icon className="h-5 w-5" />}
+        <div className="md:col-span-7">
+          {showCardsHeading && (
+            <div className="mb-6">
+              {cardsHeading?.eyebrow?.trim() && (
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-gold-600">
+                  {cardsHeading.eyebrow}
                 </div>
-                <h3 className="text-base font-semibold text-brand-900 mt-4">
-                  {card.title}
+              )}
+              {cardsHeading?.title?.trim() && (
+                <h3 className="text-2xl md:text-[26px] font-semibold text-brand-900 mt-1.5 leading-tight">
+                  {cardsHeading.title}
                 </h3>
-                <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                  {card.text}
+              )}
+              {cardsHeading?.description?.trim() && (
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-2xl">
+                  {cardsHeading.description}
                 </p>
-              </div>
-            );
-          })}
+              )}
+            </div>
+          )}
+          <div className="grid sm:grid-cols-2 gap-4">
+            {cards.map((card, i) => {
+              const Icon = fallbackIcons[i % fallbackIcons.length];
+              return (
+                <div
+                  key={card.title}
+                  className="rounded-xl border border-border bg-white p-5 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                >
+                  <div className="h-10 w-10 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center text-xl">
+                    {card.icon ? card.icon : <Icon className="h-5 w-5" />}
+                  </div>
+                  <h3 className="text-base font-semibold text-brand-900 mt-4">
+                    {card.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                    {card.text}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </Container>
     </section>

@@ -804,6 +804,13 @@ export const seedPageBlocks: Record<string, unknown> = {
     { icon: "👥", title: "Gönüllülük", text: "Üyelerimizle birlikte yıl içinde 50+ etkinlik ve atölye düzenliyoruz." },
   ] satisfies AboutCard[],
 
+  "home.about_cards_heading": {
+    eyebrow: "Faaliyet Alanlarımız",
+    title: "Birlikte yaptıklarımız",
+    description:
+      "Eğitim, kültür ve dayanışma temasında öne çıkardığımız çalışma başlıklarımız.",
+  } satisfies SectionHeading,
+
   "home.programs_section": {
     eyebrow: "Burs Programları",
     title: "Eğitim hayatına kesintisiz destek",

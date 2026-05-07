@@ -120,27 +120,44 @@ export default function HakkimizdaPage() {
               </ul>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              {activityReports.map((r) => (
-                <div
-                  key={r.id}
-                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 hover:bg-white/[0.06] transition-colors"
-                >
-                  <div className="text-xs uppercase tracking-widest text-white/50 break-words">
-                    {r.label?.trim() || "Faaliyet Raporu"}
-                  </div>
-                  <div className="text-3xl font-semibold mt-2 break-words">
-                    {r.year}
-                  </div>
-                  <a
-                    href={r.pdfUrl || "#"}
-                    target={r.pdfUrl && r.pdfUrl !== "#" ? "_blank" : undefined}
-                    rel="noreferrer"
-                    className="mt-4 text-sm font-medium text-gold-300 hover:text-gold-200 inline-flex items-center"
+              {activityReports.map((r) => {
+                // pdfUrl boş veya "#" ise dosya yüklenmemiş demektir; linki
+                // tıklanamaz hâle getirip kullanıcıyı yanıltmıyoruz. Ayrıca
+                // gerçek bir URL varsa `download` attribute'u ile tarayıcıyı
+                // dosyayı indirmeye yönlendiriyoruz (aksi halde bazı tarayıcılar
+                // PDF'yi yeni sekmede açıp bırakıyordu).
+                const hasPdf = Boolean(
+                  r.pdfUrl && r.pdfUrl.trim() && r.pdfUrl.trim() !== "#",
+                );
+                return (
+                  <div
+                    key={r.id}
+                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 hover:bg-white/[0.06] transition-colors"
                   >
-                    PDF olarak indir →
-                  </a>
-                </div>
-              ))}
+                    <div className="text-xs uppercase tracking-widest text-white/50 break-words">
+                      {r.label?.trim() || "Faaliyet Raporu"}
+                    </div>
+                    <div className="text-3xl font-semibold mt-2 break-words">
+                      {r.year}
+                    </div>
+                    {hasPdf ? (
+                      <a
+                        href={r.pdfUrl}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        download
+                        className="mt-4 text-sm font-medium text-gold-300 hover:text-gold-200 inline-flex items-center"
+                      >
+                        PDF olarak indir →
+                      </a>
+                    ) : (
+                      <span className="mt-4 text-sm font-medium text-white/40 inline-flex items-center">
+                        Yakında yüklenecek
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </Container>
         </section>
