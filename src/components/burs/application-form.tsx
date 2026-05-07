@@ -83,6 +83,23 @@ type FormData = Omit<
 };
 
 /**
+ * Form'un yeni başvuru ya da var olan bir başvurunun güncellemesi
+ * için kullanılacağını belirtir.
+ *
+ *   "new"  → POST /api/applications
+ *   "edit" → PUT  /api/applications/{id}
+ */
+export type ApplicationFormMode = "new" | "edit";
+
+export type ApplicationFormProps = {
+  mode?: ApplicationFormMode;
+  /** edit modunda zorunlu: hangi başvurunun düzenleneceği. */
+  applicationId?: string;
+  /** Form alanları için başlangıç değerleri (mevcut başvurunun snapshot'ı). */
+  initial?: ScholarshipApplication;
+};
+
+/**
  * Başvuru formundaki dosya yükleme alanlarını tanımlayan, admin tarafından
  * "İstenen Belgeler" sayfasından düzenlenen liste boşsa kullanılan yedek
  * varsayılan. Üretimde gerçekçi bir liste kayıtlı olduğu sürece görünmez.
@@ -101,7 +118,7 @@ const FALLBACK_DOCS: {
   },
 ];
 
-const initialData = (): FormData => ({
+const blankData = (): FormData => ({
   fullName: "",
   nationalId: "",
   birthDate: "",
@@ -130,6 +147,45 @@ const initialData = (): FormData => ({
   documents: {},
 });
 
+/**
+ * Mevcut bir başvurudan form state üretir. `app.documents` zaten
+ * `Partial<Record<DocumentKey, ApplicationDocument>>` formatında
+ * geldiği için kopyalamak yeterli.
+ */
+const dataFromApplication = (app: ScholarshipApplication): FormData => {
+  const docs: Partial<Record<DocumentKey, ApplicationDocument>> = {
+    ...(app.documents ?? {}),
+  };
+  return {
+    fullName: app.fullName,
+    nationalId: app.nationalId,
+    birthDate: app.birthDate,
+    gender: app.gender,
+    email: app.email,
+    phone: app.phone,
+    address: app.address,
+    city: app.city,
+    schoolType: app.schoolType,
+    schoolName: app.schoolName,
+    department: app.department,
+    grade: app.grade,
+    gpa: app.gpa,
+    fatherName: app.fatherName,
+    fatherJob: app.fatherJob,
+    fatherIncome: app.fatherIncome,
+    motherName: app.motherName,
+    motherJob: app.motherJob,
+    motherIncome: app.motherIncome,
+    siblings: app.siblings,
+    workingMembers: app.workingMembers,
+    previousScholarship: app.previousScholarship,
+    previousScholarshipDetail: app.previousScholarshipDetail ?? "",
+    iban: app.iban,
+    motivationLetter: app.motivationLetter,
+    documents: docs,
+  };
+};
+
 const STEP_DEFS = [
   { key: "personal", icon: User },
   { key: "education", icon: GraduationCap },
@@ -140,15 +196,21 @@ const STEP_DEFS = [
 
 type StepKey = (typeof STEP_DEFS)[number]["key"];
 
-export function ApplicationForm() {
+export function ApplicationForm({
+  mode = "new",
+  applicationId,
+  initial,
+}: ApplicationFormProps = {}) {
   const router = useRouter();
   const {
     currentUser,
     submitApplication,
+    updateApplication,
     pageBlocks,
     requiredDocuments,
   } = useStore();
   const { toast } = useToast();
+  const isEdit = mode === "edit";
   const formText =
     (pageBlocks["burs.application_form"] as ApplicationFormText | undefined) ??
     DEFAULT_FORM_TEXT;
@@ -166,10 +228,13 @@ export function ApplicationForm() {
       }))
     : FALLBACK_DOCS;
   const [step, setStep] = useState(0);
-  const [data, setData] = useState<FormData>(initialData);
+  const [data, setData] = useState<FormData>(() =>
+    initial ? dataFromApplication(initial) : blankData(),
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submittedId, setSubmittedId] = useState<string | null>(null);
+  const [updatedOk, setUpdatedOk] = useState(false);
   // Şu anda sunucuya yüklenmekte olan belgeler — bu süre boyunca alanın
   // üzerinde spinner gösterip yeniden seçim engellenir.
   const [uploadingKeys, setUploadingKeys] = useState<Set<DocumentKey>>(
@@ -177,6 +242,7 @@ export function ApplicationForm() {
   );
 
   useEffect(() => {
+    if (isEdit) return; // edit modunda mevcut başvurunun verisi korunur
     if (currentUser) {
       setData((prev) => ({
         ...prev,
@@ -186,7 +252,7 @@ export function ApplicationForm() {
         city: prev.city || currentUser.city || "",
       }));
     }
-  }, [currentUser]);
+  }, [currentUser, isEdit]);
 
   const update = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setData((prev) => ({ ...prev, [key]: value }));
@@ -260,8 +326,7 @@ export function ApplicationForm() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const application = await submitApplication({
-        applicantId: currentUser?.id,
+      const payload = {
         fullName: data.fullName,
         nationalId: data.nationalId,
         birthDate: data.birthDate,
@@ -288,19 +353,39 @@ export function ApplicationForm() {
         iban: data.iban,
         motivationLetter: data.motivationLetter,
         documents: data.documents,
-      });
-      setSubmittedId(application.id);
-      toast({
-        tone: "success",
-        title: "Başvurunuz alındı",
-        description: `Başvuru numaranız: ${application.id}`,
-      });
+      };
+
+      if (isEdit && applicationId) {
+        await updateApplication(applicationId, payload);
+        setUpdatedOk(true);
+        toast({
+          tone: "success",
+          title: "Başvurunuz güncellendi",
+          description: "Yaptığınız değişiklikler kaydedildi.",
+        });
+      } else {
+        const application = await submitApplication({
+          applicantId: currentUser?.id,
+          ...payload,
+        });
+        setSubmittedId(application.id);
+        toast({
+          tone: "success",
+          title: "Başvurunuz alındı",
+          description: `Başvuru numaranız: ${application.id}`,
+        });
+      }
     } catch (err) {
-      console.error("Başvuru gönderilemedi:", err);
+      console.error(
+        isEdit ? "Başvuru güncellenemedi:" : "Başvuru gönderilemedi:",
+        err,
+      );
+      const e = err as { message?: string; code?: string };
       toast({
         tone: "error",
-        title: "Başvuru gönderilemedi",
+        title: isEdit ? "Başvuru güncellenemedi" : "Başvuru gönderilemedi",
         description:
+          e?.message ||
           "Bir aksilik oldu. Lütfen birkaç saniye sonra tekrar deneyin.",
       });
     } finally {
@@ -407,6 +492,10 @@ export function ApplicationForm() {
         onView={() => router.push("/hesabim")}
       />
     );
+  }
+
+  if (updatedOk) {
+    return <UpdatedScreen onView={() => router.push("/hesabim")} />;
   }
 
   return (
@@ -910,7 +999,9 @@ export function ApplicationForm() {
               rightIcon={<ArrowRight className="h-4 w-4" />}
             >
               {step === steps.length - 1
-                ? formText.buttons.submit
+                ? isEdit
+                  ? "Değişiklikleri Kaydet"
+                  : formText.buttons.submit
                 : formText.buttons.next}
             </Button>
           </div>
@@ -936,6 +1027,28 @@ function StepWrap({
         <p className="text-muted-foreground mt-1.5">{description}</p>
       </div>
       {children}
+    </div>
+  );
+}
+
+function UpdatedScreen({ onView }: { onView: () => void }) {
+  return (
+    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-10 text-center">
+      <div className="h-16 w-16 mx-auto rounded-full bg-emerald-600 text-white flex items-center justify-center">
+        <CheckCircle2 className="h-8 w-8" />
+      </div>
+      <h2 className="text-2xl font-semibold text-brand-900 mt-5">
+        Başvurunuz güncellendi
+      </h2>
+      <p className="text-muted-foreground mt-2 max-w-lg mx-auto">
+        Yaptığınız değişiklikler başarıyla kaydedildi. Komisyonumuz güncel
+        bilgileriniz üzerinden değerlendirmesini sürdürecektir.
+      </p>
+      <div className="mt-7 flex items-center justify-center gap-3">
+        <Button variant="primary" onClick={onView}>
+          Hesabıma Git
+        </Button>
+      </div>
     </div>
   );
 }

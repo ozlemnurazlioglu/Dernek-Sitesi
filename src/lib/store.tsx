@@ -174,6 +174,18 @@ type StoreContextValue = State & {
     note?: string,
     score?: number,
   ) => void;
+  /**
+   * Mevcut bir başvurunun alanlarını ve belgelerini günceller.
+   * Owner sadece submitted/in_review durumunda kullanabilir; admin
+   * istediği zaman kullanabilir. Sunucu güvenlik kontrolü yapar.
+   */
+  updateApplication: (
+    id: string,
+    payload: Omit<
+      ScholarshipApplication,
+      "id" | "status" | "submittedAt" | "applicantId" | "reviewedAt" | "reviewerNote" | "score"
+    >,
+  ) => Promise<ScholarshipApplication>;
 
   upsertNews: (item: NewsItem) => void;
   removeNews: (id: string) => void;
@@ -460,6 +472,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return application;
     },
     [currentUser],
+  );
+
+  const updateApplication: StoreContextValue["updateApplication"] = useCallback(
+    async (id, payload) => {
+      const res = await fetch(`/api/applications/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { application?: ScholarshipApplication; error?: string; code?: string }
+        | null;
+      if (!res.ok || !json?.application) {
+        const err = new Error(
+          json?.error || `Başvuru güncellenemedi (HTTP ${res.status})`,
+        ) as Error & { code?: string; status?: number };
+        err.code = json?.code;
+        err.status = res.status;
+        throw err;
+      }
+      const updated = json.application;
+      setState((prev) => ({
+        ...prev,
+        applications: prev.applications.map((a) =>
+          a.id === id ? updated : a,
+        ),
+      }));
+      return updated;
+    },
+    [],
   );
 
   const updateApplicationStatus: StoreContextValue["updateApplicationStatus"] =
@@ -837,6 +880,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       logout,
       submitApplication,
       updateApplicationStatus,
+      updateApplication,
       upsertNews,
       removeNews,
       upsertEvent,
@@ -862,6 +906,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       logout,
       submitApplication,
       updateApplicationStatus,
+      updateApplication,
       upsertNews,
       removeNews,
       upsertEvent,
