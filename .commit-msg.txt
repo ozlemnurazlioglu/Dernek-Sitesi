@@ -1,0 +1,14 @@
+feat(hakkimizda): kart ust etiketi (label) admin panelden yonetilsin
+
+"Hakkimizda > Hesap verebilir" bolumundeki kartlar artik sadece yillik
+faaliyet raporu degil; uyelik formu, kurumsal kimlik gibi her turlu
+PDF belge icin kullanilabilir.
+
+- activity_reports tablosuna `label VARCHAR(128)` (DEFAULT 'Faaliyet Raporu')
+  kolonu eklendi. Migration: scripts/add-activity-report-label.ts
+- ActivityReport tipine ve seed verisine label eklendi.
+- Public hakkimizda kart ust yazisi sabit yerine `r.label`'dan gelir;
+  bos olursa eski "Faaliyet Raporu" davranisina geri duser.
+- Admin /raporlar sayfasi yeniden adlandirildi: "Raporlar & Belgeler".
+  Yeni alan "Ust Etiket"; "Yil" alaninin label'i "Baslik" olarak guncellendi.
+- Sidebar: "Faaliyet Raporlari" -> "Raporlar & Belgeler".

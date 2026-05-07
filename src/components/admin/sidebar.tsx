@@ -75,7 +75,7 @@ const contentItems: ContentItem[] = [
   { href: "/admin/sayfalar", label: "Sayfa İçerikleri", icon: FileText },
   { href: "/admin/yonetim-kurulu", label: "Yönetim Kurulu", icon: UserCog },
   { href: "/admin/tarihce", label: "Tarihçe", icon: History },
-  { href: "/admin/raporlar", label: "Faaliyet Raporları", icon: FileBadge },
+  { href: "/admin/raporlar", label: "Raporlar & Belgeler", icon: FileBadge },
   {
     id: "burs",
     label: "Burs",

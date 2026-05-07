@@ -233,10 +233,10 @@ export const seedMilestones: Milestone[] = [
 ];
 
 export const seedActivityReports: ActivityReport[] = [
-  { id: "r-2024", year: "2024", pdfUrl: "#", sort: 10 },
-  { id: "r-2023", year: "2023", pdfUrl: "#", sort: 20 },
-  { id: "r-2022", year: "2022", pdfUrl: "#", sort: 30 },
-  { id: "r-2021", year: "2021", pdfUrl: "#", sort: 40 },
+  { id: "r-2024", label: "Faaliyet Raporu", year: "2024", pdfUrl: "#", sort: 10 },
+  { id: "r-2023", label: "Faaliyet Raporu", year: "2023", pdfUrl: "#", sort: 20 },
+  { id: "r-2022", label: "Faaliyet Raporu", year: "2022", pdfUrl: "#", sort: 30 },
+  { id: "r-2021", label: "Faaliyet Raporu", year: "2021", pdfUrl: "#", sort: 40 },
 ];
 
 export const seedScholarshipPrograms: ScholarshipProgram[] = [

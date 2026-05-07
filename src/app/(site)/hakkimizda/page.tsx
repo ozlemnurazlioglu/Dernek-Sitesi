@@ -125,10 +125,12 @@ export default function HakkimizdaPage() {
                   key={r.id}
                   className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 hover:bg-white/[0.06] transition-colors"
                 >
-                  <div className="text-xs uppercase tracking-widest text-white/50">
-                    Faaliyet Raporu
+                  <div className="text-xs uppercase tracking-widest text-white/50 break-words">
+                    {r.label?.trim() || "Faaliyet Raporu"}
                   </div>
-                  <div className="text-3xl font-semibold mt-2">{r.year}</div>
+                  <div className="text-3xl font-semibold mt-2 break-words">
+                    {r.year}
+                  </div>
                   <a
                     href={r.pdfUrl || "#"}
                     target={r.pdfUrl && r.pdfUrl !== "#" ? "_blank" : undefined}

@@ -42,7 +42,7 @@ export const contentLists = {
   },
   "activity-reports": {
     table: activityReports,
-    fields: ["id", "year", "pdfUrl", "sort"] as const,
+    fields: ["id", "label", "year", "pdfUrl", "sort"] as const,
   },
   "scholarship-programs": {
     table: scholarshipPrograms,

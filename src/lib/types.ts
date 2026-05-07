@@ -460,6 +460,15 @@ export type Milestone = {
 
 export type ActivityReport = {
   id: string;
+  /**
+   * Kart üstündeki kısa etiket. Örn: "Faaliyet Raporu", "Üyelik Formu",
+   * "Kurumsal Kimlik". Boş gelirse public taraf "Faaliyet Raporu" gösterir.
+   */
+  label: string;
+  /**
+   * Kartın büyük başlığı; yıl ("2024") ya da kısa serbest metin
+   * ("Üyelik Formu 2026", "v2.0") olabilir.
+   */
   year: string;
   pdfUrl: string;
   sort: number;

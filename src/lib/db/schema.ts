@@ -338,12 +338,20 @@ export const milestones = mysqlTable(
   (t) => [index("milestones_sort_idx").on(t.sort)],
 );
 
-// Faaliyet raporları
+// Faaliyet raporları & resmi belgeler
+//
+// `label` kart üstündeki kısa etiket ("Faaliyet Raporu", "Üyelik Formu",
+// "Kurumsal Kimlik" gibi); `year` kartın büyük başlığı (yıl ya da serbest
+// metin olabilir). Aynı tablo hem yıllık raporlar hem de tek seferlik
+// belgeler için kullanılır.
 export const activityReports = mysqlTable(
   "activity_reports",
   {
     id: varchar("id", { length: 64 }).primaryKey(),
-    year: varchar("year", { length: 16 }).notNull(),
+    label: varchar("label", { length: 128 })
+      .notNull()
+      .default("Faaliyet Raporu"),
+    year: varchar("year", { length: 64 }).notNull(),
     pdfUrl: varchar("pdf_url", { length: 512 }).notNull(),
     sort: int("sort").notNull().default(0),
   },
