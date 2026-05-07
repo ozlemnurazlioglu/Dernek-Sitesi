@@ -150,10 +150,15 @@ export default function AdminEventsPage() {
                 className="absolute inset-0 h-full w-full object-cover"
               />
             </div>
-            <div className="flex-1 p-4">
+            {/*
+              `min-w-0` kritik: aksi halde içerideki uzun, boşluksuz konum metni
+              flex item'ı şişirir, kart grid hücresinin dışına taşar ve sağdaki
+              aksiyon butonları (Düzenle / Sil / Kayıtlılar) ekran dışında kalır.
+            */}
+            <div className="flex-1 p-4 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <Badge tone="brand">{event.category}</Badge>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-brand-50 text-brand-700"
                     title="Kayıtlıları gör"
@@ -177,20 +182,22 @@ export default function AdminEventsPage() {
                   </button>
                 </div>
               </div>
-              <h3 className="text-base font-semibold text-brand-900 mt-2 leading-tight line-clamp-2">
+              <h3 className="text-base font-semibold text-brand-900 mt-2 leading-tight line-clamp-2 break-words">
                 {event.title}
               </h3>
               <div className="mt-3 space-y-1 text-xs">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {formatDateTimeTR(event.startsAt)}
+                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">
+                    {formatDateTimeTR(event.startsAt)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate min-w-0">{event.location}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5" />
-                  <span className="truncate">{event.location}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Users className="h-3.5 w-3.5" />
+                  <Users className="h-3.5 w-3.5 shrink-0" />
                   {event.registered} / {event.capacity}
                 </div>
               </div>
