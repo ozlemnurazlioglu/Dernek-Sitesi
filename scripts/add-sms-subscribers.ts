@@ -71,7 +71,7 @@ async function ensureTable(db: Db, sql: Sql) {
 async function ensureSmsSection(db: Db, sql: Sql) {
   console.log("→ page_blocks.home.sms_section kontrol ediliyor...");
   const existing = await db.execute(
-    sql`SELECT \`key\` FROM page_blocks WHERE \`key\` = 'home.sms_section' LIMIT 1`,
+    sql`SELECT block_key FROM page_blocks WHERE block_key = 'home.sms_section' LIMIT 1`,
   );
   if ((await rowsOf(existing)).length > 0) {
     console.log("✓ home.sms_section zaten mevcut, dokunulmadı.");
@@ -80,7 +80,8 @@ async function ensureSmsSection(db: Db, sql: Sql) {
   console.log("→ home.sms_section ekleniyor (varsayılan metinler)...");
   const json = JSON.stringify(DEFAULT_SMS_SECTION);
   await db.execute(
-    sql`INSERT INTO page_blocks (\`key\`, data) VALUES ('home.sms_section', ${json})`,
+    sql`INSERT INTO page_blocks (block_key, data, updated_at)
+        VALUES ('home.sms_section', ${json}, NOW(3))`,
   );
   console.log("✓ home.sms_section eklendi.");
 }
@@ -89,7 +90,7 @@ async function ensureSmsBlockInLayout(db: Db, sql: Sql) {
   console.log("→ page_blocks.home.layout içinde sms_subscribe kontrol...");
   const layoutRows = await rowsOf(
     await db.execute(
-      sql`SELECT data FROM page_blocks WHERE \`key\` = 'home.layout' LIMIT 1`,
+      sql`SELECT data FROM page_blocks WHERE block_key = 'home.layout' LIMIT 1`,
     ),
   );
   if (layoutRows.length === 0) {
@@ -121,7 +122,8 @@ async function ensureSmsBlockInLayout(db: Db, sql: Sql) {
   parsed.items.push({ id: "sms_subscribe", enabled: true });
   const updated = JSON.stringify(parsed);
   await db.execute(
-    sql`UPDATE page_blocks SET data = ${updated} WHERE \`key\` = 'home.layout'`,
+    sql`UPDATE page_blocks SET data = ${updated}, updated_at = NOW(3)
+        WHERE block_key = 'home.layout'`,
   );
   console.log("✓ home.layout sonuna sms_subscribe eklendi.");
 }
