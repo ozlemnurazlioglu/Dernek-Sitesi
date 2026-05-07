@@ -27,17 +27,6 @@ function uniqueId() {
   return `sub_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** MySQL DATETIME(3) formatı: "YYYY-MM-DD HH:MM:SS.mmm" */
-function nowMysql(): string {
-  const d = new Date();
-  const pad = (n: number, w = 2) => String(n).padStart(w, "0");
-  return (
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
-    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.` +
-    `${pad(d.getMilliseconds(), 3)}`
-  );
-}
-
 function isMysqlDuplicateError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const e = err as { code?: string; errno?: number; message?: string };
@@ -96,14 +85,14 @@ export async function POST(req: NextRequest) {
     req.headers.get("x-real-ip") ??
     "";
   const userAgent = req.headers.get("user-agent") ?? "";
-  const now = nowMysql();
+  const now = new Date();
 
   try {
     await db.insert(smsSubscribers).values({
       id: uniqueId(),
       phone,
-      consentAt: now as unknown as Date,
-      createdAt: now as unknown as Date,
+      consentAt: now,
+      createdAt: now,
       ip: ip.slice(0, 64),
       userAgent: userAgent.slice(0, 255),
     });
