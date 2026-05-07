@@ -1532,23 +1532,28 @@ function SmsSubscribeSection({ block }: { block: HomeSmsSubscribeBlock }) {
     };
   }, [block.consentLabel, block.consentLinkLabel]);
 
-  // Türk cep formatı için input maskesi: tüm rakamları toplayıp
-  // "0 555 123 45 67" şeklinde basit gruplama.
+  // Türk cep formatı için input maskesi: input'u her değişiminde
+  // "0 555 123 45 67" şeklinde yeniden gruplandırılır.
+  //
+  // Kritik: input'un kendisi zaten "0 " prefix'i ile basıldığı için
+  // gelen ham değerde o "0" mevcut. Onu rakam olarak yeniden sayarsak
+  // her tuş basışında başa bir "0" daha eklenmiş gibi görünür
+  // ("0 005 55" gibi). Bu nedenle:
+  //   1) tüm rakamları topla
+  //   2) ülke kodu öneklerini at: "+90", "0090" → 12 hane ve "90" başı
+  //   3) baştaki TÜM 0'ları sıyır (görsel "0 " prefix'i sabittir)
+  //   4) en fazla 10 haneye kırp ve grupla.
   function formatVisible(raw: string) {
-    const d = raw.replace(/\D+/g, "").slice(0, 11);
+    let d = raw.replace(/\D+/g, "");
+    if (d.length === 12 && d.startsWith("90")) d = d.slice(2);
+    d = d.replace(/^0+/, "");
+    d = d.slice(0, 10);
     if (d.length === 0) return "";
-    let core = d;
-    if (core.length === 11 && core.startsWith("0")) core = core.slice(1);
-    if (core.length === 10) {
-      return `0 ${core.slice(0, 3)} ${core.slice(3, 6)} ${core.slice(6, 8)} ${core.slice(8, 10)}`.trim();
-    }
-    if (core.length > 6) {
-      return `0 ${core.slice(0, 3)} ${core.slice(3, 6)} ${core.slice(6)}`.trim();
-    }
-    if (core.length > 3) {
-      return `0 ${core.slice(0, 3)} ${core.slice(3)}`.trim();
-    }
-    return `0 ${core}`.trim();
+    if (d.length <= 3) return `0 ${d}`;
+    if (d.length <= 6) return `0 ${d.slice(0, 3)} ${d.slice(3)}`;
+    if (d.length <= 8)
+      return `0 ${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
+    return `0 ${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6, 8)} ${d.slice(8, 10)}`;
   }
 
   async function handleSubmit(e: React.FormEvent) {
