@@ -150,6 +150,7 @@ export function SiteHeader() {
   }, [navigation, currentUser?.id, cfg.ctaButton.visible, cfg.ctaButton.label]);
 
   return (
+    <>
     <header
       className={cn(
         "sticky top-0 z-40 w-full transition-all",
@@ -407,105 +408,13 @@ export function SiteHeader() {
         </div>
       </div>
 
-      {open && (
-        <div
-          className={cn(
-            // Mobil menü: header altına yapışan, kendi içinde scrollable bir
-            // overlay panel. `fixed` ile sayfa scroll'undan bağımsız; alt
-            // sınırı viewport'a dayanır → menü çok uzun olsa bile sadece
-            // panel içinde kayar, sayfa hareket etmez.
-            // Top değeri sticky header'ın yüksekliğine eşit:
-            //   - Mobil (<md): topbar gizli, sadece h-16 nav → 64px
-            //   - md+: topbar h-9 (36px) + nav h-[72px] → 108px
-            // Header `sticky top-0` olduğu için bu değerler scroll'dan
-            // bağımsız sabit kalır.
-            "fixed left-0 right-0 top-16 md:top-[108px] bottom-0 z-50",
-            "border-t border-border bg-white overflow-y-auto overscroll-contain",
-            autoCompact === true ? "" : "min-[1400px]:hidden",
-          )}
-        >
-          <div className="mx-auto max-w-[1500px] px-4 sm:px-6 py-4 flex flex-col gap-1 pb-10">
-            {navigation.map((item, idx) => {
-              const active =
-                item.href === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(item.href);
-              const children = visibleChildren(item);
-              return (
-                <div key={item.href + idx} className="flex flex-col">
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "h-11 px-3 inline-flex items-center text-sm font-medium rounded-md",
-                      active
-                        ? "bg-brand-50 text-brand-900"
-                        : "text-brand-800 hover:bg-brand-50",
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                  {children.length > 0 && (
-                    <ul className="ml-3 mt-0.5 mb-1 border-l border-border pl-3 flex flex-col gap-0.5">
-                      {children.map((child) => {
-                        const childActive = pathname.startsWith(child.href);
-                        return (
-                          <li key={child.href}>
-                            <Link
-                              href={child.href}
-                              className={cn(
-                                "h-10 px-3 inline-flex items-center text-sm rounded-md w-full",
-                                childActive
-                                  ? "bg-brand-50 text-brand-900 font-medium"
-                                  : "text-brand-800/85 hover:bg-brand-50",
-                              )}
-                            >
-                              {child.label}
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-              );
-            })}
-            <div className="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-border">
-              {currentUser ? (
-                <>
-                  <ButtonLink href="/hesabim" variant="outline">
-                    {headerUi.accountMenuTitle}
-                  </ButtonLink>
-                  <button
-                    type="button"
-                    onClick={logout}
-                    className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-md text-sm font-medium border border-border text-red-700 hover:bg-red-50"
-                  >
-                    <LogOut className="h-4 w-4" /> {headerUi.accountMenuLogout}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <ButtonLink href="/giris" variant="outline">
-                    {headerUi.loginButton}
-                  </ButtonLink>
-                  <ButtonLink href="/kayit" variant="primary">
-                    {headerUi.registerButton}
-                  </ButtonLink>
-                </>
-              )}
-              {cfg.ctaButton.visible && (
-                <ButtonLink
-                  href={cfg.ctaButton.href}
-                  variant="gold"
-                  className="col-span-2"
-                >
-                  {headerUi.mobileApplyButton}
-                </ButtonLink>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/*
+        NOT: Mobil menü paneli ESKİDEN burada (header içinde) renderleniyordu.
+        Sticky parent'ın stacking context'i bazı Android tarayıcılarında
+        fixed çocukların viewport-relative konumlanmasını bozuyordu. Şimdi
+        panel `</header>` etiketinden sonra sibling olarak render ediliyor;
+        aşağıya bakın.
+      */}
 
       {/*
         Off-screen ölçüm konteynerleri.
@@ -575,5 +484,107 @@ export function SiteHeader() {
         </div>
       </div>
     </header>
+
+    {/*
+      Mobil menü overlay paneli — header'ın DIŞINDA, body'ye doğrudan
+      sibling olarak render edilir. Sticky header'ın stacking context'inden
+      bağımsız olduğu için fixed pozisyonu her tarayıcıda doğru çalışır.
+      Top değeri sticky header yüksekliğine eşit:
+        - Mobil (<md): topbar gizli, sadece h-16 nav → 64px
+        - md+: topbar h-9 (36px) + nav h-[72px] → 108px
+      Açıkken body scroll'u ayrıca lock edilir (yukarıdaki useEffect),
+      menü kendi içinde kayar.
+    */}
+    {open && (
+      <div
+        className={cn(
+          "fixed left-0 right-0 top-16 md:top-[108px] bottom-0 z-[60]",
+          "border-t border-border bg-white overflow-y-auto overscroll-contain",
+          autoCompact === true ? "" : "min-[1400px]:hidden",
+        )}
+      >
+        <div className="mx-auto max-w-[1500px] px-4 sm:px-6 py-4 flex flex-col gap-1 pb-10">
+          {navigation.map((item, idx) => {
+            const active =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
+            const children = visibleChildren(item);
+            return (
+              <div key={item.href + idx} className="flex flex-col">
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "h-11 px-3 inline-flex items-center text-sm font-medium rounded-md",
+                    active
+                      ? "bg-brand-50 text-brand-900"
+                      : "text-brand-800 hover:bg-brand-50",
+                  )}
+                >
+                  {item.label}
+                </Link>
+                {children.length > 0 && (
+                  <ul className="ml-3 mt-0.5 mb-1 border-l border-border pl-3 flex flex-col gap-0.5">
+                    {children.map((child) => {
+                      const childActive = pathname.startsWith(child.href);
+                      return (
+                        <li key={child.href}>
+                          <Link
+                            href={child.href}
+                            className={cn(
+                              "h-10 px-3 inline-flex items-center text-sm rounded-md w-full",
+                              childActive
+                                ? "bg-brand-50 text-brand-900 font-medium"
+                                : "text-brand-800/85 hover:bg-brand-50",
+                            )}
+                          >
+                            {child.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+          <div className="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-border">
+            {currentUser ? (
+              <>
+                <ButtonLink href="/hesabim" variant="outline">
+                  {headerUi.accountMenuTitle}
+                </ButtonLink>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-md text-sm font-medium border border-border text-red-700 hover:bg-red-50"
+                >
+                  <LogOut className="h-4 w-4" /> {headerUi.accountMenuLogout}
+                </button>
+              </>
+            ) : (
+              <>
+                <ButtonLink href="/giris" variant="outline">
+                  {headerUi.loginButton}
+                </ButtonLink>
+                <ButtonLink href="/kayit" variant="primary">
+                  {headerUi.registerButton}
+                </ButtonLink>
+              </>
+            )}
+            {cfg.ctaButton.visible && (
+              <ButtonLink
+                href={cfg.ctaButton.href}
+                variant="gold"
+                className="col-span-2"
+              >
+                {headerUi.mobileApplyButton}
+              </ButtonLink>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
