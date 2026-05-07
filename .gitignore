@@ -54,4 +54,7 @@ next-env.d.ts
 /next-build.tar.gz
 /migration-*.tar.gz
 
+# Geçici commit mesajı dosyası (git commit -F .commit-msg.txt için)
+/.commit-msg.txt
+
 .vercel
