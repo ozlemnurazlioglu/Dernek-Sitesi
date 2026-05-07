@@ -120,7 +120,7 @@ export function ContentListAdmin({
   function openNew() {
     const blank: Record<string, string> = {};
     for (const f of fields) blank[f.key] = "";
-    blank.sort = String((list[list.length - 1]?.sort ?? 0) + 10);
+    blank.sort = String((list[list.length - 1]?.sort ?? 0) + 1);
     setForm(blank);
     setEditing({ id: "", sort: 0 } as Item);
   }
