@@ -19,7 +19,14 @@ type Db = typeof import("../src/lib/db").db;
 type Sql = typeof import("drizzle-orm").sql;
 
 async function rowsOf(result: unknown): Promise<unknown[]> {
-  if (Array.isArray(result)) return result as unknown[];
+  // Drizzle MySQL2 execute returns [rows, fields] tuple (native mysql2);
+  // some drivers return the rows array directly, and a few wrap them
+  // in `{ rows }`. Cover all three.
+  if (Array.isArray(result)) {
+    const first = (result as unknown[])[0];
+    if (Array.isArray(first)) return first as unknown[];
+    return result as unknown[];
+  }
   if (result && typeof result === "object" && "rows" in result) {
     const r = (result as { rows?: unknown[] }).rows;
     return Array.isArray(r) ? r : [];

@@ -30,7 +30,7 @@ export const DEFAULT_COMMON_UI: CommonUiText = {
     freeNote: "Ücretsiz · Üyelere ücretsiz",
     bookSuccessTitle: "Kaydınız alındı",
     bookSuccessMessage:
-      "Bu bir demo sürümdür. Gerçek kayıt için yetkililerimize ulaşabilirsiniz.",
+      "Etkinliğe kaydınız oluşturuldu. Yetkililerimiz gerektiğinde sizinle iletişime geçecektir.",
   },
 
   account: {
@@ -45,7 +45,7 @@ export const DEFAULT_COMMON_UI: CommonUiText = {
     profileTipTitle: "Profil bilgilerinizi güncel tutun",
     profileTipDescription:
       "Burs ödemeleri, etkinlik kayıtları ve duyuruların size ulaşması için iletişim bilgilerinizi güncel tutmayı unutmayın.",
-    profileTipNote: "(Demo: profil düzenleme bu sürümde dosya tabanlıdır.)",
+    profileTipNote: "",
     reviewerNoteLabel: "Komisyon notu:",
     membershipLabel: "Üyelik:",
     roleAdminLabel: "Yönetici",
@@ -64,7 +64,7 @@ export const DEFAULT_COMMON_UI: CommonUiText = {
     submitButton: "Bağış Yap",
     submitToastTitle: "Online ödeme yakında",
     submitToastMessage:
-      "Demo sürümünde ödeme entegrasyonu pasif. IBAN üzerinden bağış yapabilirsiniz.",
+      "Online ödeme entegrasyonu henüz aktif değil. IBAN üzerinden havale ile bağış yapabilirsiniz.",
     copyToastTitle: "IBAN kopyalandı",
     copyToastError: "Kopyalanamadı",
   },
