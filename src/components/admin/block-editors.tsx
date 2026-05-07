@@ -30,6 +30,7 @@ import type {
   HomeLayoutItem,
   HomeProgramCard,
   HomeScholarshipCTA,
+  HomeSmsSubscribeBlock,
   HomeSponsorsBlock,
   PageHeaderItem,
   PageHeadersMap,
@@ -1083,6 +1084,125 @@ export function DonateCTAEditor() {
             onChange={(e) => setV({ ...v, buttonHref: e.target.value })}
           />
         </Field>
+      </div>
+    </BlockCard>
+  );
+}
+
+/* --------------- Home SMS Subscribe --------------- */
+
+export function HomeSmsSubscribeEditor() {
+  const { pageBlocks, updatePageBlock } = useStore();
+  const fb: HomeSmsSubscribeBlock = {
+    eyebrow: "",
+    title: "",
+    description: "",
+    phonePlaceholder: "",
+    buttonLabel: "",
+    consentLabel: "",
+    consentLinkLabel: "",
+    successMessage: "",
+    alreadyMessage: "",
+    invalidMessage: "",
+    consentRequiredMessage: "",
+  };
+  const [v, setV] = useState<HomeSmsSubscribeBlock>(
+    (pageBlocks["home.sms_section"] as HomeSmsSubscribeBlock) ?? fb,
+  );
+  useEffect(
+    () => setV((pageBlocks["home.sms_section"] as HomeSmsSubscribeBlock) ?? fb),
+    [pageBlocks["home.sms_section"]],
+  );
+
+  return (
+    <BlockCard
+      title="SMS Aboneliği (ana sayfa)"
+      description="Ana sayfadaki SMS aboneliği bölümünün başlıkları, KVKK onay metni ve form geri bildirim mesajları. Onay metnindeki '{kvkk}' yer tutucusu KVKK aydınlatma metninin link'iyle değiştirilir."
+      blockKey="home.sms_section"
+      onSave={() => updatePageBlock("home.sms_section", v)}
+    >
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label="Üst etiket">
+          <Input
+            value={v.eyebrow}
+            onChange={(e) => setV({ ...v, eyebrow: e.target.value })}
+          />
+        </Field>
+        <Field label="Başlık">
+          <Input
+            value={v.title}
+            onChange={(e) => setV({ ...v, title: e.target.value })}
+          />
+        </Field>
+        <div className="sm:col-span-2">
+          <Field label="Açıklama">
+            <Textarea
+              value={v.description}
+              onChange={(e) => setV({ ...v, description: e.target.value })}
+            />
+          </Field>
+        </div>
+        <Field label="Numara placeholder'ı">
+          <Input
+            value={v.phonePlaceholder}
+            onChange={(e) => setV({ ...v, phonePlaceholder: e.target.value })}
+          />
+        </Field>
+        <Field label="Buton metni">
+          <Input
+            value={v.buttonLabel}
+            onChange={(e) => setV({ ...v, buttonLabel: e.target.value })}
+          />
+        </Field>
+        <div className="sm:col-span-2">
+          <Field label="KVKK onay metni — '{kvkk}' link metniyle değiştirilir">
+            <Input
+              value={v.consentLabel}
+              onChange={(e) => setV({ ...v, consentLabel: e.target.value })}
+            />
+          </Field>
+        </div>
+        <Field label="KVKK link etiketi">
+          <Input
+            value={v.consentLinkLabel}
+            onChange={(e) => setV({ ...v, consentLinkLabel: e.target.value })}
+          />
+        </Field>
+        <Field label="Onay verilmediğinde mesaj">
+          <Input
+            value={v.consentRequiredMessage}
+            onChange={(e) =>
+              setV({ ...v, consentRequiredMessage: e.target.value })
+            }
+          />
+        </Field>
+        <div className="sm:col-span-2">
+          <Field label="Başarılı abonelik mesajı">
+            <Textarea
+              rows={2}
+              value={v.successMessage}
+              onChange={(e) => setV({ ...v, successMessage: e.target.value })}
+            />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Numara zaten kayıtlı mesajı">
+            <Textarea
+              rows={2}
+              value={v.alreadyMessage}
+              onChange={(e) => setV({ ...v, alreadyMessage: e.target.value })}
+            />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Geçersiz numara mesajı">
+            <Textarea
+              rows={2}
+              value={v.invalidMessage}
+              onChange={(e) => setV({ ...v, invalidMessage: e.target.value })}
+            />
+          </Field>
+        </div>
       </div>
     </BlockCard>
   );

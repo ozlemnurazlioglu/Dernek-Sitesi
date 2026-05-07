@@ -32,6 +32,7 @@ import type {
   HeroBlock,
   HomeProgramCard,
   HomeScholarshipCTA,
+  HomeSmsSubscribeBlock,
   Milestone,
   Donor,
   Neighborhood,
@@ -891,6 +892,25 @@ export const seedPageBlocks: Record<string, unknown> = {
     title: "Bağışçılarımız",
     description: "Değerli destekçilerimize teşekkür ederiz",
   },
+
+  "home.sms_section": {
+    eyebrow: "Bilgilendirme",
+    title: "SMS aboneliği",
+    description:
+      "Etkinlik, duyuru ve önemli haberlerden ilk siz haberdar olun. Numaranızı bırakın, sadece dernek bilgilendirme mesajlarımızı gönderelim.",
+    phonePlaceholder: "5XX XXX XX XX",
+    buttonLabel: "Abone Ol",
+    consentLabel: "{kvkk}'yı okudum, onaylıyorum.",
+    consentLinkLabel: "KVKK Aydınlatma Metni",
+    successMessage:
+      "Aboneliğiniz alındı. Bilgilendirme mesajlarımız sizinle olacak.",
+    alreadyMessage:
+      "Bu numara zaten abone listemizde. Tekrar kayıt yapmanıza gerek yok.",
+    invalidMessage:
+      "Lütfen geçerli bir TR cep telefonu numarası girin (5XX XXX XX XX).",
+    consentRequiredMessage:
+      "Devam edebilmek için KVKK Aydınlatma Metni'ni onaylamanız gerekir.",
+  } satisfies HomeSmsSubscribeBlock,
 
   "about.values": [
     { icon: "👁️", title: "Vizyonumuz", text: "Eğitim fırsatlarına erişimi engelleyen tüm bariyerlerin kalktığı bir Türkiye." },

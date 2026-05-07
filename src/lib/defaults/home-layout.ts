@@ -23,6 +23,7 @@ export const DEFAULT_HOME_LAYOUT: HomeLayout = {
     { id: "sponsors", enabled: true },
     { id: "donors", enabled: true },
     { id: "donate", enabled: true },
+    { id: "sms_subscribe", enabled: true },
   ],
 };
 
@@ -75,6 +76,11 @@ export const HOME_BLOCK_LABELS: Record<
   donate: {
     label: "Bağış Çağrısı (CTA)",
     description: "Bağış sayfasına yönlendiren çağrı kutusu.",
+  },
+  sms_subscribe: {
+    label: "SMS Aboneliği",
+    description:
+      "Ziyaretçilerin numara bırakıp dernek bilgilendirmelerine abone olduğu form.",
   },
 };
 

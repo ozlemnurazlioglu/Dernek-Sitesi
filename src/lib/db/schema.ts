@@ -682,3 +682,29 @@ export const legalPages = mysqlTable(
   },
   (t) => [index("legal_pages_slug_idx").on(t.slug)],
 );
+
+// SMS aboneleri — ana sayfadaki "SMS Aboneliği" formundan gelen
+// ziyaretçi numaraları. KVKK onayı zorunludur ve `consent_at` alanına
+// onay zamanı yazılır. Aynı numara tekrar abone olamaz (UNIQUE phone).
+//
+// `phone` 10 hane normalize edilmiş TR cep numarasıdır ("5XXXXXXXXX")
+// — 0 önekiyle ya da +90 ile gelse bile API'da normalize edilir.
+//
+// Admin panelinden listelenir, CSV (Excel uyumlu) olarak indirilir ve
+// tek tek silinebilir. Hiçbir SMS sağlayıcı entegrasyonu yoktur; bu
+// tablo sadece numara toplama amaçlıdır.
+export const smsSubscribers = mysqlTable(
+  "sms_subscribers",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    phone: varchar("phone", { length: 16 }).notNull(),
+    consentAt: datetime("consent_at", { fsp: 3 }).notNull(),
+    createdAt: datetime("created_at", { fsp: 3 }).notNull(),
+    ip: varchar("ip", { length: 64 }).notNull().default(""),
+    userAgent: varchar("user_agent", { length: 255 }).notNull().default(""),
+  },
+  (t) => [
+    uniqueIndex("sms_subscribers_phone_uq").on(t.phone),
+    index("sms_subscribers_created_idx").on(t.createdAt),
+  ],
+);

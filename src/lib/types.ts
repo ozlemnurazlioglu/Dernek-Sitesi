@@ -124,6 +124,24 @@ export type EventRegistration = {
   createdAt: string;
 };
 
+/**
+ * Ana sayfadaki "SMS Aboneliği" formundan gelen ziyaretçi numarası.
+ *
+ * `phone` 10 hane normalize edilmiş TR cep numarasıdır ("5XXXXXXXXX").
+ * Görüntüleme/dışa aktarmada `0 5XX XXX XX XX` biçiminde formatlanır.
+ *
+ * Bu kayıtlar bir SMS sağlayıcısına otomatik gönderilmez; sadece
+ * derneğin manuel toplu mesaj gönderimi için Excel'e aktarılır.
+ */
+export type SmsSubscriber = {
+  id: string;
+  phone: string;
+  /** ISO datetime — KVKK onay verme zamanı. */
+  consentAt: string;
+  /** ISO datetime — kayıt zamanı. */
+  createdAt: string;
+};
+
 export type NewsCategory = {
   id: string;
   name: string;
@@ -230,6 +248,34 @@ export type HomeSponsorsBlock = SectionHeading & {
   };
 };
 
+/**
+ * Ana sayfa "SMS Aboneliği" bölümünün metinleri ve durum mesajları.
+ *
+ * Form mantığı sabittir (numara + KVKK checkbox + Abone Ol butonu) ama tüm
+ * görünür yazılar admin panelinden düzenlenebilir. Mesaj metinleri form
+ * sonrası inline geri bildirim olarak gösterilir.
+ */
+export type HomeSmsSubscribeBlock = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  /** Telefon input placeholder'ı (örn: "5XX XXX XX XX"). */
+  phonePlaceholder: string;
+  buttonLabel: string;
+  /** Onay metni — "{kvkk}" yer tutucusu KVKK link'iyle değiştirilir. */
+  consentLabel: string;
+  /** "{kvkk}" link metni (örn: "KVKK Aydınlatma Metni"). */
+  consentLinkLabel: string;
+  /** Başarılı abonelikten sonra gösterilen yeşil banner. */
+  successMessage: string;
+  /** Aynı numara zaten kayıtlıysa gösterilen sarı banner. */
+  alreadyMessage: string;
+  /** Geçersiz numara için kırmızı banner. */
+  invalidMessage: string;
+  /** Onay verilmediğinde gösterilen kırmızı banner. */
+  consentRequiredMessage: string;
+};
+
 /** Hemşehri duyuru kategorisi (Vefat, Düğün, Nişan, Etkinlik vs.). */
 export type AnnouncementCategory = {
   id: string;
@@ -323,7 +369,8 @@ export type HomeBlockId =
   | "announcements"
   | "sponsors"
   | "donors"
-  | "donate";
+  | "donate"
+  | "sms_subscribe";
 
 export type HomeLayoutItem = {
   id: HomeBlockId;

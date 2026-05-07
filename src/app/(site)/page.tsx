@@ -20,6 +20,8 @@ import {
   LayoutGrid,
   Layers,
   Megaphone,
+  MessageCircle,
+  Loader2,
 } from "lucide-react";
 import { Container, SectionHeader } from "@/components/ui/section";
 import { ButtonLink } from "@/components/ui/button";
@@ -48,6 +50,7 @@ import type {
   HomeLayout,
   HomeProgramCard,
   HomeScholarshipCTA,
+  HomeSmsSubscribeBlock,
   HomeSponsorsBlock,
   NewsItem,
   SectionHeading,
@@ -136,6 +139,9 @@ export default function HomePage() {
   const donateCta = pageBlocks["home.donate_cta"] as
     | { title: string; description: string; buttonLabel: string; buttonHref: string }
     | undefined;
+  const smsSection = pageBlocks["home.sms_section"] as
+    | HomeSmsSubscribeBlock
+    | undefined;
 
   /**
    * Ana sayfa blok düzeni — admin panelinden yönetilir. DB'de yoksa veya
@@ -199,6 +205,8 @@ export default function HomePage() {
         ) : null;
       case "donate":
         return donateCta ? <DonateCTA cta={donateCta} /> : null;
+      case "sms_subscribe":
+        return smsSection ? <SmsSubscribeSection block={smsSection} /> : null;
       default:
         return null;
     }
@@ -1477,6 +1485,243 @@ function DonateCTA({
           <ButtonLink href={cta.buttonHref} size="lg" variant="gold">
             {cta.buttonLabel}
           </ButtonLink>
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+/**
+ * Ana sayfa "SMS Aboneliği" bölümü.
+ *
+ * Üye olmayan ziyaretçiler de buradan numara bırakıp dernek bilgilendirme
+ * mesajlarına abone olabilir. KVKK onayı zorunludur; metin admin panelden
+ * düzenlenebilir ve `{kvkk}` yer tutucusu KVKK aydınlatma metninin link'i
+ * ile değiştirilir.
+ *
+ * Form sonucu inline banner olarak gösterilir; aynı numara tekrar gelirse
+ * "zaten kayıtlı" mesajı çıkar (server tarafından 409 ile döner).
+ */
+function SmsSubscribeSection({ block }: { block: HomeSmsSubscribeBlock }) {
+  type Status =
+    | { kind: "idle" }
+    | { kind: "loading" }
+    | { kind: "ok"; message: string }
+    | { kind: "err"; message: string; tone: "warn" | "error" };
+
+  const [phone, setPhone] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [status, setStatus] = useState<Status>({ kind: "idle" });
+
+  // KVKK link metnini consentLabel içindeki "{kvkk}" yer tutucusu ile değiştirip
+  // 3 parçaya ayır; aksi halde tüm metnin sonuna link ekle.
+  const consentParts = useMemo(() => {
+    const placeholder = "{kvkk}";
+    const idx = block.consentLabel.indexOf(placeholder);
+    if (idx === -1) {
+      return {
+        before: block.consentLabel + " ",
+        link: block.consentLinkLabel,
+        after: "",
+      };
+    }
+    return {
+      before: block.consentLabel.slice(0, idx),
+      link: block.consentLinkLabel,
+      after: block.consentLabel.slice(idx + placeholder.length),
+    };
+  }, [block.consentLabel, block.consentLinkLabel]);
+
+  // Türk cep formatı için input maskesi: tüm rakamları toplayıp
+  // "0 555 123 45 67" şeklinde basit gruplama.
+  function formatVisible(raw: string) {
+    const d = raw.replace(/\D+/g, "").slice(0, 11);
+    if (d.length === 0) return "";
+    let core = d;
+    if (core.length === 11 && core.startsWith("0")) core = core.slice(1);
+    if (core.length === 10) {
+      return `0 ${core.slice(0, 3)} ${core.slice(3, 6)} ${core.slice(6, 8)} ${core.slice(8, 10)}`.trim();
+    }
+    if (core.length > 6) {
+      return `0 ${core.slice(0, 3)} ${core.slice(3, 6)} ${core.slice(6)}`.trim();
+    }
+    if (core.length > 3) {
+      return `0 ${core.slice(0, 3)} ${core.slice(3)}`.trim();
+    }
+    return `0 ${core}`.trim();
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (status.kind === "loading") return;
+    if (!consent) {
+      setStatus({
+        kind: "err",
+        message: block.consentRequiredMessage,
+        tone: "error",
+      });
+      return;
+    }
+    setStatus({ kind: "loading" });
+    try {
+      const res = await fetch("/api/sms-subscribers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, consent: true }),
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { ok?: boolean; error?: string; code?: string }
+        | null;
+      if (res.ok && json?.ok) {
+        setStatus({ kind: "ok", message: block.successMessage });
+        setPhone("");
+        setConsent(false);
+        return;
+      }
+      if (res.status === 409 || json?.code === "ALREADY_SUBSCRIBED") {
+        setStatus({
+          kind: "err",
+          message: block.alreadyMessage,
+          tone: "warn",
+        });
+        return;
+      }
+      if (json?.code === "INVALID_PHONE") {
+        setStatus({
+          kind: "err",
+          message: block.invalidMessage,
+          tone: "error",
+        });
+        return;
+      }
+      setStatus({
+        kind: "err",
+        message: json?.error || "Bir sorun oluştu, lütfen tekrar deneyin.",
+        tone: "error",
+      });
+    } catch {
+      setStatus({
+        kind: "err",
+        message: "Bağlantı hatası. Lütfen tekrar deneyin.",
+        tone: "error",
+      });
+    }
+  }
+
+  const loading = status.kind === "loading";
+
+  return (
+    <section className="border-t border-border bg-gradient-to-br from-brand-900 via-brand-800 to-brand-950 text-white">
+      <Container className="py-16 md:py-20">
+        <div className="grid md:grid-cols-12 gap-8 items-center">
+          <div className="md:col-span-6">
+            <Badge tone="gold" className="mb-4 !bg-gold-300/15 !text-gold-100 !border-gold-200/30">
+              <MessageCircle className="h-3 w-3" /> {block.eyebrow}
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-semibold leading-tight">
+              {block.title}
+            </h2>
+            <p className="text-white/75 mt-4 leading-relaxed max-w-xl">
+              {block.description}
+            </p>
+          </div>
+          <div className="md:col-span-6">
+            <form
+              onSubmit={handleSubmit}
+              className="rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-sm p-5 md:p-6"
+              noValidate
+            >
+              <label className="block">
+                <span className="sr-only">Telefon</span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  placeholder={block.phonePlaceholder}
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(formatVisible(e.target.value));
+                    if (status.kind !== "idle") setStatus({ kind: "idle" });
+                  }}
+                  className="w-full h-12 rounded-xl bg-white/10 border border-white/20 px-4 text-base text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-gold-300/60 focus:border-gold-300/40 transition"
+                  disabled={loading}
+                  required
+                  aria-label="Telefon numarası"
+                />
+              </label>
+
+              <label className="mt-3 flex items-start gap-2.5 text-sm text-white/85 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => {
+                    setConsent(e.target.checked);
+                    if (status.kind !== "idle") setStatus({ kind: "idle" });
+                  }}
+                  className="mt-0.5 h-4 w-4 rounded border-white/30 bg-white/10 text-gold-400 focus:ring-gold-300/60 cursor-pointer"
+                  disabled={loading}
+                  aria-required="true"
+                />
+                <span>
+                  {consentParts.before}
+                  <Link
+                    href="/kvkk"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-gold-300 hover:text-gold-200 underline underline-offset-2"
+                  >
+                    {consentParts.link}
+                  </Link>
+                  {consentParts.after}
+                </span>
+              </label>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className={cn(
+                  "mt-4 inline-flex items-center justify-center gap-2 w-full h-12 rounded-xl font-semibold transition-colors",
+                  "bg-gold-400 text-brand-950 hover:bg-gold-300",
+                  loading && "opacity-70 cursor-not-allowed",
+                )}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Gönderiliyor…
+                  </>
+                ) : (
+                  <>
+                    {block.buttonLabel}
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+
+              {status.kind === "ok" && (
+                <div
+                  role="status"
+                  className="mt-4 rounded-xl border border-emerald-300/40 bg-emerald-400/10 text-emerald-100 px-4 py-3 text-sm flex items-start gap-2"
+                >
+                  <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-emerald-300" />
+                  <span>{status.message}</span>
+                </div>
+              )}
+              {status.kind === "err" && (
+                <div
+                  role="alert"
+                  className={cn(
+                    "mt-4 rounded-xl border px-4 py-3 text-sm flex items-start gap-2",
+                    status.tone === "warn"
+                      ? "border-amber-300/40 bg-amber-400/10 text-amber-100"
+                      : "border-rose-300/40 bg-rose-400/10 text-rose-100",
+                  )}
+                >
+                  <span>{status.message}</span>
+                </div>
+              )}
+            </form>
+          </div>
         </div>
       </Container>
     </section>

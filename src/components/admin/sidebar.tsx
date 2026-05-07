@@ -14,6 +14,7 @@ import {
   RefreshCcw,
   Users,
   Mail,
+  MessageCircle,
   ExternalLink,
   X,
   Settings,
@@ -68,6 +69,7 @@ const items: (LeafItem & { exact?: boolean })[] = [
   { href: "/admin/haberler", label: "Haberler", icon: Newspaper },
   { href: "/admin/etkinlikler", label: "Etkinlikler", icon: Calendar },
   { href: "/admin/mesajlar", label: "Mesajlar", icon: Mail },
+  { href: "/admin/sms-aboneleri", label: "SMS Aboneleri", icon: MessageCircle },
 ];
 
 const contentItems: ContentItem[] = [

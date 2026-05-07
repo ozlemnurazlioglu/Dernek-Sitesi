@@ -16,6 +16,7 @@ import {
   HeroEditor,
   HomeLayoutEditor,
   HomeProgramsEditor,
+  HomeSmsSubscribeEditor,
   HomeSponsorsEditor,
   PageHeadersEditor,
   ScholarshipCTAEditor,
@@ -121,6 +122,7 @@ export default function SayfalarPage() {
             description="Bağışçı listesini soldaki 'Bağışçılar' menüsünden yönetin."
           />
           <DonateCTAEditor />
+          <HomeSmsSubscribeEditor />
         </>
       )}
 
