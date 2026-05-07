@@ -112,6 +112,11 @@ type State = {
   photos: Photo[];
   videoCategories: VideoCategory[];
   videos: Video[];
+  /**
+   * Login olan kullanıcının kayıtlı olduğu etkinliklerin id'leri.
+   * Anonim kullanıcı için her zaman boş.
+   */
+  myEventRegistrations: string[];
 };
 
 type LoginResult =
@@ -174,6 +179,15 @@ type StoreContextValue = State & {
   removeNews: (id: string) => void;
   upsertEvent: (item: EventItem) => void;
   removeEvent: (id: string) => void;
+
+  /**
+   * Mevcut kullanıcıyı verilen etkinliğe kaydeder. Sunucu yanıtındaki
+   * `registered` sayısı ile yerel etkinlik state'i ve myEventRegistrations
+   * güncellenir. Kontenjan dolu / zaten kayıtlı durumlarında reject olur.
+   */
+  registerEvent: (eventId: string) => Promise<void>;
+  /** Mevcut kullanıcının verilen etkinlikteki kaydını iptal eder. */
+  cancelEventRegistration: (eventId: string) => Promise<void>;
 
   addMessage: (
     payload: Omit<ContactMessage, "id" | "createdAt" | "read">,
@@ -265,6 +279,7 @@ const emptyState: State = {
   photos: [],
   videoCategories: [],
   videos: [],
+  myEventRegistrations: [],
 };
 
 type BootstrapPayload = State & { currentUser: User | null };
@@ -334,6 +349,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         photos: data.photos ?? [],
         videoCategories: data.videoCategories ?? [],
         videos: data.videos ?? [],
+        myEventRegistrations: data.myEventRegistrations ?? [],
       });
       setCurrentUser(data.currentUser ?? null);
     } catch (err) {
@@ -548,6 +564,70 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .catch(logBgError("removeEvent"));
   }, []);
 
+  const registerEvent: StoreContextValue["registerEvent"] = useCallback(
+    async (eventId) => {
+      const res = await fetch(
+        `/api/events/${encodeURIComponent(eventId)}/register`,
+        { method: "POST", credentials: "same-origin" },
+      );
+      const body = (await res.json().catch(() => null)) as
+        | { ok?: boolean; registered?: number; error?: string; code?: string }
+        | null;
+      if (!res.ok) {
+        const err = new Error(body?.error || `HTTP ${res.status}`) as Error & {
+          code?: string;
+          status?: number;
+        };
+        err.code = body?.code;
+        err.status = res.status;
+        throw err;
+      }
+      const newRegistered = body?.registered;
+      setState((prev) => ({
+        ...prev,
+        events: prev.events.map((e) =>
+          e.id === eventId
+            ? { ...e, registered: newRegistered ?? e.registered + 1 }
+            : e,
+        ),
+        myEventRegistrations: prev.myEventRegistrations.includes(eventId)
+          ? prev.myEventRegistrations
+          : [...prev.myEventRegistrations, eventId],
+      }));
+    },
+    [],
+  );
+
+  const cancelEventRegistration: StoreContextValue["cancelEventRegistration"] =
+    useCallback(async (eventId) => {
+      const res = await fetch(
+        `/api/events/${encodeURIComponent(eventId)}/register`,
+        { method: "DELETE", credentials: "same-origin" },
+      );
+      const body = (await res.json().catch(() => null)) as
+        | { ok?: boolean; registered?: number; error?: string }
+        | null;
+      if (!res.ok) {
+        throw new Error(body?.error || `HTTP ${res.status}`);
+      }
+      const newRegistered = body?.registered;
+      setState((prev) => ({
+        ...prev,
+        events: prev.events.map((e) =>
+          e.id === eventId
+            ? {
+                ...e,
+                registered:
+                  newRegistered ?? Math.max(e.registered - 1, 0),
+              }
+            : e,
+        ),
+        myEventRegistrations: prev.myEventRegistrations.filter(
+          (id) => id !== eventId,
+        ),
+      }));
+    }, []);
+
   const addMessage: StoreContextValue["addMessage"] = useCallback((payload) => {
     const message: ContactMessage = {
       id: `m-${uid()}`,
@@ -761,6 +841,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       removeNews,
       upsertEvent,
       removeEvent,
+      registerEvent,
+      cancelEventRegistration,
       addMessage,
       toggleMessageRead,
       removeMessage,
@@ -784,6 +866,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       removeNews,
       upsertEvent,
       removeEvent,
+      registerEvent,
+      cancelEventRegistration,
       addMessage,
       toggleMessageRead,
       removeMessage,

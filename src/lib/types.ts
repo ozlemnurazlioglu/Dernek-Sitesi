@@ -108,6 +108,22 @@ export type EventItem = {
   category: string;
 };
 
+/**
+ * Admin paneli için etkinlik kayıt detayı. Kullanıcı bilgilerini join ile
+ * çekip tek satırda döneriz; e-posta ve telefon admin'in iletişim için
+ * görmek isteyeceği temel alanlar olduğu için listeye dahildir.
+ */
+export type EventRegistration = {
+  id: string;
+  eventId: string;
+  userId: string;
+  userFullName: string;
+  userEmail: string;
+  userPhone: string;
+  /** ISO datetime */
+  createdAt: string;
+};
+
 export type NewsCategory = {
   id: string;
   name: string;
@@ -784,6 +800,18 @@ export type CommonUiText = {
     freeNote: string;
     bookSuccessTitle: string;
     bookSuccessMessage: string;
+    /** Kullanıcı login değilken kayıt butonuna basınca gösterilen toast başlığı */
+    loginRequiredTitle: string;
+    /** Login zorunluluğu toast'unun açıklaması */
+    loginRequiredMessage: string;
+    /** Kontenjan dolu durumunda butonun gösterdiği yazı */
+    fullButton: string;
+    /** Zaten kayıtlı ise butonun gösterdiği yazı (kayıt iptali için) */
+    cancelButton: string;
+    /** Kayıt iptal edildiğinde gösterilen toast başlığı */
+    cancelSuccessTitle: string;
+    /** Kayıt iptal edildiğinde gösterilen toast mesajı */
+    cancelSuccessMessage: string;
   };
 
   /** /hesabim sayfası */

@@ -27,10 +27,18 @@ export const DEFAULT_COMMON_UI: CommonUiText = {
 
   events: {
     bookButton: "Hemen Kayıt Ol",
-    freeNote: "Ücretsiz · Üyelere ücretsiz",
+    freeNote: "",
     bookSuccessTitle: "Kaydınız alındı",
     bookSuccessMessage:
       "Etkinliğe kaydınız oluşturuldu. Yetkililerimiz gerektiğinde sizinle iletişime geçecektir.",
+    loginRequiredTitle: "Üye girişi gerekli",
+    loginRequiredMessage:
+      "Etkinliğe kayıt olmak için önce üye girişi yapmanız gerekmektedir.",
+    fullButton: "Kontenjan Doldu",
+    cancelButton: "Kaydı İptal Et",
+    cancelSuccessTitle: "Kaydınız iptal edildi",
+    cancelSuccessMessage:
+      "Etkinlik kaydınız başarıyla iptal edildi. Dilerseniz tekrar kayıt olabilirsiniz.",
   },
 
   account: {

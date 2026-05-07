@@ -1,7 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Calendar, MapPin, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Calendar,
+  ListChecks,
+  Mail,
+  MapPin,
+  Pencil,
+  Phone,
+  Plus,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { DateTimeInput } from "@/components/ui/date-time-input";
@@ -10,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
 import { formatDateTimeTR, slugify, uid } from "@/lib/utils";
-import type { EventItem } from "@/lib/types";
+import type { EventItem, EventRegistration } from "@/lib/types";
 import { UploadInput } from "@/components/admin/upload-input";
 
 const emptyItem = (defaultCategory: string): EventItem => ({
@@ -33,7 +43,56 @@ export default function AdminEventsPage() {
   const { toast } = useToast();
   const [editing, setEditing] = useState<EventItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<EventItem | null>(null);
+  const [registrationsFor, setRegistrationsFor] = useState<EventItem | null>(
+    null,
+  );
+  const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
+  const [registrationsLoading, setRegistrationsLoading] = useState(false);
+  const [registrationsError, setRegistrationsError] = useState<string | null>(
+    null,
+  );
   const defaultCategory = eventCategories[0]?.name ?? "Eğitim";
+
+  useEffect(() => {
+    if (!registrationsFor) {
+      setRegistrations([]);
+      setRegistrationsError(null);
+      return;
+    }
+    let cancelled = false;
+    setRegistrationsLoading(true);
+    setRegistrationsError(null);
+    fetch(
+      `/api/admin/events/${encodeURIComponent(registrationsFor.id)}/registrations`,
+      { credentials: "same-origin", cache: "no-store" },
+    )
+      .then(async (r) => {
+        if (!r.ok) {
+          const body = await r.json().catch(() => null);
+          throw new Error(
+            body?.error || `Kayıtlar alınamadı (HTTP ${r.status})`,
+          );
+        }
+        return (await r.json()) as { items: EventRegistration[] };
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setRegistrations(data.items ?? []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setRegistrationsError(
+          err instanceof Error ? err.message : "Kayıtlar alınamadı",
+        );
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setRegistrationsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [registrationsFor]);
 
   const sorted = useMemo(
     () =>
@@ -97,12 +156,21 @@ export default function AdminEventsPage() {
                 <div className="flex items-center gap-1">
                   <button
                     className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-brand-50 text-brand-700"
+                    title="Kayıtlıları gör"
+                    onClick={() => setRegistrationsFor(event)}
+                  >
+                    <ListChecks className="h-4 w-4" />
+                  </button>
+                  <button
+                    className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-brand-50 text-brand-700"
+                    title="Düzenle"
                     onClick={() => setEditing(event)}
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-red-50 text-red-600"
+                    title="Sil"
                     onClick={() => setConfirmDelete(event)}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -285,6 +353,89 @@ export default function AdminEventsPage() {
             <span className="font-semibold">{confirmDelete.title}</span>{" "}
             etkinliğini silmek istediğinize emin misiniz?
           </p>
+        )}
+      </Dialog>
+
+      <Dialog
+        open={!!registrationsFor}
+        onClose={() => setRegistrationsFor(null)}
+        size="lg"
+        title={
+          registrationsFor
+            ? `Kayıtlılar — ${registrationsFor.title}`
+            : "Kayıtlılar"
+        }
+      >
+        {registrationsFor && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="h-4 w-4" />
+              <span>
+                {registrationsFor.registered} / {registrationsFor.capacity}{" "}
+                kayıt
+              </span>
+            </div>
+
+            {registrationsLoading ? (
+              <p className="text-sm text-muted-foreground">Yükleniyor...</p>
+            ) : registrationsError ? (
+              <p className="text-sm text-red-600">{registrationsError}</p>
+            ) : registrations.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Bu etkinliğe henüz kayıt olan üye yok.
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40">
+                    <tr className="text-left">
+                      <th className="px-3 py-2 font-medium text-brand-900">
+                        Ad-Soyad
+                      </th>
+                      <th className="px-3 py-2 font-medium text-brand-900">
+                        İletişim
+                      </th>
+                      <th className="px-3 py-2 font-medium text-brand-900 whitespace-nowrap">
+                        Kayıt Tarihi
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {registrations.map((r) => (
+                      <tr key={r.id} className="border-t border-border">
+                        <td className="px-3 py-2 align-top text-brand-900">
+                          {r.userFullName}
+                        </td>
+                        <td className="px-3 py-2 align-top text-muted-foreground">
+                          <a
+                            href={`mailto:${r.userEmail}`}
+                            className="inline-flex items-center gap-1.5 hover:text-brand-700 break-all"
+                          >
+                            <Mail className="h-3.5 w-3.5 shrink-0" />
+                            {r.userEmail}
+                          </a>
+                          {r.userPhone ? (
+                            <div className="mt-1">
+                              <a
+                                href={`tel:${r.userPhone}`}
+                                className="inline-flex items-center gap-1.5 hover:text-brand-700"
+                              >
+                                <Phone className="h-3.5 w-3.5 shrink-0" />
+                                {r.userPhone}
+                              </a>
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-2 align-top text-muted-foreground whitespace-nowrap">
+                          {formatDateTimeTR(r.createdAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         )}
       </Dialog>
     </div>

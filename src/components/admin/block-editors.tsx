@@ -2250,6 +2250,60 @@ export function CommonUiTextEditor() {
               />
             </Field>
           </div>
+          <Field label="Üye girişi gerekli toast başlığı">
+            <Input
+              value={v.events.loginRequiredTitle}
+              onChange={(e) =>
+                set("events", { loginRequiredTitle: e.target.value })
+              }
+            />
+          </Field>
+          <Field label="Kontenjan doldu butonu">
+            <Input
+              value={v.events.fullButton}
+              onChange={(e) =>
+                set("events", { fullButton: e.target.value })
+              }
+            />
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Üye girişi gerekli toast açıklaması">
+              <Textarea
+                rows={2}
+                value={v.events.loginRequiredMessage}
+                onChange={(e) =>
+                  set("events", { loginRequiredMessage: e.target.value })
+                }
+              />
+            </Field>
+          </div>
+          <Field label="Kaydı iptal et butonu">
+            <Input
+              value={v.events.cancelButton}
+              onChange={(e) =>
+                set("events", { cancelButton: e.target.value })
+              }
+            />
+          </Field>
+          <Field label="Kayıt iptal toast başlığı">
+            <Input
+              value={v.events.cancelSuccessTitle}
+              onChange={(e) =>
+                set("events", { cancelSuccessTitle: e.target.value })
+              }
+            />
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Kayıt iptal toast açıklaması">
+              <Textarea
+                rows={2}
+                value={v.events.cancelSuccessMessage}
+                onChange={(e) =>
+                  set("events", { cancelSuccessMessage: e.target.value })
+                }
+              />
+            </Field>
+          </div>
         </UiGroup>
 
         <UiGroup title="Hesabım">

@@ -10,6 +10,7 @@ import {
   mysqlEnum,
   primaryKey,
   index,
+  uniqueIndex,
   customType,
   timestamp,
 } from "drizzle-orm/mysql-core";
@@ -185,6 +186,25 @@ export const events = mysqlTable("events", {
   registered: int("registered").notNull().default(0),
   category: varchar("category", { length: 80 }).notNull().default("Eğitim"),
 });
+
+// Etkinliğe kayıt olan üyeler. (eventId, userId) çifti uniq tutularak
+// aynı kullanıcının aynı etkinliğe iki kez kaydolması engellenir.
+// `events.registered` kolonu kayıt eklenince/silinince transaction içinde
+// güncellenir ki kapasite kontrolü tutarlı kalsın.
+export const eventRegistrations = mysqlTable(
+  "event_registrations",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    eventId: varchar("event_id", { length: 64 }).notNull(),
+    userId: varchar("user_id", { length: 64 }).notNull(),
+    createdAt: datetime("created_at", { fsp: 3 }).notNull(),
+  },
+  (t) => [
+    index("event_registrations_event_idx").on(t.eventId),
+    index("event_registrations_user_idx").on(t.userId),
+    uniqueIndex("event_registrations_event_user_uq").on(t.eventId, t.userId),
+  ],
+);
 
 // Haber kategorileri (admin yönetilir)
 export const newsCategories = mysqlTable(

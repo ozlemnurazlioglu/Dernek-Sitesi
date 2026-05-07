@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   activityReports,
@@ -14,6 +14,7 @@ import {
   donationUses,
   donors,
   eventCategories,
+  eventRegistrations,
   events,
   faqs,
   financeItems,
@@ -128,6 +129,18 @@ export async function GET() {
     db.select().from(videos).orderBy(asc(videos.sort)),
   ]);
 
+  // Login olan kullanıcının kayıtlı olduğu etkinliklerin id listesi.
+  // Anonim kullanıcı için sorgu hiç atılmaz; hepsi bir defa bootstrap'ta
+  // gelir, sonra istemci taraflı state üzerinden güncellenir.
+  const myEventRegistrations: string[] = me
+    ? (
+        await db
+          .select({ eventId: eventRegistrations.eventId })
+          .from(eventRegistrations)
+          .where(eq(eventRegistrations.userId, me.id))
+      ).map((r) => r.eventId)
+    : [];
+
   const docsByApp = new Map<string, typeof docRows>();
   for (const d of docRows) {
     const arr = docsByApp.get(d.applicationId) ?? [];
@@ -219,5 +232,6 @@ export async function GET() {
     photos: photoRows,
     videoCategories: videoCategoryRows,
     videos: videoRows,
+    myEventRegistrations,
   });
 }

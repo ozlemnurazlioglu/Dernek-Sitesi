@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Calendar, MapPin, Users } from "lucide-react";
 import { PageHeader } from "@/components/site/page-header";
 import { Container } from "@/components/ui/section";
@@ -13,12 +14,22 @@ import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
 import type { CommonUiText, PageHeadersMap } from "@/lib/types";
 
 export default function EtkinliklerPage() {
-  const { events, eventCategories, pageBlocks } = useStore();
+  const {
+    events,
+    eventCategories,
+    pageBlocks,
+    currentUser,
+    myEventRegistrations,
+    registerEvent,
+    cancelEventRegistration,
+  } = useStore();
   const { toast } = useToast();
+  const router = useRouter();
   const headers = (pageBlocks["page.headers"] as PageHeadersMap | undefined)
     ?.etkinlikler;
   const ui =
     (pageBlocks["ui.common"] as CommonUiText | undefined) ?? DEFAULT_COMMON_UI;
+  const eventsUi = ui.events ?? DEFAULT_COMMON_UI.events;
   const allLabel = ui.filters?.allLabel ?? DEFAULT_COMMON_UI.filters.allLabel;
   const categoryNames = useMemo(
     () => eventCategories.map((c) => c.name),
@@ -27,6 +38,9 @@ export default function EtkinliklerPage() {
   // null = "Hepsi" (filtresiz). Etiketin store'dan değişebilmesi için
   // active'i string yerine kategori adı veya null tutuyoruz.
   const [active, setActive] = useState<string | null>(null);
+  // Aynı butona arka arkaya basışları engellemek + race önlemek için
+  // istek hâlinde olan etkinlik id'lerini tutuyoruz.
+  const [busyId, setBusyId] = useState<string | null>(null);
   const filtered = useMemo(
     () =>
       active === null
@@ -34,6 +48,72 @@ export default function EtkinliklerPage() {
         : events.filter((e) => e.category === active),
     [events, active],
   );
+
+  const handleRegister = async (eventId: string) => {
+    if (!currentUser) {
+      toast({
+        tone: "info",
+        title:
+          eventsUi.loginRequiredTitle ??
+          DEFAULT_COMMON_UI.events.loginRequiredTitle,
+        description:
+          eventsUi.loginRequiredMessage ??
+          DEFAULT_COMMON_UI.events.loginRequiredMessage,
+      });
+      router.push(
+        `/giris?next=${encodeURIComponent("/etkinlikler")}`,
+      );
+      return;
+    }
+    setBusyId(eventId);
+    try {
+      await registerEvent(eventId);
+      toast({
+        tone: "success",
+        title:
+          eventsUi.bookSuccessTitle ??
+          DEFAULT_COMMON_UI.events.bookSuccessTitle,
+        description:
+          eventsUi.bookSuccessMessage ??
+          DEFAULT_COMMON_UI.events.bookSuccessMessage,
+      });
+    } catch (err) {
+      const e = err as { code?: string; message?: string };
+      const code = e.code;
+      const fallback = e.message || "Kayıt yapılamadı";
+      const description =
+        code === "CAPACITY_FULL"
+          ? "Etkinliğin kontenjanı dolu."
+          : code === "ALREADY_REGISTERED"
+            ? "Bu etkinliğe zaten kayıtlısınız."
+            : fallback;
+      toast({ tone: "error", title: "Kayıt yapılamadı", description });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleCancel = async (eventId: string) => {
+    setBusyId(eventId);
+    try {
+      await cancelEventRegistration(eventId);
+      toast({
+        tone: "info",
+        title:
+          eventsUi.cancelSuccessTitle ??
+          DEFAULT_COMMON_UI.events.cancelSuccessTitle,
+        description:
+          eventsUi.cancelSuccessMessage ??
+          DEFAULT_COMMON_UI.events.cancelSuccessMessage,
+      });
+    } catch (err) {
+      const description =
+        err instanceof Error ? err.message : "İşlem başarısız oldu";
+      toast({ tone: "error", title: "İptal edilemedi", description });
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <>
@@ -81,10 +161,33 @@ export default function EtkinliklerPage() {
       </Container>
       <Container className="pb-14 grid md:grid-cols-2 gap-6">
         {filtered.map((event) => {
-          const occupancy = Math.min(
-            100,
-            Math.round((event.registered / event.capacity) * 100),
-          );
+          const capacity = Math.max(0, event.capacity);
+          const occupancy =
+            capacity > 0
+              ? Math.min(100, Math.round((event.registered / capacity) * 100))
+              : 0;
+          const isFull = capacity > 0 && event.registered >= capacity;
+          const isMine = myEventRegistrations.includes(event.id);
+          const isBusy = busyId === event.id;
+
+          let buttonLabel = eventsUi.bookButton ?? DEFAULT_COMMON_UI.events.bookButton;
+          let buttonVariant: "primary" | "ghost" | "secondary" = "primary";
+          let buttonDisabled = false;
+          let onClick: () => void | Promise<void> = () => handleRegister(event.id);
+
+          if (isMine) {
+            buttonLabel =
+              eventsUi.cancelButton ?? DEFAULT_COMMON_UI.events.cancelButton;
+            buttonVariant = "secondary";
+            onClick = () => handleCancel(event.id);
+          } else if (isFull) {
+            buttonLabel =
+              eventsUi.fullButton ?? DEFAULT_COMMON_UI.events.fullButton;
+            buttonVariant = "ghost";
+            buttonDisabled = true;
+            onClick = () => {};
+          }
+
           return (
             <div
               key={event.id}
@@ -149,25 +252,17 @@ export default function EtkinliklerPage() {
                 </div>
                 <div className="mt-6 flex items-center justify-between gap-3">
                   <Button
-                    variant="primary"
-                    onClick={() =>
-                      toast({
-                        tone: "success",
-                        title:
-                          ui.events?.bookSuccessTitle ??
-                          DEFAULT_COMMON_UI.events.bookSuccessTitle,
-                        description:
-                          ui.events?.bookSuccessMessage ??
-                          DEFAULT_COMMON_UI.events.bookSuccessMessage,
-                      })
-                    }
+                    variant={buttonVariant}
+                    onClick={onClick}
+                    disabled={buttonDisabled || isBusy}
                   >
-                    {ui.events?.bookButton ??
-                      DEFAULT_COMMON_UI.events.bookButton}
+                    {isBusy ? "İşleniyor..." : buttonLabel}
                   </Button>
-                  <span className="text-xs text-muted-foreground">
-                    {ui.events?.freeNote ?? DEFAULT_COMMON_UI.events.freeNote}
-                  </span>
+                  {eventsUi.freeNote ? (
+                    <span className="text-xs text-muted-foreground">
+                      {eventsUi.freeNote}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </div>
