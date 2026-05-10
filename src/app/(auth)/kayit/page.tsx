@@ -25,6 +25,15 @@ export default function KayitPage() {
     password: "",
     passwordConfirm: "",
   });
+  /**
+   * Honeypot — bot algılaması.
+   *
+   * Gerçek bir kullanıcı bu alanı görmez (ekran dışına çekildi ve
+   * aria-hidden). Boş kalmalıdır. Otomatik bot'lar formdaki tüm
+   * input'ları doldurmaya çalıştığı için bu alanı da doldurur ve
+   * sunucu tarafında reddedilir. Recaptcha gerektirmez, ücretsizdir.
+   */
+  const [hp, setHp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +55,7 @@ export default function KayitPage() {
       phone: data.phone,
       city: data.city,
       password: data.password,
+      website: hp,
     });
     if (result.ok) {
       toast({
@@ -66,6 +76,34 @@ export default function KayitPage() {
       <p className="mt-2 text-muted-foreground">{t.description}</p>
 
       <form onSubmit={onSubmit} className="mt-8 grid sm:grid-cols-2 gap-4">
+        {/*
+         * Honeypot — ekran dışına itildi ve ekran okuyuculara gizlendi.
+         * Bot'lar tüm input'ları doldurma eğiliminde olduğu için bu
+         * alanı doldururlar ve kayıt API'sinde reddedilirler.
+         * Gerçek kullanıcılar bu alanı asla göremez/odaklayamaz.
+         */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            left: "-10000px",
+            top: "auto",
+            width: 1,
+            height: 1,
+            overflow: "hidden",
+          }}
+        >
+          <label htmlFor="hp-website">Web siteniz</label>
+          <input
+            id="hp-website"
+            type="text"
+            name="website"
+            tabIndex={-1}
+            autoComplete="off"
+            value={hp}
+            onChange={(e) => setHp(e.target.value)}
+          />
+        </div>
         <div className="sm:col-span-2">
           <Field label="Ad Soyad" required>
             <Input

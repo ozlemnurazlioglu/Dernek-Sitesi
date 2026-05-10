@@ -158,7 +158,15 @@ type StoreContextValue = State & {
   currentUser: User | null;
   login: (email: string, password: string) => Promise<LoginResult>;
   register: (
-    payload: Omit<User, "id" | "role" | "joinedAt"> & { password: string },
+    payload: Omit<User, "id" | "role" | "joinedAt"> & {
+      password: string;
+      /**
+       * Honeypot — kayıt formunda görünmez tuzak alanı. Gerçek kullanıcı
+       * doldurmaz; bot doldurursa API sessizce reddeder. Sunucuya
+       * `website` adıyla iletilir.
+       */
+      website?: string;
+    },
   ) => Promise<LoginResult>;
   logout: () => Promise<void>;
 
@@ -416,6 +424,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             password: payload.password,
             phone: payload.phone,
             city: payload.city,
+            website: payload.website ?? "",
           }),
         });
         const data = (await res.json()) as

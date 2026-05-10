@@ -17,11 +17,29 @@ export async function POST(req: NextRequest) {
     password?: unknown;
     phone?: unknown;
     city?: unknown;
+    website?: unknown;
   };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Geçersiz istek" }, { status: 400 });
+  }
+
+  // Honeypot — kayıt formundaki görünmez "website" alanı. Gerçek kullanıcı
+  // bu alanı asla görmez/doldurmaz; bot'lar formdaki tüm input'ları
+  // doldurma eğiliminde olduğu için bu alanı doldururlar. Doluysa sessizce
+  // başarı dön (botun retry yapmasını engellemek için) ama DB'ye yazma ve
+  // session oluşturma. Mesaj log'a düşer; admin gerekirse takip edebilir.
+  if (typeof body.website === "string" && body.website.trim().length > 0) {
+    console.warn("[register] honeypot tetiklendi:", {
+      website: body.website.slice(0, 100),
+      ua: req.headers.get("user-agent")?.slice(0, 100),
+      ip: req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip"),
+    });
+    return NextResponse.json(
+      { error: "Kayıt işlemi şu anda tamamlanamadı. Lütfen daha sonra tekrar deneyin." },
+      { status: 400 },
+    );
   }
 
   const fullName = typeof body.fullName === "string" ? body.fullName.trim() : "";

@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,8 @@ import { useToast } from "@/components/ui/toast";
 import { formatDateTR, initials } from "@/lib/utils";
 
 export default function AdminMembersPage() {
-  const { users, applications } = useStore();
+  const { users, applications, bootstrap, currentUser } = useStore();
+  const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "admin" | "member">("all");
   /** Şifresi sıfırlanmak üzere seçilmiş kullanıcı (modal kontrolü). */
@@ -29,6 +31,20 @@ export default function AdminMembersPage() {
     fullName: string;
     email: string;
   } | null>(null);
+  /**
+   * Toplu silme için seçili üye id'lerinin set'i. Set kullanmamızın sebebi
+   * O(1) ekleme/çıkarma + büyük listelerde hızlı kontrol. Filtreleme veya
+   * arama değiştiğinde seçim KORUNUR — kullanıcı sayfa sayfa gezerken
+   * topladığı seçimi kaybetmesin.
+   */
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  /** Sil işleminin onay modal'ı. Tek üye veya toplu için aynı modal. */
+  const [deleteTarget, setDeleteTarget] = useState<
+    | { kind: "single"; user: { id: string; fullName: string; email: string } }
+    | { kind: "bulk"; ids: string[] }
+    | null
+  >(null);
+  const [deleting, setDeleting] = useState(false);
 
   const filtered = useMemo(() => {
     return users
@@ -45,6 +61,109 @@ export default function AdminMembersPage() {
           new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime(),
       );
   }, [users, query, filter]);
+
+  // Görünür listeden hangileri seçili? "Tümünü Seç" checkbox'ının durumunu
+  // ve toplu silme bar'ının görünüp görünmeyeceğini belirler.
+  const filteredIds = useMemo(
+    () => filtered.map((u) => u.id),
+    [filtered],
+  );
+  const allVisibleSelected =
+    filtered.length > 0 && filteredIds.every((id) => selected.has(id));
+  const selectedCount = selected.size;
+
+  // Kendini silmek paneli kilitler — yöneticiye yumuşak bir uyarı vermek
+  // yerine checkbox'ı + sil butonunu hiç gösterip kapatıyoruz.
+  const canDelete = (userId: string) =>
+    currentUser ? userId !== currentUser.id : true;
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllVisible() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        // Görünür hepsi seçili → sadece görünür olanları çıkar
+        // (filtre dışındakileri seçili bırak).
+        for (const id of filteredIds) next.delete(id);
+      } else {
+        // Bazıları seçili / hiçbiri değil → görünür+silinebilir olanları ekle.
+        for (const id of filteredIds) {
+          if (canDelete(id)) next.add(id);
+        }
+      }
+      return next;
+    });
+  }
+
+  async function executeDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      if (deleteTarget.kind === "single") {
+        const u = deleteTarget.user;
+        const res = await fetch(
+          `/api/admin/users/${encodeURIComponent(u.id)}`,
+          { method: "DELETE", credentials: "same-origin" },
+        );
+        if (!res.ok) {
+          const body = (await res
+            .json()
+            .catch(() => ({}))) as { error?: string };
+          throw new Error(body.error ?? "Silme işlemi başarısız.");
+        }
+        toast({
+          tone: "success",
+          title: "Üye silindi",
+          description: `${u.fullName} ve ilişkili tüm kayıtları kaldırıldı.`,
+        });
+        setSelected((prev) => {
+          const next = new Set(prev);
+          next.delete(u.id);
+          return next;
+        });
+      } else {
+        const res = await fetch("/api/admin/users/bulk-delete", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: deleteTarget.ids }),
+        });
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          deleted?: number;
+        };
+        if (!res.ok) {
+          throw new Error(body.error ?? "Silme işlemi başarısız.");
+        }
+        toast({
+          tone: "success",
+          title: "Üyeler silindi",
+          description: `${body.deleted ?? 0} üye ve ilişkili kayıtlar kaldırıldı.`,
+        });
+        setSelected(new Set());
+      }
+      // Listeyi sunucudan tazele — yerel state DB ile senkron olsun.
+      await bootstrap();
+      setDeleteTarget(null);
+    } catch (err) {
+      toast({
+        tone: "error",
+        title: "Hata",
+        description:
+          err instanceof Error ? err.message : "Beklenmedik bir hata oluştu.",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -97,10 +216,55 @@ export default function AdminMembersPage() {
           </div>
         </div>
 
+        {selectedCount > 0 && (
+          <div className="px-4 sm:px-6 py-2.5 border-b border-border bg-red-50/40 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-brand-900">
+              <strong>{selectedCount}</strong> üye seçildi
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelected(new Set())}
+                disabled={deleting}
+              >
+                Seçimi temizle
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={deleting}
+                leftIcon={<Trash2 className="h-4 w-4" />}
+                onClick={() =>
+                  setDeleteTarget({
+                    kind: "bulk",
+                    ids: Array.from(selected),
+                  })
+                }
+                className="bg-red-600 hover:bg-red-700 border-red-600"
+              >
+                Seçilenleri Sil ({selectedCount})
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
+                <th className="text-left font-medium px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    aria-label="Görünen tüm üyeleri seç"
+                    checked={allVisibleSelected}
+                    onChange={toggleAllVisible}
+                    className="h-4 w-4 rounded border-border accent-brand-700 cursor-pointer"
+                    disabled={filtered.length === 0 || deleting}
+                  />
+                </th>
                 <th className="text-left font-medium px-6 py-3">Üye</th>
                 <th className="text-left font-medium px-4 py-3">İletişim</th>
                 <th className="text-left font-medium px-4 py-3">Şehir</th>
@@ -115,8 +279,29 @@ export default function AdminMembersPage() {
                 const apps = applications.filter(
                   (a) => a.applicantId === u.id || a.email === u.email,
                 ).length;
+                const isSelf = !canDelete(u.id);
+                const isChecked = selected.has(u.id);
                 return (
-                  <tr key={u.id} className="hover:bg-muted/30">
+                  <tr
+                    key={u.id}
+                    className={
+                      "hover:bg-muted/30 " +
+                      (isChecked ? "bg-red-50/40" : "")
+                    }
+                  >
+                    <td className="px-4 py-3.5">
+                      <input
+                        type="checkbox"
+                        aria-label={`${u.fullName} üyesini seç`}
+                        checked={isChecked}
+                        onChange={() => toggleOne(u.id)}
+                        disabled={isSelf || deleting}
+                        title={
+                          isSelf ? "Kendi hesabınızı silemezsiniz" : undefined
+                        }
+                        className="h-4 w-4 rounded border-border accent-brand-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                      />
+                    </td>
                     <td className="px-6 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-brand-800 text-white text-sm font-semibold flex items-center justify-center">
@@ -168,21 +353,46 @@ export default function AdminMembersPage() {
                       {formatDateTR(u.joinedAt)}
                     </td>
                     <td className="px-6 py-3.5 text-right whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setResetTarget({
-                            id: u.id,
-                            fullName: u.fullName,
-                            email: u.email,
-                          })
-                        }
-                        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border border-border text-brand-800 hover:bg-brand-50 hover:border-brand-200 transition-colors"
-                        title="Bu üyenin şifresini sıfırla"
-                      >
-                        <Key className="h-3.5 w-3.5" />
-                        Şifre Sıfırla
-                      </button>
+                      <div className="inline-flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setResetTarget({
+                              id: u.id,
+                              fullName: u.fullName,
+                              email: u.email,
+                            })
+                          }
+                          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border border-border text-brand-800 hover:bg-brand-50 hover:border-brand-200 transition-colors"
+                          title="Bu üyenin şifresini sıfırla"
+                        >
+                          <Key className="h-3.5 w-3.5" />
+                          Şifre Sıfırla
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDeleteTarget({
+                              kind: "single",
+                              user: {
+                                id: u.id,
+                                fullName: u.fullName,
+                                email: u.email,
+                              },
+                            })
+                          }
+                          disabled={isSelf || deleting}
+                          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-red-200"
+                          title={
+                            isSelf
+                              ? "Kendi hesabınızı silemezsiniz"
+                              : "Bu üyeyi sil"
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Sil
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -196,6 +406,81 @@ export default function AdminMembersPage() {
         target={resetTarget}
         onClose={() => setResetTarget(null)}
       />
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => (deleting ? null : setDeleteTarget(null))}
+        title={
+          deleteTarget?.kind === "bulk"
+            ? `${deleteTarget.ids.length} üyeyi sil`
+            : "Üyeyi sil"
+        }
+        size="sm"
+      >
+        {deleteTarget && (
+          <div className="space-y-4">
+            <div className="rounded-md bg-red-50/60 border border-red-200 px-3 py-2.5 text-sm text-red-900">
+              <strong>Bu işlem geri alınamaz.</strong> Seçilen üye(ler) ile
+              birlikte bu üye(ler)e ait <em>burs başvuruları</em> ve{" "}
+              <em>etkinlik kayıtları</em> da DB'den kalıcı olarak silinir.
+            </div>
+
+            {deleteTarget.kind === "single" ? (
+              <div className="rounded-md bg-muted/60 border border-border p-3">
+                <div className="text-xs text-muted-foreground">
+                  Silinecek üye
+                </div>
+                <div className="font-medium text-brand-900 mt-0.5">
+                  {deleteTarget.user.fullName}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {deleteTarget.user.email}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-md bg-muted/60 border border-border p-3 text-sm">
+                <div className="text-xs text-muted-foreground mb-1">
+                  Silinecek üye sayısı
+                </div>
+                <div className="font-semibold text-brand-900 text-lg">
+                  {deleteTarget.ids.length}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={executeDelete}
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700 border-red-600"
+                leftIcon={
+                  deleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )
+                }
+              >
+                {deleting
+                  ? "Siliniyor…"
+                  : deleteTarget.kind === "bulk"
+                    ? `Evet, ${deleteTarget.ids.length} üyeyi sil`
+                    : "Evet, sil"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
