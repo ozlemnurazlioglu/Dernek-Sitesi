@@ -21,10 +21,32 @@ export function rowToNews(r: {
   excerpt: string;
   body: string;
   cover: string;
+  /**
+   * MariaDB JSON sütunu; driver string olarak dönerse custom `json` tipi
+   * parse eder. Eski kayıtlarda kolon NULL kalabilir → boş diziye düşer.
+   * Yanlış format gelirse de fail-safe olarak atla.
+   */
+  images?: string[] | string | null;
   category: NewsItem["category"];
   publishedAt: Date;
   author: string;
 }): NewsItem {
+  let imgs: string[] | undefined;
+  const raw = r.images;
+  if (Array.isArray(raw)) {
+    imgs = raw.filter((u): u is string => typeof u === "string" && u.length > 0);
+  } else if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        imgs = parsed.filter(
+          (u): u is string => typeof u === "string" && u.length > 0,
+        );
+      }
+    } catch {
+      /* görmezden gel */
+    }
+  }
   return {
     id: r.id,
     slug: r.slug,
@@ -32,6 +54,7 @@ export function rowToNews(r: {
     excerpt: r.excerpt,
     body: r.body,
     cover: r.cover,
+    images: imgs && imgs.length > 0 ? imgs : undefined,
     category: r.category,
     publishedAt: r.publishedAt.toISOString(),
     author: r.author,

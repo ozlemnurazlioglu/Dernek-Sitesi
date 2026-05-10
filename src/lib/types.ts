@@ -87,6 +87,12 @@ export type NewsItem = {
   excerpt: string;
   body: string;
   cover: string;
+  /**
+   * Haber detay sayfasının altında "Fotoğraf Galerisi" olarak gösterilen
+   * ek görsel URL'leri. Boş/atlanmış olabilir; o zaman galeri bölümü
+   * tamamen gizlenir.
+   */
+  images?: string[];
   /** Kategori adı; news_categories tablosundaki name alanıyla eşleşmesi beklenir. */
   category: string;
   publishedAt: string;

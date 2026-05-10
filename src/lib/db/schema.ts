@@ -166,6 +166,12 @@ export const news = mysqlTable(
     excerpt: text("excerpt").notNull(),
     body: text("body").notNull(),
     cover: varchar("cover", { length: 512 }).notNull(),
+    /**
+     * Detay sayfası altında "Fotoğraf Galerisi" olarak gösterilen ek görseller.
+     * URL listesi (string[]) JSON olarak saklanır. Boş/null → galeri gösterilmez.
+     * `cover` her zaman ayrıdır; bu liste sadece ek fotoları içerir.
+     */
+    images: json("images").$type<string[] | null>(),
     category: varchar("category", { length: 80 }).notNull().default("Haber"),
     publishedAt: datetime("published_at", { fsp: 3 }).notNull(),
     author: varchar("author", { length: 191 }).notNull(),

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
+import { useState } from "react";
 import { ArrowLeft, Calendar, User } from "lucide-react";
 import { Container } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ import { useStore } from "@/lib/store";
 import { formatDateTR } from "@/lib/utils";
 import { Markdown } from "@/lib/markdown";
 import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
+import { ImageLightbox } from "@/components/site/image-lightbox";
 import type { CommonUiText } from "@/lib/types";
 
 export default function NewsDetailPage() {
@@ -17,6 +19,8 @@ export default function NewsDetailPage() {
   const ui =
     (pageBlocks["ui.common"] as CommonUiText | undefined) ?? DEFAULT_COMMON_UI;
   const item = news.find((n) => n.slug === params.slug);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   if (!ready) {
     return (
@@ -28,6 +32,7 @@ export default function NewsDetailPage() {
   if (!item) return notFound();
 
   const others = news.filter((n) => n.id !== item.id).slice(0, 3);
+  const galleryImages = item.images ?? [];
 
   return (
     <article>
@@ -72,6 +77,37 @@ export default function NewsDetailPage() {
             source={item.body}
             className="mt-8 text-muted-foreground"
           />
+
+          {item.images && item.images.length > 0 && (
+            <section className="mt-12">
+              <h2 className="text-xl md:text-2xl font-semibold text-brand-900 mb-5">
+                Fotoğraf Galerisi
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                {item.images.map((url, idx) => (
+                  <button
+                    key={`${url}-${idx}`}
+                    type="button"
+                    onClick={() => {
+                      setLightboxIndex(idx);
+                      setLightboxOpen(true);
+                    }}
+                    className="group relative aspect-square overflow-hidden rounded-lg bg-muted/30 border border-border hover:border-brand-300 transition-all"
+                    aria-label={`${idx + 1}. fotoğrafı büyüt`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt={`${item.title} – ${idx + 1}`}
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors" />
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
         <aside className="md:col-span-4">
           <div className="sticky top-24 rounded-2xl border border-border bg-muted/40 p-6">
@@ -105,6 +141,14 @@ export default function NewsDetailPage() {
           </div>
         </aside>
       </Container>
+
+      <ImageLightbox
+        images={galleryImages}
+        index={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        onIndexChange={setLightboxIndex}
+      />
     </article>
   );
 }

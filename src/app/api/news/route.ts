@@ -31,6 +31,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Galeri görselleri — body'den ayrı, opsiyonel string[].
+  // Geçersiz girdileri (string olmayan, boş, çok uzun) eleyelim.
+  const images = Array.isArray(item.images)
+    ? item.images
+        .filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+        .slice(0, 60)
+    : [];
+
   const values = {
     id: item.id,
     slug: item.slug,
@@ -38,6 +46,7 @@ export async function POST(req: NextRequest) {
     excerpt: item.excerpt ?? "",
     body: item.body ?? "",
     cover: item.cover ?? "",
+    images: images.length > 0 ? images : null,
     category: item.category ?? "Haber",
     publishedAt: item.publishedAt ? new Date(item.publishedAt) : new Date(),
     author: item.author ?? "",

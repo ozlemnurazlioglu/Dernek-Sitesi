@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/toast";
 import { formatDateTR, slugify, uid } from "@/lib/utils";
 import type { NewsItem } from "@/lib/types";
 import { UploadInput } from "@/components/admin/upload-input";
+import { MultiUploadInput } from "@/components/admin/multi-upload-input";
 import { MarkdownTextarea } from "@/components/admin/markdown-textarea";
 
 const emptyItem = (defaultCategory: string): NewsItem => ({
@@ -225,6 +226,22 @@ export default function AdminNewsPage() {
                   value={editing.cover}
                   onChange={(url) => setEditing({ ...editing, cover: url })}
                   kind="image"
+                />
+              </Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field
+                label="Fotoğraf Galerisi"
+                hint="Habere ek fotoğraflar ekleyin. Detay sayfasının altında ızgara olarak gösterilir; ziyaretçi tıklayınca büyük açılır."
+              >
+                <MultiUploadInput
+                  value={editing.images ?? []}
+                  onChange={(images) =>
+                    setEditing({
+                      ...editing,
+                      images: images.length > 0 ? images : undefined,
+                    })
+                  }
                 />
               </Field>
             </div>
