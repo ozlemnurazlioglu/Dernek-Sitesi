@@ -30,6 +30,7 @@ import { useStore } from "@/lib/store";
 import { formatDateTR } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { filterUpcomingAnnouncements } from "@/lib/announcement-date";
+import { filterUpcomingEvents } from "@/lib/event-date";
 import {
   AnnouncementCard,
   getAnnouncementColors,
@@ -85,7 +86,10 @@ export default function HomePage() {
     )
     .slice(0, 3);
 
-  const upcomingEvents = [...events]
+  // Bitiş zamanı geçmiş etkinlikleri anasayfada gizle. `filterUpcomingEvents`
+  // fail-open: parse edilemeyen `endsAt`'lerde etkinlik listede kalır, böylece
+  // yanlışlıkla bir veri kaybolmaz.
+  const upcomingEvents = filterUpcomingEvents([...events])
     .sort(
       (a, b) =>
         new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
 import { formatEventRangeTR } from "@/lib/utils";
+import { filterUpcomingEvents } from "@/lib/event-date";
 import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
 import type { CommonUiText, PageHeadersMap } from "@/lib/types";
 
@@ -41,13 +42,15 @@ export default function EtkinliklerPage() {
   // Aynı butona arka arkaya basışları engellemek + race önlemek için
   // istek hâlinde olan etkinlik id'lerini tutuyoruz.
   const [busyId, setBusyId] = useState<string | null>(null);
-  const filtered = useMemo(
-    () =>
-      active === null
-        ? events
-        : events.filter((e) => e.category === active),
-    [events, active],
-  );
+  // Bitiş zamanı geçmiş etkinlikleri public listede gizle; sonra kategori
+  // filtresi uygula. `filterUpcomingEvents` fail-open davranışlıdır → parse
+  // edilemeyen `endsAt`'lerde etkinlik listede kalır.
+  const filtered = useMemo(() => {
+    const upcoming = filterUpcomingEvents(events);
+    return active === null
+      ? upcoming
+      : upcoming.filter((e) => e.category === active);
+  }, [events, active]);
 
   const handleRegister = async (eventId: string) => {
     if (!currentUser) {
