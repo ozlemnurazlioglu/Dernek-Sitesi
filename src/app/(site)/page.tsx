@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { formatDateTR } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { filterUpcomingAnnouncements } from "@/lib/announcement-date";
 import {
   AnnouncementCard,
   getAnnouncementColors,
@@ -124,8 +125,11 @@ export default function HomePage() {
   const announcementsSection = pageBlocks["home.announcements_section"] as
     | SectionHeading
     | undefined;
-  const sortedAnnouncements = [...announcements].sort(
-    (a, b) => a.sort - b.sort,
+  // Tarihi geçmiş hemşehri ilanlarını anasayfada gizle (düğün, nişan,
+  // etkinlik vb. zaman geçtikten sonra otomatik düşsün). Tarihsiz ilanlar
+  // (örn. süresiz duyurular) listede kalır.
+  const sortedAnnouncements = filterUpcomingAnnouncements(
+    [...announcements].sort((a, b) => a.sort - b.sort),
   );
   const sponsorsBlock = pageBlocks["home.sponsors_section"] as
     | HomeSponsorsBlock

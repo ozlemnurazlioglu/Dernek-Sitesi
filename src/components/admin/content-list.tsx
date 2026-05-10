@@ -9,14 +9,16 @@ import { useStore, type ContentType } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
 import { uid } from "@/lib/utils";
 import { UploadInput } from "@/components/admin/upload-input";
+import { DateInput } from "@/components/ui/date-time-input";
 
 export type FieldDef =
   | {
       key: string;
       label: string;
-      type: "text" | "url" | "emoji" | "time";
+      type: "text" | "url" | "emoji" | "time" | "date";
       placeholder?: string;
       required?: boolean;
+      hint?: string;
     }
   | {
       key: string;
@@ -357,6 +359,12 @@ export function ContentListAdmin({
                       placeholder={f.placeholder}
                       value={value}
                       onChange={(e) => onChange(e.target.value)}
+                    />
+                  ) : f.type === "date" ? (
+                    <DateInput
+                      valueIso={value}
+                      outputFormat="date"
+                      onChangeIso={(s) => onChange(s)}
                     />
                   ) : (
                     <Input

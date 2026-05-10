@@ -1,5 +1,6 @@
 import { Calendar, MapPin, Phone } from "lucide-react";
 import type { Announcement, AnnouncementCategory } from "@/lib/types";
+import { formatAnnouncementEventDate } from "@/lib/announcement-date";
 
 /** Adres metnini Google Maps arama URL'ine çevirir. */
 function mapsUrl(location: string): string {
@@ -23,7 +24,10 @@ function telHref(phone: string): string {
  */
 function formatAnnouncementDate(item: Announcement): string {
   const parts: string[] = [];
-  if (item.eventDate) parts.push(item.eventDate);
+  // ISO ("YYYY-MM-DD") gelirse Türkçe formata çevir; eski serbest metni
+  // olduğu gibi göster (formatAnnouncementEventDate iki durumu da idare eder).
+  const dateText = formatAnnouncementEventDate(item.eventDate);
+  if (dateText) parts.push(dateText);
   let timePart = "";
   if (item.startTime && item.endTime) {
     timePart = `${item.startTime} – ${item.endTime}`;

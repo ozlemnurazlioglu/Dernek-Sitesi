@@ -77,8 +77,8 @@ export default function DuyurularAdminPage() {
         {
           key: "eventDate",
           label: "Tarih",
-          type: "text",
-          placeholder: "15 Haziran 2026",
+          type: "date",
+          hint: "Tarihi geçmiş ilanlar anasayfa ve /duyurular listesinden otomatik gizlenir.",
         },
         {
           key: "startTime",

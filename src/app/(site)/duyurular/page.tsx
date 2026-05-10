@@ -18,6 +18,7 @@ import {
 } from "@/components/site/announcement-card";
 import { useStore } from "@/lib/store";
 import type { PageHeadersMap } from "@/lib/types";
+import { filterUpcomingAnnouncements } from "@/lib/announcement-date";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   vefat: HeartHandshake,
@@ -41,7 +42,9 @@ export default function DuyurularPage() {
   );
 
   const filtered = useMemo(() => {
-    const sorted = [...announcements].sort((a, b) => a.sort - b.sort);
+    // Tarihi geçmiş ilanları listeden çıkar; tarihsiz ilanlar listede kalır.
+    const upcoming = filterUpcomingAnnouncements(announcements);
+    const sorted = [...upcoming].sort((a, b) => a.sort - b.sort);
     if (active === "all") return sorted;
     return sorted.filter((a) => a.categorySlug === active);
   }, [announcements, active]);
