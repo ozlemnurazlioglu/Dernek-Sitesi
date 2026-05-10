@@ -10,11 +10,19 @@ import {
 import { getSiteUrl } from "@/lib/site-url";
 
 /**
- * Yeni bir sayfa/haber/etkinlik eklendiğinde sitemap'in güncel kalması için
- * 1 saatte bir yeniden üretilir. DB query'leri her crawler isteğinde değil,
- * yalnızca cache süresi dolduğunda çalışır.
+ * Sitemap'i her zaman runtime'da üretiriz. Build-time prerender'ı kullanmıyoruz
+ * çünkü:
+ *  - `NEXT_PUBLIC_SITE_URL` cPanel ortamında set edilmiştir; local build'de
+ *    yoksa fallback olarak `localhost:3000` gömülüyordu (Search Console'a
+ *    yüklenince Google indekslemiyor).
+ *  - Haber/etkinlik silindiği veya eklendiği anda Google'a güncel sitemap
+ *    sunabilmek için 1 saatlik revalidate penceresini bekletmek istemiyoruz.
+ *
+ * Sitemap çok küçük bir endpoint (birkaç DB query); crawler trafiği gün içinde
+ * sınırlı olduğundan dinamik üretmek bir performans problemi yaratmaz.
  */
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type StaticEntry = {
   path: string;
