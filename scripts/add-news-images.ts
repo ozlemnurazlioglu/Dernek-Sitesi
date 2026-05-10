@@ -20,16 +20,30 @@ async function columnExists(
   table: string,
   column: string,
 ): Promise<boolean> {
-  const rows = (await db.execute(
+  const result = (await db.execute(
     sqlBuilder`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
                 WHERE TABLE_SCHEMA = DATABASE()
                   AND TABLE_NAME = ${table}
                   AND COLUMN_NAME = ${column}`,
-  )) as unknown as Array<{ COLUMN_NAME?: string; column_name?: string }> | {
-    rows?: Array<{ COLUMN_NAME?: string; column_name?: string }>;
-  };
-  // mysql2 array, drizzle bazen { rows } sarar. İkisini de destekle.
-  const list = Array.isArray(rows) ? rows : (rows.rows ?? []);
+  )) as unknown;
+  // Drizzle/mysql2 farklı kabuklarda dönebiliyor:
+  //  • [rows, fields] tuple (mysql2 default) → result[0] satırları
+  //  • doğrudan satır dizisi → length kontrolü
+  //  • { rows } objesi (TiDB serverless) → rows listesi
+  let list: Array<unknown> = [];
+  if (Array.isArray(result)) {
+    if (Array.isArray(result[0])) {
+      list = result[0] as Array<unknown>;
+    } else {
+      list = result;
+    }
+  } else if (
+    result &&
+    typeof result === "object" &&
+    Array.isArray((result as { rows?: unknown[] }).rows)
+  ) {
+    list = (result as { rows: unknown[] }).rows;
+  }
   return list.length > 0;
 }
 
