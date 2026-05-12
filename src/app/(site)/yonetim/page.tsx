@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Container } from "@/components/ui/section";
+import { Modal } from "@/components/ui/modal";
 import { useStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import type { BoardLevel, BoardMember, PageHeadersMap } from "@/lib/types";
 
 /**
@@ -12,11 +14,16 @@ import type { BoardLevel, BoardMember, PageHeadersMap } from "@/lib/types";
  *  - Üyeler (küçük boy, responsive grid)
  * İçerik tamamen `boardMembers` tablosundan beslenir; admin panelden
  * isim, görev, fotoğraf, level ve sıralama düzenlenebilir.
+ *
+ * Biyografisi olan üyelerin kartı tıklanabilirdir; tıklanınca `Modal`
+ * içinde özgeçmiş gösterilir. Biyografi alanı boş olan üyelerde tıklama
+ * etkisizdir (boş popup açıp kullanıcıyı şaşırtmamak için).
  */
 export default function YonetimPage() {
   const { boardMembers, pageBlocks, siteSettings } = useStore();
   const headers = (pageBlocks["page.headers"] as PageHeadersMap | undefined)
     ?.yonetim;
+  const [selected, setSelected] = useState<BoardMember | null>(null);
 
   const grouped = useMemo(() => {
     const sortFn = (a: BoardMember, b: BoardMember) => a.sort - b.sort;
@@ -77,16 +84,15 @@ export default function YonetimPage() {
         {/* BAŞKAN */}
         {baskan && (
           <>
-            <div className="flex flex-col items-center">
-              <PersonAvatar member={baskan} size="lg" />
-              <div className="mt-3 text-center">
-                <div className="font-semibold text-brand-900 text-base">
-                  {baskan.name}
-                </div>
-                <div className="text-sm text-gold-600 mt-0.5">
-                  {baskan.role}
-                </div>
-              </div>
+            <div className="flex justify-center">
+              <MemberBlock
+                member={baskan}
+                size="lg"
+                widthClass="w-44"
+                roleClass="text-sm text-gold-600 mt-0.5"
+                nameClass="font-semibold text-brand-900 text-base"
+                onSelect={setSelected}
+              />
             </div>
             <Connector />
           </>
@@ -97,20 +103,15 @@ export default function YonetimPage() {
           <>
             <div className="flex flex-wrap justify-center gap-x-10 gap-y-8">
               {grouped.yonetim.map((m) => (
-                <div
+                <MemberBlock
                   key={m.id}
-                  className="flex flex-col items-center w-32 sm:w-36"
-                >
-                  <PersonAvatar member={m} size="md" />
-                  <div className="mt-3 text-center">
-                    <div className="font-semibold text-brand-900 text-sm">
-                      {m.name}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {m.role}
-                    </div>
-                  </div>
-                </div>
+                  member={m}
+                  size="md"
+                  widthClass="w-32 sm:w-36"
+                  nameClass="font-semibold text-brand-900 text-sm"
+                  roleClass="text-xs text-muted-foreground mt-0.5"
+                  onSelect={setSelected}
+                />
               ))}
             </div>
             {grouped.uye.length > 0 && <Connector />}
@@ -121,20 +122,15 @@ export default function YonetimPage() {
         {grouped.uye.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-x-4 gap-y-8 justify-items-center">
             {grouped.uye.map((m) => (
-              <div
+              <MemberBlock
                 key={m.id}
-                className="flex flex-col items-center w-full max-w-[140px]"
-              >
-                <PersonAvatar member={m} size="sm" />
-                <div className="mt-3 text-center">
-                  <div className="font-semibold text-brand-900 text-sm">
-                    {m.name}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {m.role}
-                  </div>
-                </div>
-              </div>
+                member={m}
+                size="sm"
+                widthClass="w-full max-w-[140px]"
+                nameClass="font-semibold text-brand-900 text-sm"
+                roleClass="text-xs text-muted-foreground mt-0.5"
+                onSelect={setSelected}
+              />
             ))}
           </div>
         )}
@@ -145,16 +141,125 @@ export default function YonetimPage() {
           </div>
         )}
       </Container>
+
+      <MemberBioModal
+        member={selected}
+        onClose={() => setSelected(null)}
+      />
     </>
+  );
+}
+
+function MemberBlock({
+  member,
+  size,
+  widthClass,
+  nameClass,
+  roleClass,
+  onSelect,
+}: {
+  member: BoardMember;
+  size: "lg" | "md" | "sm";
+  widthClass: string;
+  nameClass: string;
+  roleClass: string;
+  onSelect: (m: BoardMember) => void;
+}) {
+  const hasBio = member.bio.trim().length > 0;
+
+  const inner = (
+    <>
+      <PersonAvatar member={member} size={size} interactive={hasBio} />
+      <div className="mt-3 text-center">
+        <div
+          className={cn(
+            nameClass,
+            hasBio &&
+              "group-hover:text-brand-700 group-focus-visible:text-brand-700 transition-colors",
+          )}
+        >
+          {member.name}
+        </div>
+        <div className={roleClass}>{member.role}</div>
+      </div>
+    </>
+  );
+
+  if (!hasBio) {
+    return (
+      <div className={cn("flex flex-col items-center", widthClass)}>
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(member)}
+      title="Biyografiyi gör"
+      aria-label={`${member.name} biyografisini gör`}
+      className={cn(
+        "group flex flex-col items-center text-center cursor-pointer rounded-xl",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2",
+        widthClass,
+      )}
+    >
+      {inner}
+    </button>
+  );
+}
+
+function MemberBioModal({
+  member,
+  onClose,
+}: {
+  member: BoardMember | null;
+  onClose: () => void;
+}) {
+  return (
+    <Modal open={!!member} onClose={onClose} title={member?.name ?? ""} size="md">
+      {member && (
+        <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left gap-5">
+          <div className="shrink-0">
+            <div className="relative h-28 w-28 rounded-full overflow-hidden bg-brand-50 ring-2 ring-brand-200">
+              {member.avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={member.avatar}
+                  alt={member.name}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-brand-400 text-2xl font-semibold">
+                  {member.name.charAt(0)}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-lg font-semibold text-brand-900">
+              {member.name}
+            </div>
+            <div className="text-sm text-gold-600 mt-0.5">{member.role}</div>
+            <p className="mt-4 text-sm text-foreground/80 whitespace-pre-line leading-relaxed">
+              {member.bio}
+            </p>
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 }
 
 function PersonAvatar({
   member,
   size,
+  interactive = false,
 }: {
   member: BoardMember;
   size: "lg" | "md" | "sm";
+  interactive?: boolean;
 }) {
   const sizeClass =
     size === "lg"
@@ -166,13 +271,13 @@ function PersonAvatar({
 
   return (
     <div
-      className={
-        "relative rounded-full overflow-hidden bg-brand-50 " +
-        sizeClass +
-        " " +
-        ringClass +
-        " ring-brand-200"
-      }
+      className={cn(
+        "relative rounded-full overflow-hidden bg-brand-50 ring-brand-200 transition",
+        sizeClass,
+        ringClass,
+        interactive &&
+          "group-hover:ring-brand-400 group-hover:scale-[1.04] group-focus-visible:ring-brand-400",
+      )}
     >
       {member.avatar ? (
         // eslint-disable-next-line @next/next/no-img-element
