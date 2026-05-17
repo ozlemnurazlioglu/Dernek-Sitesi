@@ -226,7 +226,6 @@ type StoreContextValue = State & {
   ) => Promise<void>;
   removeContent: (type: ContentType, id: string) => Promise<void>;
 
-  resetDemo: () => void;
   /** Tüm state'i sunucudan yeniden çeker (örn. yedek geri yüklendikten sonra). */
   bootstrap: () => Promise<void>;
 };
@@ -872,19 +871,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const resetDemo = useCallback(() => {
-    void fetch("/api/admin/reset", {
-      method: "POST",
-      credentials: "same-origin",
-    })
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        setCurrentUser(null);
-        await reload();
-      })
-      .catch(logBgError("resetDemo"));
-  }, [reload]);
-
   const value = useMemo<StoreContextValue>(
     () => ({
       ...state,
@@ -909,7 +895,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updatePageBlock,
       upsertContent,
       removeContent,
-      resetDemo,
       bootstrap: reload,
     }),
     [
@@ -935,7 +920,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updatePageBlock,
       upsertContent,
       removeContent,
-      resetDemo,
       reload,
     ],
   );

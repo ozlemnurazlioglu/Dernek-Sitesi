@@ -11,7 +11,6 @@ import {
   LayoutDashboard,
   LogOut,
   Newspaper,
-  RefreshCcw,
   Users,
   Mail,
   MessageCircle,
@@ -45,7 +44,6 @@ import {
 import { Logo } from "@/components/brand/logo";
 import { useStore } from "@/lib/store";
 import { cn, initials } from "@/lib/utils";
-import { useToast } from "@/components/ui/toast";
 
 type IconType = ComponentType<{ className?: string }>;
 
@@ -135,8 +133,7 @@ export function AdminSidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
-  const { currentUser, logout, applications, messages, resetDemo } = useStore();
-  const { toast } = useToast();
+  const { currentUser, logout, applications, messages } = useStore();
 
   // Yan menü rozetleri "ilgilenilmesi gereken" sayıları gösterir
   // (toplam değil). Burs Başvuruları için bu, henüz karara bağlanmamış
@@ -373,23 +370,6 @@ export function AdminSidebar({
                 <Database className="h-4 w-4" />
                 <span>Yedek / İçe Aktar</span>
               </Link>
-            </li>
-            <li>
-              <button
-                type="button"
-                onClick={() => {
-                  resetDemo();
-                  toast({
-                    tone: "info",
-                    title: "Demo verileri sıfırlandı",
-                    description: "Tüm değişiklikler geri alındı.",
-                  });
-                }}
-                className="w-full flex items-center gap-3 px-3 h-10 rounded-md text-sm font-medium text-white/70 hover:text-white hover:bg-white/5"
-              >
-                <RefreshCcw className="h-4 w-4" />
-                <span>Demo Verilerini Sıfırla</span>
-              </button>
             </li>
           </ul>
         </nav>
