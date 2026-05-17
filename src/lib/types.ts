@@ -983,6 +983,20 @@ export type CommonUiText = {
   };
 };
 
+/**
+ * Burs başvuru penceresi kapalıyken gösterilen duyuru metni.
+ * `page_blocks.burs.application_closed` — Yasal Sayfalar admininden düzenlenir.
+ */
+export type BursApplicationClosedText = {
+  title: string;
+  /** Ana açıklama (çok satırlı). */
+  description: string;
+  /** true ise sistem tarih mesajını (açılış/kapanış) açıklamanın altında gösterir. */
+  showSystemDate: boolean;
+  /** Alttaki küçük not (örn. hesabım yönlendirmesi). */
+  footnote: string;
+};
+
 /** Burs başvuru formu: adım başlıkları, butonlar, onay metni, başarı ekranı */
 export type ApplicationFormText = {
   steps: {

@@ -35,11 +35,14 @@ import { useToast } from "@/components/ui/toast";
 import type {
   ApplicationDocument,
   ApplicationFormText,
+  BursApplicationClosedText,
   DocumentKey,
   ScholarshipApplication,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { normalizeBurseRules, checkApplicationWindow } from "@/lib/burs-rules-shared";
+import { normalizeBursApplicationClosed } from "@/lib/defaults/burs-application-closed";
+import { DEFAULT_KVKK_TEXT } from "@/lib/defaults/kvkk";
 import { computeExpectedGradYear, isGraduatingThisYear } from "@/lib/graduation";
 
 const DEFAULT_FORM_TEXT: ApplicationFormText = {
@@ -272,12 +275,17 @@ export function ApplicationForm({
    * (`page_blocks.legal.kvkk`). Boş ise yedek metin kullanılır.
    */
   const kvkkContent =
-    typeof pageBlocks["legal.kvkk"] === "string"
+    typeof pageBlocks["legal.kvkk"] === "string" &&
+    (pageBlocks["legal.kvkk"] as string).trim()
       ? (pageBlocks["legal.kvkk"] as string)
       : DEFAULT_KVKK_TEXT;
   const closedReason = useMemo(
     () => (isEdit ? null : checkApplicationWindow(rules)),
     [rules, isEdit],
+  );
+  const closedContent = useMemo(
+    () => normalizeBursApplicationClosed(pageBlocks["burs.application_closed"]),
+    [pageBlocks],
   );
   const steps = STEP_DEFS.map((s) => ({
     ...s,
@@ -617,7 +625,7 @@ export function ApplicationForm({
   }
 
   if (!isEdit && closedReason) {
-    return <ClosedScreen reason={closedReason} />;
+    return <ClosedScreen reason={closedReason} content={closedContent} />;
   }
 
   return (
@@ -852,10 +860,23 @@ export function ApplicationForm({
                       type="number"
                       min={0}
                       max={50}
-                      value={data.failedCourses}
-                      onChange={(e) =>
-                        update("failedCourses", Number(e.target.value) || 0)
+                      value={
+                        data.failedCourses === 0 ? "" : data.failedCourses
                       }
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === "") {
+                          update("failedCourses", 0);
+                          return;
+                        }
+                        const n = parseInt(raw, 10);
+                        if (!Number.isNaN(n)) {
+                          update(
+                            "failedCourses",
+                            Math.min(50, Math.max(0, n)),
+                          );
+                        }
+                      }}
                       invalid={!!errors.failedCourses}
                     />
                   </Field>
@@ -1353,32 +1374,6 @@ function UpdatedScreen({ onView }: { onView: () => void }) {
   );
 }
 
-/**
- * Yedek KVKK aydınlatma metni — admin panelinden
- * `page_blocks.legal.kvkk` ile özelleştirilmediği sürece kullanılır.
- * Üretimde dernek kendi metnini yazmalı; bu metin neyin niçin alındığını
- * özetler, hukuki tam metin değildir.
- */
-const DEFAULT_KVKK_TEXT = `KVKK Aydınlatma Metni
-
-Bu burs başvurusu kapsamında derneğimize ileteceğiniz kişisel veriler
-(ad-soyad, T.C. kimlik numarası, iletişim, eğitim ve aile bilgileri,
-yüklediğiniz belgeler) yalnızca başvurunuzun değerlendirilmesi, dernek
-faaliyetleri ve yasal yükümlülüklerimizin yerine getirilmesi amacıyla
-işlenir.
-
-Verileriniz açık rızanız olmadan üçüncü kişilerle paylaşılmaz; ilgili
-mevzuat (6698 sayılı KVKK) çerçevesinde saklanır ve güvenliği için
-gerekli teknik/idari tedbirler alınır.
-
-KVKK madde 11 kapsamında verilerinize erişme, düzeltme, silme ve işlemeye
-itiraz etme haklarınızı dernek iletişim adresimiz üzerinden her zaman
-kullanabilirsiniz.
-
-Başvuruya devam ederek bu aydınlatma metnini okuduğunuzu, kişisel
-verilerinizin yukarıdaki amaçlar doğrultusunda işlenmesini kabul ettiğinizi
-beyan etmiş olursunuz.`;
-
 function KvkkModal({
   content,
   onAccept,
@@ -1469,19 +1464,34 @@ function KvkkModal({
   );
 }
 
-function ClosedScreen({ reason }: { reason: string }) {
+function ClosedScreen({
+  reason,
+  content,
+}: {
+  reason: string;
+  content: BursApplicationClosedText;
+}) {
   return (
     <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-10 text-center">
       <div className="h-16 w-16 mx-auto rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
         <Lock className="h-8 w-8" />
       </div>
       <h2 className="text-2xl font-semibold text-brand-900 mt-5">
-        Başvuru penceresi kapalı
+        {content.title}
       </h2>
-      <p className="text-muted-foreground mt-2 max-w-lg mx-auto">{reason}</p>
-      <p className="text-xs text-muted-foreground mt-4">
-        Mevcut başvurularınızı hesabınızdan görüntülemeye devam edebilirsiniz.
+      <p className="text-muted-foreground mt-2 max-w-lg mx-auto whitespace-pre-line">
+        {content.description}
       </p>
+      {content.showSystemDate && reason && (
+        <p className="text-sm text-amber-900/90 mt-3 max-w-lg mx-auto font-medium">
+          {reason}
+        </p>
+      )}
+      {content.footnote.trim() && (
+        <p className="text-xs text-muted-foreground mt-4 max-w-lg mx-auto whitespace-pre-line">
+          {content.footnote}
+        </p>
+      )}
     </div>
   );
 }

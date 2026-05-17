@@ -1,14 +1,16 @@
 "use client";
 
 import { ContentListAdmin } from "@/components/admin/content-list";
+import { LegalBursTextsEditor } from "@/components/admin/legal-burs-texts-editor";
 import type { LegalPage } from "@/lib/types";
 
 export default function YasalSayfalarPage() {
   return (
+    <>
     <ContentListAdmin
       type="legal-pages"
       title="Yasal & Kurumsal Sayfalar"
-      description="Gizlilik, KVKK, Çerez Politikası, Tüzük gibi sayfalar. Slug değeri URL ile eşleşir; örneğin slug 'gizlilik' ise sayfa /gizlilik adresinde yayınlanır. İçerik markdown destekler — başlıklar için ## , madde için - kullanın."
+      description="Gizlilik, KVKK, Çerez Politikası, Tüzük gibi sayfalar. Slug değeri URL ile eşleşir; örneğin slug 'gizlilik' ise sayfa /gizlilik adresinde yayınlanır. İçerik markdown destekler — başlıklar için ## , madde için - kullanın. Sayfanın altında burs başvurusuna özel KVKK modal metni ve kapalı dönem duyurusunu da düzenleyebilirsiniz."
       singular="Sayfa"
       fields={[
         {
@@ -61,5 +63,7 @@ export default function YasalSayfalarPage() {
         );
       }}
     />
+    <LegalBursTextsEditor />
+    </>
   );
 }
