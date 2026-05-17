@@ -15,7 +15,14 @@ export type ApplicationStatus =
   | "submitted"
   | "in_review"
   | "approved"
-  | "rejected";
+  | "rejected"
+  /**
+   * Admin "Bilgi Güncellemesi İste" butonuna bastığında atanır. Öğrenci
+   * /hesabim panelinde turuncu uyarı banner'ı görür, edit kilidi açık
+   * kalır; öğrenci güncelleme yapıp kaydettiğinde durum otomatik
+   * `submitted`'e döner (PUT handler bunu yapar).
+   */
+  | "needs_update";
 
 /**
  * Yüklenen başvuru belgesinin kimlik anahtarı.
@@ -59,6 +66,18 @@ export type ScholarshipApplication = {
   department: string;
   grade: string;
   gpa: string;
+  /**
+   * Başarısız (FF/FD vb.) ders sayısı — öğrenci beyanı; admin override
+   * edebilir. `burs.rules.failedCoursesEnabled=false` ise form'da
+   * gözükmez ve admin uyarısı verilmez.
+   * Eski kayıtlarda alan olmayabilir — opsiyonel; mapper 0'a düşürür.
+   */
+  failedCourses?: number;
+  /**
+   * Sistem tarafından okul tipi + sınıftan hesaplanan tahmini mezuniyet
+   * yılı. Son sınıfta admin uyarı görür.
+   */
+  expectedGradYear?: number;
 
   // Step 3 — Family
   fatherName: string;
@@ -72,9 +91,32 @@ export type ScholarshipApplication = {
   previousScholarship: boolean;
   previousScholarshipDetail?: string;
 
+  // Step 3.5 — Referans (yeni alanlar — geriye dönük uyumluluk için opsiyonel)
+  referenceName?: string;
+  referencePhone?: string;
+  referenceRelation?: string;
+  parentReferenceName?: string;
+  parentReferencePhone?: string;
+
   // Step 4 — Bank & motivation
   iban: string;
   motivationLetter: string;
+
+  /** KVKK aydınlatma metninin başvuru sırasında onaylandığı zaman damgası. */
+  kvkkConsentAt?: string;
+
+  /**
+   * Otomatik red sebebi (`burs.rules` kuralları sonucu). Manuel red'lerde
+   * boş kalır. Admin başvuru listesinde "Otomatik Reddedildi" filtresi
+   * bu alanın dolu olup olmamasına bakar.
+   */
+  autoRejectedReason?: string;
+
+  /**
+   * `needs_update` durumunda admin'in öğrenciye yazdığı not. /hesabim
+   * panelinde banner olarak gösterilir. Diğer durumlarda boş kalır.
+   */
+  updateRequest?: string;
 
   // Documents
   documents: Partial<Record<DocumentKey, ApplicationDocument>>;
@@ -962,4 +1004,111 @@ export type ApplicationFormText = {
     newApplicationButton: string;
     accountButton: string;
   };
+};
+
+/* ====================== Burs sistemi: kurallar ve bildirim ====================== */
+
+/**
+ * Eski bursiyer kaydı — `/admin/eski-bursiyerler` modülünde yönetilir.
+ * Onaylanmış başvurudan tek tıkla import edilebilir veya manuel eklenir.
+ * Veli bilgisi de aynı satırda saklanır (ileride veli toplu mesaj için).
+ */
+export type Alumni = {
+  id: string;
+  fullName: string;
+  nationalId: string;
+  email: string;
+  phone: string;
+  schoolName: string;
+  department: string;
+  graduationYear?: number;
+  parentName: string;
+  parentPhone: string;
+  parentRelation: string;
+  notes: string;
+  /** Hangi başvurudan import edildi? Boşsa manuel eklenmiş demektir. */
+  sourceApplicationId?: string;
+  createdAt: string;
+};
+
+/**
+ * Burs başvuru sistemi kuralları — admin panelden yönetilir
+ * (`/admin/burs-kurallari`). `page_blocks.burs.rules` JSON'unda saklanır.
+ */
+export type BurseRules = {
+  /**
+   * Master toggle — `false` ise tüm otomatik red kuralları atlanır,
+   * sadece komisyon manuel karar verir. Hatalı konfigürasyon riskine karşı
+   * acil "kapat" butonu.
+   */
+  autoRejectEnabled: boolean;
+  /** Önceki yıllarda aynı TC ile reddedildiyse yeni başvuruyu auto-reject et. */
+  autoRejectIfPreviouslyRejected: boolean;
+  /** Reddedilen kademeler (örn: ["onlisans"] → ön lisans başvurular auto-reject). */
+  blockedSchoolTypes: ("lise" | "onlisans" | "lisans" | "yuksek_lisans" | "doktora")[];
+  /**
+   * Engellenen okul adı pattern'leri — virgülle ayrılmış serbest metin
+   * (örn. "Koç,Sabancı,Bilkent"). schoolName içinde içerirse auto-reject.
+   * Case-insensitive eşleştirme.
+   */
+  blockedSchoolPattern: string;
+  /** Mezuniyet yılı geçtiyse (expectedGradYear < bu yıl) auto-reject. */
+  blockGraduatedYearPassed: boolean;
+  /** YYYY-MM-DD formatında başvuru açılış tarihi. Boş ise sınırsız. */
+  applicationOpenDate: string;
+  /** YYYY-MM-DD formatında başvuru kapanış tarihi. Boş ise sınırsız. */
+  applicationCloseDate: string;
+  /**
+   * Madde 9 toggle — false ise form'da FF alanı görünmez, admin uyarısı
+   * verilmez. Öğrenci yanlış beyanları yoğunsa admin tek tıkla kapatır.
+   */
+  failedCoursesEnabled: boolean;
+  /** Kaç FF üstünde admin'e kırmızı uyarı verilsin. */
+  failedCoursesThreshold: number;
+};
+
+/** Tek bir bildirim şablonu (mail + SMS varyantı). */
+export type NotificationTemplate = {
+  emailSubject: string;
+  emailHtml: string;
+  sms: string;
+};
+
+/** 3 olay türü için şablon paketi. */
+export type NotificationTemplates = {
+  approved: NotificationTemplate;
+  rejected: NotificationTemplate;
+  needsUpdate: NotificationTemplate;
+};
+
+/** Admin panelden yönetilen e-posta + SMS provider ayarları. */
+export type NotificationSettings = {
+  // E-posta (SMTP)
+  emailEnabled: boolean;
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUser: string;
+  /** GÜVENLİK: API'den dönerken maskelenir. Yeni değer "" ise eski korunur. */
+  smtpPass: string;
+  smtpFrom: string;
+
+  // SMS
+  smsEnabled: boolean;
+  /** "netgsm" | "iletimerkezi" | "twilio" | "" (devre dışı) */
+  smsProvider: "netgsm" | "iletimerkezi" | "twilio" | "";
+  smsUser: string;
+  /** GÜVENLİK: API'den dönerken maskelenir. */
+  smsPass: string;
+  /** NetGSM için: gönderici başlık. */
+  smsHeader: string;
+  /** İletiMerkezi token / Twilio Account SID. */
+  smsApiKey: string;
+  /** GÜVENLİK: Twilio Auth Token. API'den dönerken maskelenir. */
+  smsApiSecret: string;
+  /** Twilio için gönderici telefon numarası. */
+  smsFromNumber: string;
+
+  templates: NotificationTemplates;
+  updatedAt: string;
 };

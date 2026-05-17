@@ -3,12 +3,16 @@ import type { ApplicationStatus } from "@/lib/types";
 
 const map: Record<
   ApplicationStatus,
-  { label: string; tone: "info" | "warning" | "success" | "danger" }
+  { label: string; tone: "info" | "warning" | "success" | "danger" | "orange" }
 > = {
   submitted: { label: "Beklemede", tone: "info" },
   in_review: { label: "İnceleniyor", tone: "warning" },
   approved: { label: "Onaylandı", tone: "success" },
   rejected: { label: "Reddedildi", tone: "danger" },
+  // Komisyon başvuruda eksik bilgi tespit etti → öğrenciden güncelleme
+  // bekleniyor. /hesabim panelinde turuncu banner gösterilir, edit kilidi
+  // açıktır; öğrenci kaydedince otomatik "submitted"'e döner.
+  needs_update: { label: "Bilgi Güncellenmeli", tone: "orange" },
 };
 
 export function StatusBadge({ status }: { status: ApplicationStatus }) {

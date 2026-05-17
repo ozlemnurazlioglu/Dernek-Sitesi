@@ -3,7 +3,10 @@ import { like } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { applications, applicationDocuments } from "@/lib/db/schema";
 import { loadApplicationWithDocs } from "@/lib/db/mappers";
-import type { ScholarshipApplication } from "@/lib/types";
+import type { ApplicationStatus, ScholarshipApplication } from "@/lib/types";
+import { getBurseRules, checkApplicationWindow } from "@/lib/burs-rules";
+import { evaluateAutoReject } from "@/lib/auto-reject";
+import { notifyApplicationEvent } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +32,14 @@ async function nextApplicationId(year: number): Promise<string> {
   return `${prefix}${String(max + 1).padStart(2, "0")}`;
 }
 
+function getBaseUrl(req: NextRequest): string {
+  const env = process.env.NEXT_PUBLIC_SITE_URL;
+  if (env) return env.replace(/\/$/, "");
+  const proto = req.headers.get("x-forwarded-proto") ?? "http";
+  const host = req.headers.get("host") ?? "localhost:3000";
+  return `${proto}://${host}`;
+}
+
 export async function POST(req: NextRequest) {
   let body: Partial<ScholarshipApplication> & { applicantId?: string };
   try {
@@ -41,6 +52,42 @@ export async function POST(req: NextRequest) {
   const year = submittedAt.getFullYear();
   const applicantId = body.applicantId ?? "guest";
 
+  // Madde 7: Burs kurallarını oku ve başvuru penceresini kontrol et.
+  const rules = await getBurseRules();
+  const closedReason = checkApplicationWindow(rules, submittedAt);
+  if (closedReason) {
+    return NextResponse.json(
+      { error: closedReason, code: "WINDOW_CLOSED" },
+      { status: 400 },
+    );
+  }
+
+  // Otomatik red değerlendirmesi — kurallarla uyuşmazsa status='rejected'
+  // ile kaydedip auto_rejected_reason'a sebep yazılır.
+  const autoRejectReason = await evaluateAutoReject(rules, {
+    nationalId: body.nationalId ?? "",
+    schoolType: body.schoolType ?? "lisans",
+    schoolName: body.schoolName ?? "",
+    expectedGradYear: body.expectedGradYear,
+  });
+
+  const initialStatus: ApplicationStatus = autoRejectReason
+    ? "rejected"
+    : "submitted";
+
+  // Madde 8: KVKK onayı — yoksa başvuruyu kabul etmiyoruz. Form zaten
+  // istemci tarafında zorluyor ama backend de kontrol etsin (API direct
+  // çağıran kötü niyetli aktöre karşı koruma).
+  const kvkkConsentAt = body.kvkkConsentAt
+    ? new Date(body.kvkkConsentAt)
+    : null;
+  if (!kvkkConsentAt || Number.isNaN(kvkkConsentAt.getTime())) {
+    return NextResponse.json(
+      { error: "KVKK onayı zorunludur", code: "KVKK_REQUIRED" },
+      { status: 400 },
+    );
+  }
+
   // Çakışma durumunda 5 kez yeniden dener.
   let id = await nextApplicationId(year);
   let attempts = 5;
@@ -49,8 +96,10 @@ export async function POST(req: NextRequest) {
       await db.insert(applications).values({
         id,
         applicantId,
-        status: "submitted",
+        status: initialStatus,
         submittedAt,
+        reviewedAt: autoRejectReason ? submittedAt : undefined,
+        reviewerNote: autoRejectReason ?? undefined,
         fullName: body.fullName ?? "",
         nationalId: body.nationalId ?? "",
         birthDate: body.birthDate ?? "1970-01-01",
@@ -64,6 +113,10 @@ export async function POST(req: NextRequest) {
         department: body.department ?? "",
         grade: body.grade ?? "",
         gpa: body.gpa ?? "",
+        failedCourses: rules.failedCoursesEnabled
+          ? Number(body.failedCourses) || 0
+          : 0,
+        expectedGradYear: body.expectedGradYear ?? null,
         fatherName: body.fatherName ?? "",
         fatherJob: body.fatherJob ?? "",
         fatherIncome: body.fatherIncome ?? "0",
@@ -74,8 +127,15 @@ export async function POST(req: NextRequest) {
         workingMembers: body.workingMembers ?? 0,
         previousScholarship: body.previousScholarship ?? false,
         previousScholarshipDetail: body.previousScholarshipDetail ?? null,
+        referenceName: body.referenceName ?? "",
+        referencePhone: body.referencePhone ?? "",
+        referenceRelation: body.referenceRelation ?? "",
+        parentReferenceName: body.parentReferenceName ?? "",
+        parentReferencePhone: body.parentReferencePhone ?? "",
         iban: body.iban ?? "",
         motivationLetter: body.motivationLetter ?? "",
+        kvkkConsentAt,
+        autoRejectedReason: autoRejectReason ?? "",
       });
       break;
     } catch (err) {
@@ -105,5 +165,26 @@ export async function POST(req: NextRequest) {
   }
 
   const created = await loadApplicationWithDocs(id);
-  return NextResponse.json({ application: created });
+
+  // Otomatik reddedildi → öğrenciye bildirim gönder ki neden olduğunu
+  // bilsin. Failover: bildirim atılamasa bile başvurunun kabulü etkilenmesin.
+  if (autoRejectReason && created) {
+    try {
+      const baseUrl = getBaseUrl(req);
+      await notifyApplicationEvent({
+        event: "rejected",
+        application: created,
+        baseUrl,
+        reason: autoRejectReason,
+      });
+    } catch (err) {
+      console.error("[applications.POST] auto-reject bildirim hatası", err);
+    }
+  }
+
+  return NextResponse.json({
+    application: created,
+    autoRejected: !!autoRejectReason,
+    reason: autoRejectReason,
+  });
 }

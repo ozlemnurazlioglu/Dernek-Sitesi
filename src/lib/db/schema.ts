@@ -80,11 +80,16 @@ export const applications = mysqlTable(
   {
     id: varchar("id", { length: 64 }).primaryKey(),
     applicantId: varchar("applicant_id", { length: 64 }).notNull(),
+    /**
+     * Başvuru durumu. `needs_update` admin'in "şunu güncelle" dediği durumdur;
+     * öğrenci panelinde turuncu banner gösterilir, edit kilidi açık kalır.
+     */
     status: mysqlEnum("status", [
       "submitted",
       "in_review",
       "approved",
       "rejected",
+      "needs_update",
     ])
       .notNull()
       .default("submitted"),
@@ -117,6 +122,17 @@ export const applications = mysqlTable(
     department: varchar("department", { length: 191 }).notNull(),
     grade: varchar("grade", { length: 32 }).notNull(),
     gpa: varchar("gpa", { length: 16 }).notNull(),
+    /**
+     * Başarısız (FF/FD vb.) ders sayısı — öğrencinin transkriptten beyanı.
+     * `burs.rules.failedCoursesEnabled` ile özelliği kapatınca form'dan
+     * alan kalkar, admin uyarısı gizlenir. Admin manuel override edebilir.
+     */
+    failedCourses: int("failed_courses").notNull().default(0),
+    /**
+     * Sistem tarafından okul tipi + sınıftan hesaplanan tahmini mezuniyet yılı.
+     * Son sınıfsa admin uyarı görür ("bu yıl mezun olabilir").
+     */
+    expectedGradYear: int("expected_grad_year"),
 
     // Step 3 — Family
     fatherName: varchar("father_name", { length: 191 }).notNull(),
@@ -130,13 +146,54 @@ export const applications = mysqlTable(
     previousScholarship: boolean("previous_scholarship").notNull().default(false),
     previousScholarshipDetail: text("previous_scholarship_detail"),
 
+    // Step 3.5 — Referans (komşu/öğretmen/akraba) + veli alternatif
+    referenceName: varchar("reference_name", { length: 191 })
+      .notNull()
+      .default(""),
+    referencePhone: varchar("reference_phone", { length: 64 })
+      .notNull()
+      .default(""),
+    referenceRelation: varchar("reference_relation", { length: 80 })
+      .notNull()
+      .default(""),
+    parentReferenceName: varchar("parent_reference_name", { length: 191 })
+      .notNull()
+      .default(""),
+    parentReferencePhone: varchar("parent_reference_phone", { length: 64 })
+      .notNull()
+      .default(""),
+
     // Step 4 — Bank & motivation
     iban: varchar("iban", { length: 64 }).notNull(),
     motivationLetter: text("motivation_letter").notNull(),
+
+    /**
+     * KVKK aydınlatma metninin başvuru sırasında onaylandığı zaman damgası.
+     * Form ilk açıldığında zorunlu modal'da işaretlenir. Geriye dönük şikayet
+     * durumunda kanıt olarak kullanılır.
+     */
+    kvkkConsentAt: datetime("kvkk_consent_at", { fsp: 3 }),
+
+    /**
+     * Otomatik red sebebi — `burs.rules` kapsamında auto-reject edildiyse
+     * doldurulur (örn. "Önceki yıl reddedildi", "Kademe kabul edilmiyor").
+     * Admin manuel red'lerde boş kalır.
+     */
+    autoRejectedReason: varchar("auto_rejected_reason", { length: 255 })
+      .notNull()
+      .default(""),
+
+    /**
+     * `needs_update` durumunda admin'in öğrenciye yazdığı not — neyi
+     * güncellemesi gerekiyor? Öğrencinin /hesabim panelinde banner olarak
+     * görüntülenir. Diğer durumlarda boş kalır.
+     */
+    updateRequest: text("update_request"),
   },
   (t) => [
     index("applications_applicant_idx").on(t.applicantId),
     index("applications_status_idx").on(t.status),
+    index("applications_national_id_idx").on(t.nationalId),
   ],
 );
 
@@ -714,3 +771,96 @@ export const smsSubscribers = mysqlTable(
     index("sms_subscribers_created_idx").on(t.createdAt),
   ],
 );
+
+/**
+ * Eski bursiyerler (alumni) — derneğin geçmiş yıllarda burs verdiği
+ * öğrencilerin manuel olarak yönetildiği CRM tablosu. Onaylanmış başvurudan
+ * tek tıkla import edilebilir ya da elle eklenir; veli iletişim bilgileri
+ * de aynı satırda saklanır (ileride bu velilere toplu bilgilendirme).
+ *
+ * `sourceApplicationId` opsiyoneldir: elle eklenen kayıtlarda boş kalır.
+ */
+export const alumni = mysqlTable(
+  "alumni",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    fullName: varchar("full_name", { length: 191 }).notNull(),
+    nationalId: varchar("national_id", { length: 32 }).notNull().default(""),
+    email: varchar("email", { length: 191 }).notNull().default(""),
+    phone: varchar("phone", { length: 64 }).notNull().default(""),
+    schoolName: varchar("school_name", { length: 191 })
+      .notNull()
+      .default(""),
+    department: varchar("department", { length: 191 }).notNull().default(""),
+    graduationYear: int("graduation_year"),
+    parentName: varchar("parent_name", { length: 191 }).notNull().default(""),
+    parentPhone: varchar("parent_phone", { length: 64 }).notNull().default(""),
+    parentRelation: varchar("parent_relation", { length: 80 })
+      .notNull()
+      .default(""),
+    notes: text("notes"),
+    sourceApplicationId: varchar("source_application_id", { length: 64 }),
+    createdAt: datetime("created_at", { fsp: 3 }).notNull(),
+  },
+  (t) => [
+    index("alumni_full_name_idx").on(t.fullName),
+    index("alumni_national_id_idx").on(t.nationalId),
+    index("alumni_school_idx").on(t.schoolName),
+  ],
+);
+
+/**
+ * Bildirim ayarları — admin panelinden yönetilen tek satırlık singleton
+ * (id='main'). E-posta SMTP konfigürasyonu, SMS sağlayıcı seçimi ve mesaj
+ * şablonları burada saklanır. `.env` yerine DB'de tutulur ki admin
+ * deploy yapmadan ayar değiştirebilsin.
+ *
+ * GÜVENLİK NOTU: `smtp_pass`, `sms_pass`, `sms_api_secret` şu an plaintext
+ * saklanır. İleride encryption-at-rest eklenmeli (AES-GCM, SESSION_SECRET).
+ * Admin paneline güvenlik uyarısı eklendi.
+ */
+export const notificationSettings = mysqlTable("notification_settings", {
+  id: varchar("id", { length: 16 }).primaryKey().default("main"),
+
+  // E-posta (SMTP)
+  emailEnabled: boolean("email_enabled").notNull().default(false),
+  smtpHost: varchar("smtp_host", { length: 191 }).notNull().default(""),
+  smtpPort: int("smtp_port").notNull().default(587),
+  smtpSecure: boolean("smtp_secure").notNull().default(false),
+  smtpUser: varchar("smtp_user", { length: 191 }).notNull().default(""),
+  smtpPass: varchar("smtp_pass", { length: 191 }).notNull().default(""),
+  smtpFrom: varchar("smtp_from", { length: 191 }).notNull().default(""),
+
+  // SMS
+  smsEnabled: boolean("sms_enabled").notNull().default(false),
+  /** 'netgsm' | 'iletimerkezi' | 'twilio' | '' */
+  smsProvider: varchar("sms_provider", { length: 32 }).notNull().default(""),
+  smsUser: varchar("sms_user", { length: 191 }).notNull().default(""),
+  smsPass: varchar("sms_pass", { length: 191 }).notNull().default(""),
+  /** NetGSM "başlık" (sender name). */
+  smsHeader: varchar("sms_header", { length: 32 }).notNull().default(""),
+  /** İletiMerkezi token / Twilio Account SID. */
+  smsApiKey: varchar("sms_api_key", { length: 255 }).notNull().default(""),
+  /** Twilio Auth Token. */
+  smsApiSecret: varchar("sms_api_secret", { length: 255 })
+    .notNull()
+    .default(""),
+  /** Twilio'da gönderici telefon numarası. */
+  smsFromNumber: varchar("sms_from_number", { length: 32 })
+    .notNull()
+    .default(""),
+
+  /**
+   * Mesaj şablonları JSON. Yapısı:
+   * {
+   *   approved:    { emailSubject, emailHtml, sms },
+   *   rejected:    { emailSubject, emailHtml, sms },
+   *   needsUpdate: { emailSubject, emailHtml, sms }
+   * }
+   * Placeholder'lar: {fullName}, {applicationId}, {reason}, {updateRequest},
+   * {associationName}, {applicationLink}
+   */
+  templates: json("templates"),
+
+  updatedAt: datetime("updated_at", { fsp: 3 }).notNull(),
+});

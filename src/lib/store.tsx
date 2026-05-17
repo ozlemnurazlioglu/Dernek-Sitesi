@@ -181,6 +181,8 @@ type StoreContextValue = State & {
     status: ApplicationStatus,
     note?: string,
     score?: number,
+    /** `needs_update` durumunda öğrenciye gösterilecek açıklama. Diğer statülerde yoksayılır. */
+    updateRequest?: string,
   ) => void;
   /**
    * Mevcut bir başvurunun alanlarını ve belgelerini günceller.
@@ -515,7 +517,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const updateApplicationStatus: StoreContextValue["updateApplicationStatus"] =
-    useCallback((id, status, note, score) => {
+    useCallback((id, status, note, score, updateRequest) => {
       setState((prev) => ({
         ...prev,
         applications: prev.applications.map((app) =>
@@ -526,6 +528,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 reviewerNote: note ?? app.reviewerNote,
                 score: score ?? app.score,
                 reviewedAt: new Date().toISOString(),
+                // needs_update'a geçiyorsak update notu güncellenir; diğer
+                // statülerde temizlenir ki eski not banner'da gözükmesin.
+                updateRequest:
+                  status === "needs_update" ? updateRequest ?? app.updateRequest : undefined,
               }
             : app,
         ),
@@ -534,7 +540,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, note, score }),
+        body: JSON.stringify({ status, note, score, updateRequest }),
       })
         .then((r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);

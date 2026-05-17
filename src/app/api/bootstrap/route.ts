@@ -170,7 +170,9 @@ export async function GET() {
       try {
         value = JSON.parse(value);
       } catch {
-        value = null;
+        // Bazı block'lar (legal.kvkk, ui metinleri gibi) düz string olarak
+        // saklanır — JSON.parse başarısız olunca null'a düşürmek admin'in
+        // kaydettiği metni silmiş gibi gösterir. Mevcut string'i koru.
       }
     }
     pageBlocksMap[b.blockKey] = value;

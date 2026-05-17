@@ -1,15 +1,25 @@
 import { eq } from "drizzle-orm";
-import { db } from "./index";
-import { applicationDocuments, applications, siteSettings } from "./schema";
+import { db, parseDbJson } from "./index";
+import {
+  alumni,
+  applicationDocuments,
+  applications,
+  notificationSettings,
+  siteSettings,
+} from "./schema";
 import type {
+  Alumni,
   ApplicationDocument,
   ContactMessage,
   DocumentKey,
   EventItem,
   NewsItem,
+  NotificationSettings,
+  NotificationTemplates,
   ScholarshipApplication,
   SiteSettings,
 } from "../types";
+import { DEFAULT_NOTIFICATION_TEMPLATES } from "../defaults/notification-templates";
 
 type DbDocRow = typeof applicationDocuments.$inferSelect;
 type DbAppRow = typeof applications.$inferSelect;
@@ -148,6 +158,8 @@ export function rowToApplication(
     department: r.department,
     grade: r.grade,
     gpa: r.gpa,
+    failedCourses: r.failedCourses ?? 0,
+    expectedGradYear: r.expectedGradYear ?? undefined,
     fatherName: r.fatherName,
     fatherJob: r.fatherJob,
     fatherIncome: r.fatherIncome,
@@ -158,8 +170,16 @@ export function rowToApplication(
     workingMembers: r.workingMembers,
     previousScholarship: r.previousScholarship,
     previousScholarshipDetail: r.previousScholarshipDetail ?? undefined,
+    referenceName: r.referenceName ?? "",
+    referencePhone: r.referencePhone ?? "",
+    referenceRelation: r.referenceRelation ?? "",
+    parentReferenceName: r.parentReferenceName ?? "",
+    parentReferencePhone: r.parentReferencePhone ?? "",
     iban: r.iban,
     motivationLetter: r.motivationLetter,
+    kvkkConsentAt: r.kvkkConsentAt ? r.kvkkConsentAt.toISOString() : undefined,
+    autoRejectedReason: r.autoRejectedReason ?? "",
+    updateRequest: r.updateRequest ?? undefined,
     documents,
   };
 }
@@ -215,4 +235,68 @@ export async function loadApplicationWithDocs(id: string) {
     .from(applicationDocuments)
     .where(eq(applicationDocuments.applicationId, id));
   return rowToApplication(a, docs);
+}
+
+type DbAlumniRow = typeof alumni.$inferSelect;
+
+export function rowToAlumni(r: DbAlumniRow): Alumni {
+  return {
+    id: r.id,
+    fullName: r.fullName,
+    nationalId: r.nationalId,
+    email: r.email,
+    phone: r.phone,
+    schoolName: r.schoolName,
+    department: r.department,
+    graduationYear: r.graduationYear ?? undefined,
+    parentName: r.parentName,
+    parentPhone: r.parentPhone,
+    parentRelation: r.parentRelation,
+    notes: r.notes ?? "",
+    sourceApplicationId: r.sourceApplicationId ?? undefined,
+    createdAt: r.createdAt.toISOString(),
+  };
+}
+
+type DbNotifSettingsRow = typeof notificationSettings.$inferSelect;
+
+export function rowToNotificationSettings(
+  r: DbNotifSettingsRow,
+): NotificationSettings {
+  // templates JSON; MariaDB string olarak dönerse parseDbJson yardımcısı
+  // güvenli şekilde parse eder. Eksik anahtarlar için default'a düşeriz.
+  const rawTemplates = parseDbJson<Partial<NotificationTemplates>>(r.templates);
+  const templates: NotificationTemplates = {
+    approved: { ...DEFAULT_NOTIFICATION_TEMPLATES.approved, ...(rawTemplates?.approved ?? {}) },
+    rejected: { ...DEFAULT_NOTIFICATION_TEMPLATES.rejected, ...(rawTemplates?.rejected ?? {}) },
+    needsUpdate: {
+      ...DEFAULT_NOTIFICATION_TEMPLATES.needsUpdate,
+      ...(rawTemplates?.needsUpdate ?? {}),
+    },
+  };
+  const provider = r.smsProvider as NotificationSettings["smsProvider"];
+  return {
+    emailEnabled: r.emailEnabled,
+    smtpHost: r.smtpHost,
+    smtpPort: r.smtpPort,
+    smtpSecure: r.smtpSecure,
+    smtpUser: r.smtpUser,
+    smtpPass: r.smtpPass,
+    smtpFrom: r.smtpFrom,
+    smsEnabled: r.smsEnabled,
+    smsProvider:
+      provider === "netgsm" ||
+      provider === "iletimerkezi" ||
+      provider === "twilio"
+        ? provider
+        : "",
+    smsUser: r.smsUser,
+    smsPass: r.smsPass,
+    smsHeader: r.smsHeader,
+    smsApiKey: r.smsApiKey,
+    smsApiSecret: r.smsApiSecret,
+    smsFromNumber: r.smsFromNumber,
+    templates,
+    updatedAt: r.updatedAt.toISOString(),
+  };
 }

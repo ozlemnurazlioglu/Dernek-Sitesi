@@ -1,11 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, Loader2, Phone, RefreshCcw, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Download,
+  Loader2,
+  Phone,
+  RefreshCcw,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import type { SmsSubscriber } from "@/lib/types";
 import { formatTrMobile } from "@/lib/phone";
 import { formatDateTimeTR } from "@/lib/utils";
+
+type ImportReport = {
+  ok: boolean;
+  added: number;
+  skipped: number;
+  invalid: number;
+  totalRows: number;
+  invalidSamples: { row: number; value: string; reason: string }[];
+};
 
 export default function SmsAboneleriPage() {
   const { toast } = useToast();
@@ -14,6 +33,12 @@ export default function SmsAboneleriPage() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importKvkk, setImportKvkk] = useState(false);
+  const [importReport, setImportReport] = useState<ImportReport | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,6 +111,68 @@ export default function SmsAboneleriPage() {
     window.setTimeout(() => setExporting(false), 1500);
   }
 
+  function openImport() {
+    setImportFile(null);
+    setImportKvkk(false);
+    setImportReport(null);
+    setImportOpen(true);
+  }
+
+  async function runImport() {
+    if (!importFile) {
+      toast({ tone: "warning", title: "Dosya seçiniz" });
+      return;
+    }
+    if (!importKvkk) {
+      toast({
+        tone: "warning",
+        title: "KVKK onayı zorunlu",
+        description:
+          "Bu numaraların KVKK izinli olduğunu onaylamadan içe aktarma yapılamaz.",
+      });
+      return;
+    }
+    setImporting(true);
+    setImportReport(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", importFile);
+      fd.append("kvkkConsent", "true");
+      const res = await fetch("/api/admin/sms-subscribers/import", {
+        method: "POST",
+        credentials: "same-origin",
+        body: fd,
+      });
+      const json = (await res.json().catch(() => null)) as
+        | (ImportReport & { error?: string })
+        | null;
+      if (!res.ok || !json) {
+        toast({
+          tone: "error",
+          title: "İçe aktarma başarısız",
+          description: json?.error || `HTTP ${res.status}`,
+        });
+        return;
+      }
+      setImportReport(json);
+      toast({
+        tone: "success",
+        title: "İçe aktarma tamamlandı",
+        description: `${json.added} eklendi · ${json.skipped} mevcuttu · ${json.invalid} hatalı`,
+      });
+      // Liste yenile — yeni numaralar üstte görünsün.
+      await load();
+    } catch (err) {
+      toast({
+        tone: "error",
+        title: "Bağlantı hatası",
+        description: String(err instanceof Error ? err.message : err),
+      });
+    } finally {
+      setImporting(false);
+    }
+  }
+
   const formatted = useMemo(
     () =>
       items.map((it) => ({
@@ -107,7 +194,7 @@ export default function SmsAboneleriPage() {
             için CSV olarak indirebilir, istediğiniz numarayı silebilirsiniz.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
             onClick={load}
@@ -119,6 +206,14 @@ export default function SmsAboneleriPage() {
               className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"}
             />
             Yenile
+          </button>
+          <button
+            type="button"
+            onClick={openImport}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-brand-300 bg-white text-sm font-medium text-brand-900 hover:bg-brand-50 transition-colors"
+          >
+            <Upload className="h-4 w-4" />
+            İçe Aktar (CSV/Excel)
           </button>
           <button
             type="button"
@@ -214,6 +309,156 @@ export default function SmsAboneleriPage() {
           </ul>
         )}
       </div>
+
+      <Modal
+        open={importOpen}
+        onClose={() => (importing ? undefined : setImportOpen(false))}
+        title="SMS Abonelerini İçe Aktar"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Daha önce elinizde bulunan numaraları topluca yükleyin.
+            Desteklenen formatlar: <strong>.csv</strong> ve{" "}
+            <strong>.xlsx</strong>. Dosyanızda "Telefon", "Phone", "GSM" gibi
+            bir sütun varsa otomatik tespit edilir; tek sütunluk dosyalarda
+            ilk sütun kullanılır. Aynı numara birden fazla kez varsa atlanır.
+          </p>
+
+          <div className="rounded-xl border-2 border-dashed border-border bg-muted/30 p-5 text-center">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              className="hidden"
+              onChange={(e) => {
+                setImportFile(e.target.files?.[0] ?? null);
+                setImportReport(null);
+              }}
+              disabled={importing}
+            />
+            {importFile ? (
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-brand-900">
+                  {importFile.name}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {(importFile.size / 1024).toFixed(1)} KB
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs text-brand-700 hover:underline"
+                  disabled={importing}
+                >
+                  Farklı bir dosya seç
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-white border border-border text-sm font-medium text-brand-900 hover:bg-brand-50"
+              >
+                <Upload className="h-4 w-4" />
+                Dosya seç
+              </button>
+            )}
+          </div>
+
+          <label className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={importKvkk}
+              onChange={(e) => setImportKvkk(e.target.checked)}
+              disabled={importing}
+              className="mt-0.5 h-4 w-4 rounded border-amber-400 text-brand-700"
+            />
+            <span className="text-sm text-amber-900">
+              <strong>KVKK Onayı:</strong> Yüklediğim numaraların{" "}
+              <em>kişisel verilerinin işlenmesi ve ticari elektronik ileti
+              alınması konusunda</em> daha önce onay verdiğini ve bu onayların
+              elimde belgeli olduğunu beyan ederim. Yanlış beyanın hukuki
+              sorumluluğu derneği bağlar.
+            </span>
+          </label>
+
+          {importReport && (
+            <div
+              className={
+                "rounded-xl border p-4 text-sm space-y-2 " +
+                (importReport.invalid === 0
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                  : "border-orange-200 bg-orange-50 text-orange-900")
+              }
+            >
+              <div className="flex items-center gap-2 font-semibold">
+                {importReport.invalid === 0 ? (
+                  <CheckCircle2 className="h-5 w-5" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5" />
+                )}
+                Aktarım raporu
+              </div>
+              <ul className="space-y-0.5 ml-1">
+                <li>
+                  Toplam okunan satır:{" "}
+                  <strong>{importReport.totalRows}</strong>
+                </li>
+                <li>
+                  Yeni eklendi: <strong>{importReport.added}</strong>
+                </li>
+                <li>
+                  Zaten kayıtlıydı (atlandı):{" "}
+                  <strong>{importReport.skipped}</strong>
+                </li>
+                <li>
+                  Hatalı / geçersiz:{" "}
+                  <strong>{importReport.invalid}</strong>
+                </li>
+              </ul>
+              {importReport.invalidSamples.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-current/20 text-xs">
+                  <div className="font-medium mb-1">İlk hatalı satırlar:</div>
+                  <ul className="space-y-0.5 list-disc pl-4">
+                    {importReport.invalidSamples.map((s, i) => (
+                      <li key={i}>
+                        {s.row > 0 ? `Satır ${s.row}: ` : ""}
+                        <span className="font-mono">{s.value || "(boş)"}</span>{" "}
+                        — {s.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setImportOpen(false)}
+              disabled={importing}
+              className="h-10 px-4 rounded-lg border border-border text-sm text-brand-900 hover:bg-muted disabled:opacity-60"
+            >
+              {importReport ? "Kapat" : "Vazgeç"}
+            </button>
+            <button
+              type="button"
+              onClick={runImport}
+              disabled={importing || !importFile || !importKvkk}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-brand-900 text-white text-sm font-medium hover:bg-brand-800 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {importing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              {importing ? "Aktarılıyor…" : "İçe Aktar"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

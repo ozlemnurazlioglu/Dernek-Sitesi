@@ -14,6 +14,8 @@ import type {
   ApplicationStatus,
   ScholarshipApplication,
 } from "@/lib/types";
+import { notifyApplicationEvent } from "@/lib/notify";
+import { getBurseRules, isEditWindowOpen } from "@/lib/burs-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -22,13 +24,47 @@ const VALID_STATUSES: readonly ApplicationStatus[] = [
   "in_review",
   "approved",
   "rejected",
+  "needs_update",
 ];
 
-/** Owner'ın kendi başvurusunu güncelleyebileceği durumlar. */
+/**
+ * Owner'ın kendi başvurusunu güncelleyebileceği durumlar. `needs_update`
+ * dahil — komisyon "şunu güncelle" dediğinde öğrenci edit edebilsin. PUT
+ * handler, owner'ın güncellemesi sonrası status'u `submitted`'e döner.
+ */
 const OWNER_EDITABLE_STATUSES: readonly ApplicationStatus[] = [
   "submitted",
   "in_review",
+  "needs_update",
 ];
+
+function getBaseUrl(req: NextRequest): string {
+  const env = process.env.NEXT_PUBLIC_SITE_URL;
+  if (env) return env.replace(/\/$/, "");
+  const proto = req.headers.get("x-forwarded-proto") ?? "http";
+  const host = req.headers.get("host") ?? "localhost:3000";
+  return `${proto}://${host}`;
+}
+
+/**
+ * Durum değişikliğini hangi bildirim olayına eşler? Sadece terminal
+ * (öğrenciye anlamlı) statülerde notify ederiz; in_review gibi internal
+ * geçişler için SMS atmak hem maliyet hem gürültü olur.
+ */
+function eventForStatusChange(
+  prev: ApplicationStatus,
+  next: ApplicationStatus,
+):
+  | "approved"
+  | "rejected"
+  | "needsUpdate"
+  | null {
+  if (prev === next) return null;
+  if (next === "approved") return "approved";
+  if (next === "rejected") return "rejected";
+  if (next === "needs_update") return "needsUpdate";
+  return null;
+}
 
 /* ------------------------------------------------------------------ */
 /*  PATCH — Admin'in inceleme aksiyonu (durum, not, puan).            */
@@ -48,7 +84,14 @@ export async function PATCH(
   }
 
   const { id } = await ctx.params;
-  let body: { status?: unknown; note?: unknown; score?: unknown };
+  let body: {
+    status?: unknown;
+    note?: unknown;
+    score?: unknown;
+    updateRequest?: unknown;
+    /** "true" ise mail/SMS gönderme (sessiz değişiklik). Default: false. */
+    silent?: unknown;
+  };
   try {
     body = await req.json();
   } catch {
@@ -64,15 +107,71 @@ export async function PATCH(
     return NextResponse.json({ error: "Geçersiz durum" }, { status: 400 });
   }
 
+  // needs_update için updateRequest zorunlu — admin'in ne istediğini
+  // öğrenciye net iletmesini sağlamak için.
+  const updateRequest =
+    typeof body.updateRequest === "string" ? body.updateRequest.trim() : "";
+  if (status === "needs_update" && updateRequest.length === 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Bilgi güncellemesi istenirken öğrenciye iletilecek açıklama zorunludur.",
+        code: "UPDATE_REQUEST_REQUIRED",
+      },
+      { status: 400 },
+    );
+  }
+
+  // Mevcut başvuruyu çek — bildirim için tüm alanlara ihtiyaç var.
+  const existingRows = await db
+    .select()
+    .from(applications)
+    .where(eq(applications.id, id))
+    .limit(1);
+  const existing = existingRows[0];
+  if (!existing) {
+    return NextResponse.json(
+      { error: "Başvuru bulunamadı" },
+      { status: 404 },
+    );
+  }
+
   const updates: Partial<typeof applications.$inferInsert> = {
     status,
     reviewedAt: new Date(),
   };
   if (typeof body.note === "string") updates.reviewerNote = body.note;
   if (typeof body.score === "number") updates.score = body.score;
+  // updateRequest alanını her durumda yönet:
+  //   needs_update'a geçiyorsak → admin'in yazdığı not.
+  //   başka bir status'a geçiyorsak → temizle (eski not aktif kalmasın).
+  updates.updateRequest = status === "needs_update" ? updateRequest : null;
 
   await db.update(applications).set(updates).where(eq(applications.id, id));
-  return NextResponse.json({ ok: true });
+
+  const event = eventForStatusChange(existing.status, status);
+  const silent = body.silent === true;
+  let notifyResult: unknown = null;
+
+  if (event && !silent) {
+    try {
+      const fresh = await loadApplicationWithDocs(id);
+      if (fresh) {
+        const baseUrl = getBaseUrl(req);
+        notifyResult = await notifyApplicationEvent({
+          event,
+          application: fresh,
+          baseUrl,
+          reason: typeof body.note === "string" ? body.note : undefined,
+          updateRequest: updateRequest || undefined,
+        });
+      }
+    } catch (err) {
+      console.error("[applications.PATCH] bildirim hatası", err);
+    }
+  }
+
+  return NextResponse.json({ ok: true, notify: notifyResult });
 }
 
 /* ------------------------------------------------------------------ */
@@ -117,8 +216,9 @@ export async function PUT(
     );
   }
 
-  // Owner kullanıcı sadece beklemede / incelemede olan başvurusunu
-  // düzenleyebilir; onaylanmış / reddedilmiş başvurular kilitli olur.
+  // Owner kullanıcı sadece beklemede / incelemede / needs_update olan
+  // başvurusunu düzenleyebilir; onaylanmış / reddedilmiş başvurular
+  // kilitli olur.
   if (
     isOwner &&
     !isAdmin &&
@@ -136,6 +236,22 @@ export async function PUT(
       },
       { status: 409 },
     );
+  }
+
+  // Madde 1: Başvuru süresi dolduktan sonra kullanıcı kendi bilgilerini de
+  // değiştiremesin. Admin her zaman düzenleyebilir (raportör hak).
+  if (isOwner && !isAdmin) {
+    const rules = await getBurseRules();
+    if (!isEditWindowOpen(rules)) {
+      return NextResponse.json(
+        {
+          error:
+            "Başvuru süresi sona erdi. Düzenleme yapmak için lütfen yönetim ile iletişime geçin.",
+          code: "WINDOW_CLOSED",
+        },
+        { status: 409 },
+      );
+    }
   }
 
   let body: Partial<ScholarshipApplication> & {
@@ -200,6 +316,37 @@ export async function PUT(
   if (typeof body.iban === "string") updates.iban = body.iban;
   if (typeof body.motivationLetter === "string")
     updates.motivationLetter = body.motivationLetter;
+
+  // Yeni alanlar: failedCourses, expectedGradYear, referans grubu.
+  if (typeof body.failedCourses === "number")
+    updates.failedCourses = Math.max(0, Math.trunc(body.failedCourses));
+  if (typeof body.expectedGradYear === "number")
+    updates.expectedGradYear = body.expectedGradYear;
+  if (typeof body.referenceName === "string")
+    updates.referenceName = body.referenceName;
+  if (typeof body.referencePhone === "string")
+    updates.referencePhone = body.referencePhone;
+  if (typeof body.referenceRelation === "string")
+    updates.referenceRelation = body.referenceRelation;
+  if (typeof body.parentReferenceName === "string")
+    updates.parentReferenceName = body.parentReferenceName;
+  if (typeof body.parentReferencePhone === "string")
+    updates.parentReferencePhone = body.parentReferencePhone;
+
+  // Owner needs_update durumundan çıkarken → status'u "submitted"'e
+  // çevir. Admin değil, sadece owner için. Admin manuel status değişimi
+  // için PATCH kullanıyor. Bu sayede öğrencinin güncellemesi
+  // komisyona "yeniden incelenecek" sinyali gönderir.
+  if (
+    isOwner &&
+    !isAdmin &&
+    existing.status === "needs_update"
+  ) {
+    updates.status = "submitted";
+    updates.updateRequest = null;
+    updates.reviewedAt = null;
+    updates.reviewerNote = null;
+  }
 
   if (Object.keys(updates).length > 0) {
     await db.update(applications).set(updates).where(eq(applications.id, id));

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   Archive,
@@ -15,14 +15,18 @@ import {
   FileText,
   GraduationCap,
   Home,
+  Info,
   Mail,
+  MessageCircle,
   Phone,
+  ShieldCheck,
   User,
   Users,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/input";
 import { StatusBadge } from "@/components/status";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
@@ -30,6 +34,7 @@ import {
   formatDateTimeTR,
   formatCurrencyTR,
 } from "@/lib/utils";
+import { normalizeBurseRules } from "@/lib/burs-rules-shared";
 import type { ApplicationStatus, DocumentKey } from "@/lib/types";
 
 const docLabels: Record<DocumentKey, string> = {
@@ -52,10 +57,14 @@ const allDocs: DocumentKey[] = [
 
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
-  const { applications, updateApplicationStatus, requiredDocuments } =
+  const { applications, updateApplicationStatus, requiredDocuments, pageBlocks } =
     useStore();
   const { toast } = useToast();
   const application = applications.find((a) => a.id === params.id);
+  const rules = useMemo(
+    () => normalizeBurseRules(pageBlocks["burs.rules"]),
+    [pageBlocks],
+  );
 
   // Gösterilecek belge anahtarları:
   //  1) Admin'in "İstenen Belgeler" listesindeki sırayla başlat,
@@ -88,6 +97,8 @@ export default function ApplicationDetailPage() {
   const [score, setScore] = useState<string>(
     application?.score?.toString() ?? "",
   );
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+  const [updateText, setUpdateText] = useState(application?.updateRequest ?? "");
 
   if (!application) return notFound();
 
@@ -113,9 +124,42 @@ export default function ApplicationDetailPage() {
     });
   };
 
+  const handleRequestUpdate = () => {
+    if (!application) return;
+    const text = updateText.trim();
+    if (!text) {
+      toast({
+        tone: "warning",
+        title: "Açıklama zorunlu",
+        description:
+          "Öğrenciye neyi güncellemesi gerektiğini açıkça yazın (örn. transkript güncelle).",
+      });
+      return;
+    }
+    updateApplicationStatus(
+      application.id,
+      "needs_update",
+      note || undefined,
+      undefined,
+      text,
+    );
+    setUpdateModalOpen(false);
+    toast({
+      tone: "info",
+      title: "Bilgi güncellemesi istendi",
+      description: "Öğrenciye e-posta/SMS gönderildi.",
+    });
+  };
+
   const fatherIncome = Number(application.fatherIncome) || 0;
   const motherIncome = Number(application.motherIncome) || 0;
   const totalIncome = fatherIncome + motherIncome;
+  const ffWarning =
+    rules.failedCoursesEnabled &&
+    (application.failedCourses ?? 0) >= rules.failedCoursesThreshold;
+  const graduatingThisYear =
+    typeof application.expectedGradYear === "number" &&
+    application.expectedGradYear <= new Date().getFullYear();
 
   return (
     <div className="space-y-6">
@@ -139,6 +183,58 @@ export default function ApplicationDetailPage() {
           </p>
         </div>
       </div>
+
+      {application.status === "needs_update" && application.updateRequest && (
+        <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-900 flex items-start gap-3">
+          <MessageCircle className="h-5 w-5 mt-0.5 shrink-0" />
+          <div>
+            <strong>Bilgi güncellemesi bekleniyor:</strong>
+            <p className="mt-1 whitespace-pre-line">{application.updateRequest}</p>
+            <p className="text-xs mt-2 text-orange-700">
+              Öğrenci kaydını güncellediğinde durum otomatik "Beklemede" olur.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {application.autoRejectedReason && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
+          <div>
+            <strong>Otomatik reddedildi:</strong>
+            <p className="mt-1">{application.autoRejectedReason}</p>
+            <p className="text-xs mt-2 text-red-700">
+              Manuel olarak "İncelemeye Al" veya "Onayla" diyerek geri alabilirsiniz.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {(ffWarning || graduatingThisYear) && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 space-y-2">
+          {ffWarning && (
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <div>
+                <strong>FF uyarısı:</strong> Öğrenci{" "}
+                <strong>{application.failedCourses}</strong> başarısız ders beyan
+                etti (eşik: {rules.failedCoursesThreshold}). Komisyon kararından
+                önce transkripti gözden geçirin.
+              </div>
+            </div>
+          )}
+          {graduatingThisYear && (
+            <div className="flex items-start gap-2">
+              <GraduationCap className="h-4 w-4 mt-0.5 shrink-0" />
+              <div>
+                <strong>Mezuniyet uyarısı:</strong> Tahmini mezuniyet yılı{" "}
+                <strong>{application.expectedGradYear}</strong> — son sınıf
+                olabilir.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -190,6 +286,20 @@ export default function ApplicationDetailPage() {
               <Detail label="Bölüm" value={application.department} />
               <Detail label="Sınıf" value={application.grade} />
               <Detail label="GANO" value={application.gpa} />
+              {rules.failedCoursesEnabled && (
+                <Detail
+                  label="Başarısız Ders (FF)"
+                  value={String(application.failedCourses ?? 0)}
+                  highlight={ffWarning}
+                />
+              )}
+              {application.expectedGradYear ? (
+                <Detail
+                  label="Tahmini Mezuniyet"
+                  value={String(application.expectedGradYear)}
+                  highlight={graduatingThisYear}
+                />
+              ) : null}
             </Grid>
           </Section>
 
@@ -228,6 +338,32 @@ export default function ApplicationDetailPage() {
                 value={formatCurrencyTR(totalIncome)}
                 highlight
                 wide
+              />
+            </Grid>
+          </Section>
+
+          <Section title="Referans Bilgileri" icon={Users}>
+            <Grid>
+              <Detail
+                label="Referans Ad Soyad"
+                value={application.referenceName || "—"}
+              />
+              <Detail
+                label="Referans Telefon"
+                value={application.referencePhone || "—"}
+              />
+              <Detail
+                label="Yakınlık"
+                value={application.referenceRelation || "—"}
+                wide
+              />
+              <Detail
+                label="Veli / İletişim Kişisi"
+                value={application.parentReferenceName || "—"}
+              />
+              <Detail
+                label="Veli Telefonu"
+                value={application.parentReferencePhone || "—"}
               />
             </Grid>
           </Section>
@@ -417,18 +553,85 @@ export default function ApplicationDetailPage() {
               >
                 Reddet
               </Button>
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => {
+                  setUpdateText(application.updateRequest ?? "");
+                  setUpdateModalOpen(true);
+                }}
+                leftIcon={<MessageCircle className="h-4 w-4" />}
+              >
+                Bilgi Güncelleme İste
+              </Button>
             </div>
 
-            <div className="mt-6 pt-5 border-t border-border text-xs text-muted-foreground space-y-1">
+            <div className="mt-6 pt-5 border-t border-border text-xs text-muted-foreground space-y-1.5">
               <p className="inline-flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5" />
                 {formatDateTimeTR(application.submittedAt)}
               </p>
               <p>Başvuru numarası: {application.id}</p>
+              {application.kvkkConsentAt ? (
+                <p className="inline-flex items-center gap-1.5 text-emerald-700">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  KVKK onayı:{" "}
+                  {formatDateTimeTR(application.kvkkConsentAt)}
+                </p>
+              ) : (
+                <p className="inline-flex items-center gap-1.5 text-amber-700">
+                  <Info className="h-3.5 w-3.5" />
+                  KVKK onayı yok (eski başvuru)
+                </p>
+              )}
             </div>
           </div>
         </aside>
       </div>
+
+      {updateModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-brand-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full">
+            <div className="px-6 pt-6 pb-3 border-b border-border">
+              <h2 className="text-lg font-semibold text-brand-900">
+                Bilgi Güncelleme İste
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Öğrenciye neyi güncellemesi gerektiğini açıkça yazın. Bu metin
+                öğrencinin hesabım panelinde turuncu uyarı olarak gösterilir ve
+                e-posta/SMS olarak da iletilir.
+              </p>
+            </div>
+            <div className="px-6 py-4">
+              <Textarea
+                rows={5}
+                placeholder="Örn: Transkript belgenizi son güncel halini yükleyin; gelir bilgileriniz eksik."
+                value={updateText}
+                onChange={(e) => setUpdateText(e.target.value)}
+              />
+            </div>
+            <div className="px-6 py-4 border-t border-border bg-muted/40 flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setUpdateModalOpen(false)}
+              >
+                Vazgeç
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleRequestUpdate}
+                leftIcon={<MessageCircle className="h-4 w-4" />}
+              >
+                Güncelleme İste ve Bildir
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

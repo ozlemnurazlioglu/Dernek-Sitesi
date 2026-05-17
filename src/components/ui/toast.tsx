@@ -8,10 +8,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type ToastTone = "success" | "error" | "info";
+type ToastTone = "success" | "error" | "warning" | "info";
 type Toast = {
   id: string;
   tone: ToastTone;
@@ -30,6 +30,7 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 const icons: Record<ToastTone, ReactNode> = {
   success: <CheckCircle2 className="h-5 w-5 text-emerald-600" />,
   error: <AlertCircle className="h-5 w-5 text-red-600" />,
+  warning: <AlertTriangle className="h-5 w-5 text-amber-600" />,
   info: <Info className="h-5 w-5 text-sky-600" />,
 };
 
@@ -66,6 +67,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               "pointer-events-auto animate-float-up flex gap-3 items-start rounded-lg border bg-white shadow-lg p-3 pr-2",
               t.tone === "success" && "border-emerald-200",
               t.tone === "error" && "border-red-200",
+              t.tone === "warning" && "border-amber-200",
               t.tone === "info" && "border-sky-200",
             )}
           >

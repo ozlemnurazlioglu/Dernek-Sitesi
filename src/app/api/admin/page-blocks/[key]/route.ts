@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pageBlocks } from "@/lib/db/schema";
 import { AuthError, requireAdmin } from "@/lib/auth";
+import { BURS_RULES_BLOCK_KEY, invalidateBurseRulesCache } from "@/lib/burs-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,12 @@ export async function POST(
       .where(eq(pageBlocks.blockKey, key));
   } else {
     await db.insert(pageBlocks).values({ blockKey: key, data, updatedAt });
+  }
+
+  // Burs kuralları cache'i (60s TTL) hemen düşsün — yoksa kuralı değiştiren
+  // admin'in ayarı, gelen sonraki başvurularda 1 dakikaya kadar etki etmezdi.
+  if (key === BURS_RULES_BLOCK_KEY) {
+    invalidateBurseRulesCache();
   }
 
   return NextResponse.json({ ok: true });

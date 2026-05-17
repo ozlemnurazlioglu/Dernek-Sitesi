@@ -11,7 +11,11 @@ import { useStore } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
 import type { ApplicationStatus } from "@/lib/types";
 
-const OWNER_EDITABLE: readonly ApplicationStatus[] = ["submitted", "in_review"];
+const OWNER_EDITABLE: readonly ApplicationStatus[] = [
+  "submitted",
+  "in_review",
+  "needs_update",
+];
 
 export default function BasvuruDuzenlePage({
   params,

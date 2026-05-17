@@ -39,6 +39,8 @@ import {
   Image as ImageIcon,
   Film,
   Landmark,
+  Send,
+  Shield,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { useStore } from "@/lib/store";
@@ -65,15 +67,18 @@ type ContentItem = LeafItem | GroupItem;
 const items: (LeafItem & { exact?: boolean })[] = [
   { href: "/admin", label: "Genel Bakış", icon: LayoutDashboard, exact: true },
   { href: "/admin/basvurular", label: "Burs Başvuruları", icon: GraduationCap },
+  { href: "/admin/eski-bursiyerler", label: "Eski Bursiyerler", icon: GraduationCap },
   { href: "/admin/uyeler", label: "Üyeler", icon: Users },
   { href: "/admin/haberler", label: "Haberler", icon: Newspaper },
   { href: "/admin/etkinlikler", label: "Etkinlikler", icon: Calendar },
   { href: "/admin/mesajlar", label: "Mesajlar", icon: Mail },
   { href: "/admin/sms-aboneleri", label: "SMS Aboneleri", icon: MessageCircle },
+  { href: "/admin/bildirim-gonder", label: "Toplu Bildirim", icon: Send },
 ];
 
 const contentItems: ContentItem[] = [
   { href: "/admin/ayarlar", label: "Site Ayarları", icon: Settings },
+  { href: "/admin/ayarlar/bildirimler", label: "Bildirim Ayarları", icon: Bell },
   { href: "/admin/sayfalar", label: "Sayfa İçerikleri", icon: FileText },
   { href: "/admin/yonetim-kurulu", label: "Yönetim Kurulu", icon: UserCog },
   { href: "/admin/tarihce", label: "Tarihçe", icon: History },
@@ -84,6 +89,7 @@ const contentItems: ContentItem[] = [
     icon: GraduationCap,
     children: [
       { href: "/admin/burs-programlari", label: "Burs Programları", icon: BookOpen },
+      { href: "/admin/burs-kurallari", label: "Burs Kuralları", icon: Shield },
       { href: "/admin/istenen-belgeler", label: "İstenen Belgeler", icon: CheckSquare },
       { href: "/admin/burs-takvimi", label: "Burs Takvimi", icon: ListOrdered },
       { href: "/admin/sss", label: "Sıkça Sorulanlar", icon: HelpCircle },

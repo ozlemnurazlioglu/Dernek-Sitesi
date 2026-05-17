@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  AlertTriangle,
   Calendar,
   Clock,
   Eye,
@@ -15,6 +16,7 @@ import {
   LogOut,
   Mail,
   MapPin,
+  MessageCircle,
   Pencil,
   Phone,
   ShieldCheck,
@@ -30,6 +32,10 @@ import { useToast } from "@/components/ui/toast";
 import { formatDateTimeTR, initials } from "@/lib/utils";
 import { StatusBadge } from "@/components/status";
 import { DEFAULT_COMMON_UI } from "@/lib/defaults/ui-common";
+import {
+  normalizeBurseRules,
+  isEditWindowOpen,
+} from "@/lib/burs-rules-shared";
 import type { CommonUiText, PageHeadersMap } from "@/lib/types";
 
 export default function HesabimPage() {
@@ -40,6 +46,9 @@ export default function HesabimPage() {
   const ui =
     (pageBlocks["ui.common"] as CommonUiText | undefined) ?? DEFAULT_COMMON_UI;
   const accountUi = { ...DEFAULT_COMMON_UI.account, ...(ui.account ?? {}) };
+  // Madde 1 + Y1: başvuru penceresi açık mı? Edit butonu açık/kapalı ona göre.
+  const rules = normalizeBurseRules(pageBlocks["burs.rules"]);
+  const windowOpen = isEditWindowOpen(rules);
 
   useEffect(() => {
     if (ready && !currentUser) {
@@ -183,8 +192,15 @@ export default function HesabimPage() {
             ) : (
               <div className="divide-y divide-border">
                 {myApplications.map((app) => {
+                  const isEditableStatus =
+                    app.status === "submitted" ||
+                    app.status === "in_review" ||
+                    app.status === "needs_update";
+                  // needs_update özel durum: pencere kapalı bile olsa
+                  // admin'in talebine cevaben düzenleme açık kalmalı.
                   const editable =
-                    app.status === "submitted" || app.status === "in_review";
+                    isEditableStatus &&
+                    (app.status === "needs_update" || windowOpen);
                   return (
                     <div key={app.id} className="px-6 py-5">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -218,7 +234,25 @@ export default function HesabimPage() {
                           )}
                         </div>
                       </div>
-                      {app.reviewerNote && (
+
+                      {app.status === "needs_update" && (
+                        <div className="mt-3 rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900 flex items-start gap-2">
+                          <MessageCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                          <div>
+                            <strong>Komisyon bilgi güncellemesi istiyor:</strong>
+                            <p className="mt-1 whitespace-pre-line">
+                              {app.updateRequest ||
+                                "Lütfen başvurunuzu düzenleyin."}
+                            </p>
+                            <p className="text-xs mt-2 text-orange-700">
+                              Başvurunuzu düzenleyip kaydettiğinizde otomatik
+                              olarak yeniden incelemeye alınacaktır.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {app.reviewerNote && app.status !== "needs_update" && (
                         <div className="mt-3 rounded-md bg-muted/60 border border-border px-3 py-2 text-sm text-brand-900">
                           <span className="font-medium">
                             {accountUi.reviewerNoteLabel}
@@ -226,15 +260,29 @@ export default function HesabimPage() {
                           {app.reviewerNote}
                         </div>
                       )}
+
+                      {!windowOpen && isEditableStatus && app.status !== "needs_update" && (
+                        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900 flex items-start gap-2">
+                          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                          Başvuru penceresi kapalı olduğu için bilgilerinizi
+                          düzenleyemezsiniz. Değişiklik gerekiyorsa dernek
+                          yönetimi ile iletişime geçin.
+                        </div>
+                      )}
+
                       <div className="mt-4 flex items-center justify-end">
                         {editable ? (
                           <ButtonLink
                             href={`/hesabim/basvuru/${app.id}/duzenle`}
-                            variant="outline"
+                            variant={
+                              app.status === "needs_update" ? "gold" : "outline"
+                            }
                             size="sm"
                             leftIcon={<Pencil className="h-4 w-4" />}
                           >
-                            Düzenle
+                            {app.status === "needs_update"
+                              ? "Bilgileri Güncelle"
+                              : "Düzenle"}
                           </ButtonLink>
                         ) : (
                           <span
@@ -244,7 +292,9 @@ export default function HesabimPage() {
                                 ? "Onaylanmış başvurular düzenlenemez"
                                 : app.status === "rejected"
                                   ? "Reddedilmiş başvurular düzenlenemez"
-                                  : "Bu başvuru düzenlenemez"
+                                  : !windowOpen
+                                    ? "Başvuru süresi kapalı"
+                                    : "Bu başvuru düzenlenemez"
                             }
                           >
                             <Lock className="h-3.5 w-3.5" />

@@ -23,6 +23,7 @@
     "db:add-analytics-fields": "tsx --env-file=.env.local scripts/add-analytics-fields.ts",
     "db:add-donors": "tsx --env-file=.env.local scripts/add-donors.ts",
     "db:add-application-doc-urls": "tsx --env-file=.env.local scripts/add-application-doc-urls.ts",
+    "db:add-burs-extensions": "tsx --env-file=.env.local scripts/add-burs-extensions.ts",
     "db:migrate-all": "tsx scripts/migrate-all.ts"
   },
   "dependencies": {
@@ -30,10 +31,12 @@
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
+    "exceljs": "^4.4.0",
     "jszip": "^3.10.1",
     "lucide-react": "^1.14.0",
     "mysql2": "^3.22.3",
     "next": "16.2.4",
+    "nodemailer": "^8.0.7",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "server-only": "^0.0.1"
@@ -42,6 +45,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.4.2",

@@ -30,15 +30,26 @@ export default function YedekPage() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Yedek indirilemedi");
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `dernek-yedek-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      const buf = await res.arrayBuffer();
+      const filename = `dernek-yedek-${new Date().toISOString().slice(0, 10)}.json`;
+      const file = new File([buf], filename, { type: "application/json" });
+      const navAny = navigator as unknown as {
+        msSaveBlob?: (b: Blob, name: string) => boolean;
+      };
+      if (typeof navAny.msSaveBlob === "function") {
+        navAny.msSaveBlob(file, filename);
+      } else {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.rel = "noopener";
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
       toast({ tone: "success", title: "Yedek indirildi" });
     } catch (e) {
       toast({

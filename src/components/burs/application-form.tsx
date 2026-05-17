@@ -2,12 +2,15 @@
 
 import {
   useState,
+  useMemo,
+  useRef,
   type ChangeEvent,
   type ReactNode,
   useEffect,
 } from "react";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -17,6 +20,8 @@ import {
   GraduationCap,
   Image as ImageIcon,
   Loader2,
+  Lock,
+  ShieldCheck,
   Trash2,
   Upload,
   User,
@@ -34,6 +39,8 @@ import type {
   ScholarshipApplication,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { normalizeBurseRules, checkApplicationWindow } from "@/lib/burs-rules-shared";
+import { computeExpectedGradYear, isGraduatingThisYear } from "@/lib/graduation";
 
 const DEFAULT_FORM_TEXT: ApplicationFormText = {
   steps: {
@@ -77,9 +84,35 @@ const DEFAULT_FORM_TEXT: ApplicationFormText = {
 
 type FormData = Omit<
   ScholarshipApplication,
-  "id" | "applicantId" | "status" | "submittedAt" | "documents"
+  | "id"
+  | "applicantId"
+  | "status"
+  | "submittedAt"
+  | "documents"
+  | "autoRejectedReason"
+  | "kvkkConsentAt"
+  | "expectedGradYear"
+  | "updateRequest"
+  | "failedCourses"
+  | "referenceName"
+  | "referencePhone"
+  | "referenceRelation"
+  | "parentReferenceName"
+  | "parentReferencePhone"
 > & {
   documents: Partial<Record<DocumentKey, ApplicationDocument>>;
+  /**
+   * Aşağıdaki yeni alanlar tipte opsiyonel; ancak form'da blankData
+   * boş string / 0 ile başlatır → input bind'ı `data.x` (controlled) güvenli.
+   */
+  failedCourses: number;
+  referenceName: string;
+  referencePhone: string;
+  referenceRelation: string;
+  parentReferenceName: string;
+  parentReferencePhone: string;
+  /** Modal'da KVKK onayı verildikten sonra ISO timestamp; başvuruyla beraber gönderilir. */
+  kvkkConsentAt?: string;
 };
 
 /**
@@ -132,6 +165,7 @@ const blankData = (): FormData => ({
   department: "",
   grade: "",
   gpa: "",
+  failedCourses: 0,
   fatherName: "",
   fatherJob: "",
   fatherIncome: "",
@@ -142,9 +176,15 @@ const blankData = (): FormData => ({
   workingMembers: 0,
   previousScholarship: false,
   previousScholarshipDetail: "",
+  referenceName: "",
+  referencePhone: "",
+  referenceRelation: "",
+  parentReferenceName: "",
+  parentReferencePhone: "",
   iban: "",
   motivationLetter: "",
   documents: {},
+  kvkkConsentAt: undefined,
 });
 
 /**
@@ -170,6 +210,7 @@ const dataFromApplication = (app: ScholarshipApplication): FormData => {
     department: app.department,
     grade: app.grade,
     gpa: app.gpa,
+    failedCourses: app.failedCourses ?? 0,
     fatherName: app.fatherName,
     fatherJob: app.fatherJob,
     fatherIncome: app.fatherIncome,
@@ -180,9 +221,15 @@ const dataFromApplication = (app: ScholarshipApplication): FormData => {
     workingMembers: app.workingMembers,
     previousScholarship: app.previousScholarship,
     previousScholarshipDetail: app.previousScholarshipDetail ?? "",
+    referenceName: app.referenceName ?? "",
+    referencePhone: app.referencePhone ?? "",
+    referenceRelation: app.referenceRelation ?? "",
+    parentReferenceName: app.parentReferenceName ?? "",
+    parentReferencePhone: app.parentReferencePhone ?? "",
     iban: app.iban,
     motivationLetter: app.motivationLetter,
     documents: docs,
+    kvkkConsentAt: app.kvkkConsentAt,
   };
 };
 
@@ -214,6 +261,24 @@ export function ApplicationForm({
   const formText =
     (pageBlocks["burs.application_form"] as ApplicationFormText | undefined) ??
     DEFAULT_FORM_TEXT;
+  // Admin panelinden yönetilen burs kuralları — başvuru penceresi, FF
+  // toggle'ı ve diğer şartlar burada okunur. pageBlocks'tan parse edilir.
+  const rules = useMemo(
+    () => normalizeBurseRules(pageBlocks["burs.rules"]),
+    [pageBlocks],
+  );
+  /**
+   * Admin panelinde yönetilen KVKK aydınlatma metni
+   * (`page_blocks.legal.kvkk`). Boş ise yedek metin kullanılır.
+   */
+  const kvkkContent =
+    typeof pageBlocks["legal.kvkk"] === "string"
+      ? (pageBlocks["legal.kvkk"] as string)
+      : DEFAULT_KVKK_TEXT;
+  const closedReason = useMemo(
+    () => (isEdit ? null : checkApplicationWindow(rules)),
+    [rules, isEdit],
+  );
   const steps = STEP_DEFS.map((s) => ({
     ...s,
     title: formText.steps[s.key as StepKey].title,
@@ -240,6 +305,20 @@ export function ApplicationForm({
   const [uploadingKeys, setUploadingKeys] = useState<Set<DocumentKey>>(
     () => new Set(),
   );
+  /**
+   * KVKK modal'ı yeni başvurularda zorunludur. Edit modunda, mevcut
+   * başvuruda zaten consent varsa modal açılmaz. Yeni başvurularda ilk
+   * mount'ta açılır.
+   */
+  const [kvkkOpen, setKvkkOpen] = useState(
+    () => !isEdit && !data.kvkkConsentAt,
+  );
+  // Mezuniyet yılı uyarısı (madde 6) — schoolType + grade değişince güncellenir
+  const expectedGradYear = useMemo(
+    () => computeExpectedGradYear(data.schoolType, data.grade),
+    [data.schoolType, data.grade],
+  );
+  const graduatingThisYear = isGraduatingThisYear(expectedGradYear);
 
   useEffect(() => {
     if (isEdit) return; // edit modunda mevcut başvurunun verisi korunur
@@ -282,6 +361,14 @@ export function ApplicationForm({
         newErrors.department = "Bölüm zorunludur";
       if (!data.grade.trim()) newErrors.grade = "Sınıf zorunludur";
       if (!data.gpa.trim()) newErrors.gpa = "Not ortalaması zorunludur";
+      // failedCourses negatif olmasın; özellik kapalıysa kontrol etme.
+      if (rules.failedCoursesEnabled) {
+        const ff = data.failedCourses ?? 0;
+        if (!Number.isFinite(ff) || ff < 0 || ff > 50) {
+          newErrors.failedCourses =
+            "0 ile 50 arasında bir sayı giriniz (yoksa 0)";
+        }
+      }
     } else if (step === 2) {
       if (!data.fatherName.trim())
         newErrors.fatherName = "Baba adı zorunludur";
@@ -291,12 +378,28 @@ export function ApplicationForm({
         newErrors.motherName = "Anne adı zorunludur";
       if (!data.motherJob.trim())
         newErrors.motherJob = "Anne mesleği zorunludur";
+      // Referans alanları zorunlu — komisyon başvuru sonrası teyit
+      // arayabilsin. Telefon serbest format kabul ediyor; sunucu normalize
+      // edip kontrol edebilir.
+      if (!data.referenceName.trim())
+        newErrors.referenceName = "Referans kişi adı zorunludur";
+      if (!data.referencePhone.trim())
+        newErrors.referencePhone = "Referans telefonu zorunludur";
+      if (!data.referenceRelation.trim())
+        newErrors.referenceRelation = "Yakınlık derecesi zorunludur";
+      if (!data.parentReferenceName.trim())
+        newErrors.parentReferenceName = "Veli/iletişim kişisi adı zorunludur";
+      if (!data.parentReferencePhone.trim())
+        newErrors.parentReferencePhone = "Veli/iletişim telefonu zorunludur";
     } else if (step === 3) {
       const missing = docs
         .filter((d) => d.required)
         .filter((d) => !data.documents[d.key]);
       if (missing.length > 0) {
-        newErrors._docs = `${missing.length} zorunlu belge eksik`;
+        // Eksik belgelerin isimlerini virgülle göster (madde 10) — kullanıcı
+        // listenin sonuna kadar inip aramak zorunda kalmasın.
+        const names = missing.map((d) => d.label).join(", ");
+        newErrors._docs = `Eksik zorunlu belge: ${names}`;
       } else if (uploadingKeys.size > 0) {
         // Yüklenmekte olan dosya varken sonraki adıma geçmek dosya kaybına
         // yol açar (component unmount → upload state kaybolur).
@@ -308,6 +411,11 @@ export function ApplicationForm({
       if (data.motivationLetter.trim().length < 80)
         newErrors.motivationLetter =
           "Lütfen en az 80 karakterlik bir motivasyon mektubu yazın";
+      // KVKK onayı yoksa son adımı bitirme — modal'ı zorla aç.
+      if (!isEdit && !data.kvkkConsentAt) {
+        newErrors._kvkk =
+          "Başvuruyu tamamlamak için KVKK aydınlatma onayı gereklidir.";
+      }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -340,6 +448,10 @@ export function ApplicationForm({
         department: data.department,
         grade: data.grade,
         gpa: data.gpa,
+        failedCourses: rules.failedCoursesEnabled
+          ? Number(data.failedCourses) || 0
+          : 0,
+        expectedGradYear,
         fatherName: data.fatherName,
         fatherJob: data.fatherJob,
         fatherIncome: data.fatherIncome,
@@ -350,8 +462,14 @@ export function ApplicationForm({
         workingMembers: data.workingMembers,
         previousScholarship: data.previousScholarship,
         previousScholarshipDetail: data.previousScholarshipDetail,
+        referenceName: data.referenceName,
+        referencePhone: data.referencePhone,
+        referenceRelation: data.referenceRelation,
+        parentReferenceName: data.parentReferenceName,
+        parentReferencePhone: data.parentReferencePhone,
         iban: data.iban,
         motivationLetter: data.motivationLetter,
+        kvkkConsentAt: data.kvkkConsentAt,
         documents: data.documents,
       };
 
@@ -498,7 +616,29 @@ export function ApplicationForm({
     return <UpdatedScreen onView={() => router.push("/hesabim")} />;
   }
 
+  if (!isEdit && closedReason) {
+    return <ClosedScreen reason={closedReason} />;
+  }
+
   return (
+    <>
+      {!isEdit && kvkkOpen && (
+        <KvkkModal
+          content={kvkkContent}
+          onAccept={() => {
+            const ts = new Date().toISOString();
+            setData((prev) => ({ ...prev, kvkkConsentAt: ts }));
+            setErrors((prev) => {
+              const n = { ...prev };
+              delete n._kvkk;
+              return n;
+            });
+            setKvkkOpen(false);
+          }}
+          onClose={() => setKvkkOpen(false)}
+          alreadyAccepted={!!data.kvkkConsentAt}
+        />
+      )}
     <div className="grid md:grid-cols-12 gap-8">
       <aside className="md:col-span-3">
         <ol className="space-y-2 sticky top-24">
@@ -702,6 +842,39 @@ export function ApplicationForm({
                     invalid={!!errors.gpa}
                   />
                 </Field>
+                {rules.failedCoursesEnabled && (
+                  <Field
+                    label="Başarısız (FF/FD) ders sayısı"
+                    error={errors.failedCourses}
+                    hint="Transkriptinize göre toplam başarısız ders sayısı; yoksa 0 yazın. Komisyon değerlendirmede dikkate alır."
+                  >
+                    <Input
+                      type="number"
+                      min={0}
+                      max={50}
+                      value={data.failedCourses}
+                      onChange={(e) =>
+                        update("failedCourses", Number(e.target.value) || 0)
+                      }
+                      invalid={!!errors.failedCourses}
+                    />
+                  </Field>
+                )}
+                {expectedGradYear && (
+                  <div className="sm:col-span-2 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-900 flex items-start gap-2">
+                    <GraduationCap className="h-4 w-4 mt-0.5 shrink-0" />
+                    <div>
+                      Sistem hesaplaması: <strong>{expectedGradYear}</strong>{" "}
+                      yılında mezun olmanız bekleniyor.
+                      {graduatingThisYear && (
+                        <span className="block mt-1 text-orange-700">
+                          Bu yıl son sınıftasınız — komisyon başvurunuzu bu
+                          bilgiyle değerlendirir.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </StepWrap>
           )}
@@ -817,6 +990,93 @@ export function ApplicationForm({
                     </Field>
                   </div>
                 )}
+              </div>
+
+              <div className="mt-8 pt-6 border-t border-border">
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold text-brand-900">
+                    Referans Bilgileri
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Komisyonumuzun gerektiğinde teyit için arayabileceği, sizi
+                    yakından tanıyan bir referans (öğretmen, komşu, akraba) ve
+                    veli/iletişim kişisi.
+                  </p>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-5">
+                  <Field
+                    label="Referans Ad Soyad"
+                    required
+                    error={errors.referenceName}
+                  >
+                    <Input
+                      value={data.referenceName}
+                      onChange={(e) => update("referenceName", e.target.value)}
+                      invalid={!!errors.referenceName}
+                      placeholder="Adı Soyadı"
+                    />
+                  </Field>
+                  <Field
+                    label="Referans Telefonu"
+                    required
+                    error={errors.referencePhone}
+                  >
+                    <Input
+                      type="tel"
+                      value={data.referencePhone}
+                      onChange={(e) =>
+                        update("referencePhone", e.target.value)
+                      }
+                      invalid={!!errors.referencePhone}
+                      placeholder="0 5XX XXX XX XX"
+                    />
+                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field
+                      label="Yakınlık derecesi"
+                      required
+                      error={errors.referenceRelation}
+                      hint="Örn: Sınıf öğretmeni, mahalleden komşu, dayı"
+                    >
+                      <Input
+                        value={data.referenceRelation}
+                        onChange={(e) =>
+                          update("referenceRelation", e.target.value)
+                        }
+                        invalid={!!errors.referenceRelation}
+                      />
+                    </Field>
+                  </div>
+                  <Field
+                    label="Veli / İletişim Kişisi Ad Soyad"
+                    required
+                    error={errors.parentReferenceName}
+                    hint="Anne/baba dışında acil iletişim kişisi olabilir."
+                  >
+                    <Input
+                      value={data.parentReferenceName}
+                      onChange={(e) =>
+                        update("parentReferenceName", e.target.value)
+                      }
+                      invalid={!!errors.parentReferenceName}
+                    />
+                  </Field>
+                  <Field
+                    label="Veli / İletişim Telefonu"
+                    required
+                    error={errors.parentReferencePhone}
+                  >
+                    <Input
+                      type="tel"
+                      value={data.parentReferencePhone}
+                      onChange={(e) =>
+                        update("parentReferencePhone", e.target.value)
+                      }
+                      invalid={!!errors.parentReferencePhone}
+                      placeholder="0 5XX XXX XX XX"
+                    />
+                  </Field>
+                </div>
               </div>
             </StepWrap>
           )}
@@ -974,6 +1234,45 @@ export function ApplicationForm({
                     {formText.consentText}
                   </p>
                 </div>
+
+                {!isEdit && (
+                  <div className="sm:col-span-2">
+                    {data.kvkkConsentAt ? (
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 flex items-start gap-2">
+                        <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0" />
+                        <div>
+                          KVKK aydınlatma metni okundu ve onaylandı (
+                          {new Date(data.kvkkConsentAt).toLocaleString("tr-TR")}).
+                          <button
+                            type="button"
+                            onClick={() => setKvkkOpen(true)}
+                            className="ml-2 underline text-emerald-900 hover:text-emerald-700"
+                          >
+                            Tekrar görüntüle
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                        <div>
+                          Başvuruyu tamamlamak için KVKK aydınlatma metnini
+                          onaylamanız gerekir.
+                          <button
+                            type="button"
+                            onClick={() => setKvkkOpen(true)}
+                            className="ml-2 underline text-amber-950 hover:text-amber-700 font-medium"
+                          >
+                            Metni aç ve onayla
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {errors._kvkk && (
+                      <p className="text-xs text-red-600 mt-2">{errors._kvkk}</p>
+                    )}
+                  </div>
+                )}
               </div>
             </StepWrap>
           )}
@@ -1008,6 +1307,7 @@ export function ApplicationForm({
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -1049,6 +1349,139 @@ function UpdatedScreen({ onView }: { onView: () => void }) {
           Hesabıma Git
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Yedek KVKK aydınlatma metni — admin panelinden
+ * `page_blocks.legal.kvkk` ile özelleştirilmediği sürece kullanılır.
+ * Üretimde dernek kendi metnini yazmalı; bu metin neyin niçin alındığını
+ * özetler, hukuki tam metin değildir.
+ */
+const DEFAULT_KVKK_TEXT = `KVKK Aydınlatma Metni
+
+Bu burs başvurusu kapsamında derneğimize ileteceğiniz kişisel veriler
+(ad-soyad, T.C. kimlik numarası, iletişim, eğitim ve aile bilgileri,
+yüklediğiniz belgeler) yalnızca başvurunuzun değerlendirilmesi, dernek
+faaliyetleri ve yasal yükümlülüklerimizin yerine getirilmesi amacıyla
+işlenir.
+
+Verileriniz açık rızanız olmadan üçüncü kişilerle paylaşılmaz; ilgili
+mevzuat (6698 sayılı KVKK) çerçevesinde saklanır ve güvenliği için
+gerekli teknik/idari tedbirler alınır.
+
+KVKK madde 11 kapsamında verilerinize erişme, düzeltme, silme ve işlemeye
+itiraz etme haklarınızı dernek iletişim adresimiz üzerinden her zaman
+kullanabilirsiniz.
+
+Başvuruya devam ederek bu aydınlatma metnini okuduğunuzu, kişisel
+verilerinizin yukarıdaki amaçlar doğrultusunda işlenmesini kabul ettiğinizi
+beyan etmiş olursunuz.`;
+
+function KvkkModal({
+  content,
+  onAccept,
+  onClose,
+  alreadyAccepted,
+}: {
+  content: string;
+  onAccept: () => void;
+  onClose: () => void;
+  alreadyAccepted: boolean;
+}) {
+  const [scrolled, setScrolled] = useState(false);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    // Metin modal'a tamamen sığıyorsa scroll mümkün değil — direkt okundu say.
+    if (el.scrollHeight <= el.clientHeight + 4) {
+      setScrolled(true);
+    }
+  }, [content]);
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-brand-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="kvkk-modal-title"
+    >
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col">
+        <div className="px-6 pt-6 pb-3 border-b border-border">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center shrink-0">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <h2
+                id="kvkk-modal-title"
+                className="text-lg font-semibold text-brand-900"
+              >
+                KVKK Aydınlatma Metni
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Başvurunuza devam etmek için lütfen metni okuyup onaylayın.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div
+          ref={scrollerRef}
+          className="flex-1 overflow-y-auto px-6 py-4 text-sm text-brand-900 whitespace-pre-line leading-relaxed"
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            if (
+              !scrolled &&
+              el.scrollTop + el.clientHeight >= el.scrollHeight - 20
+            ) {
+              setScrolled(true);
+            }
+          }}
+        >
+          {content}
+        </div>
+        <div className="px-6 py-4 border-t border-border bg-muted/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            {scrolled
+              ? "Metni okuduğunuzu doğruladık."
+              : "Metni en alta kaydırdığınızda onay butonu açılır."}
+          </p>
+          <div className="flex items-center gap-2">
+            {alreadyAccepted && (
+              <Button type="button" variant="outline" onClick={onClose}>
+                Kapat
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="primary"
+              onClick={onAccept}
+              disabled={!scrolled}
+              leftIcon={<ShieldCheck className="h-4 w-4" />}
+            >
+              Okudum, onaylıyorum
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClosedScreen({ reason }: { reason: string }) {
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-10 text-center">
+      <div className="h-16 w-16 mx-auto rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+        <Lock className="h-8 w-8" />
+      </div>
+      <h2 className="text-2xl font-semibold text-brand-900 mt-5">
+        Başvuru penceresi kapalı
+      </h2>
+      <p className="text-muted-foreground mt-2 max-w-lg mx-auto">{reason}</p>
+      <p className="text-xs text-muted-foreground mt-4">
+        Mevcut başvurularınızı hesabınızdan görüntülemeye devam edebilirsiniz.
+      </p>
     </div>
   );
 }

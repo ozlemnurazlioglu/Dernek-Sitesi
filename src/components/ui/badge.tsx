@@ -8,7 +8,8 @@ type Tone =
   | "success"
   | "warning"
   | "danger"
-  | "info";
+  | "info"
+  | "orange";
 
 const tones: Record<Tone, string> = {
   neutral: "bg-zinc-100 text-zinc-700 border-zinc-200",
@@ -18,6 +19,9 @@ const tones: Record<Tone, string> = {
   warning: "bg-amber-50 text-amber-800 border-amber-200",
   danger: "bg-red-50 text-red-700 border-red-200",
   info: "bg-sky-50 text-sky-700 border-sky-200",
+  // "Bilgi Güncellenmeli" durumu için kullanılır — warning'den farklı görsel
+  // ayrım sağlar (turuncu vs sarı). Toplu eylem banner'larında da kullanılır.
+  orange: "bg-orange-50 text-orange-700 border-orange-200",
 };
 
 export function Badge({
