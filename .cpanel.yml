@@ -1,0 +1,9 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/kumrulul/dernek
+    - export PATH=/home/kumrulul/nodevenv/dernek/22/bin:$PATH
+    - cd $DEPLOYPATH
+    - npm ci --include=dev
+    - npm run build
+    - /bin/touch $DEPLOYPATH/tmp/restart.txt
