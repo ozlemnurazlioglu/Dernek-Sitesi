@@ -16,6 +16,7 @@ import type {
   AnnouncementCategory,
   ApplicationStatus,
   BankAccount,
+  BoardLevelConfig,
   BoardMember,
   ContactMessage,
   DonationPreset,
@@ -49,6 +50,7 @@ import { uid } from "./utils";
 // İçerik tabloları için tip eşlemesi
 type ContentMap = {
   "board-members": BoardMember;
+  "board-levels": BoardLevelConfig;
   milestones: Milestone;
   "activity-reports": ActivityReport;
   "scholarship-programs": ScholarshipProgram;
@@ -87,6 +89,7 @@ type State = {
   siteSettings: SiteSettings;
   pageBlocks: Record<string, unknown>;
   boardMembers: BoardMember[];
+  boardLevels: BoardLevelConfig[];
   milestones: Milestone[];
   activityReports: ActivityReport[];
   scholarshipPrograms: ScholarshipProgram[];
@@ -126,6 +129,7 @@ type LoginResult =
 // Hangi state alanı hangi içerik tipine karşılık gelir?
 const CONTENT_STATE_KEY: Record<ContentType, keyof State> = {
   "board-members": "boardMembers",
+  "board-levels": "boardLevels",
   milestones: "milestones",
   "activity-reports": "activityReports",
   "scholarship-programs": "scholarshipPrograms",
@@ -275,6 +279,7 @@ const emptyState: State = {
   siteSettings: fallbackSettings,
   pageBlocks: {},
   boardMembers: [],
+  boardLevels: [],
   milestones: [],
   activityReports: [],
   scholarshipPrograms: [],
@@ -345,6 +350,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         siteSettings: data.siteSettings ?? fallbackSettings,
         pageBlocks: data.pageBlocks ?? {},
         boardMembers: data.boardMembers ?? [],
+        boardLevels: data.boardLevels ?? [],
         milestones: data.milestones ?? [],
         activityReports: data.activityReports ?? [],
         scholarshipPrograms: data.scholarshipPrograms ?? [],

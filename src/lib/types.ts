@@ -533,8 +533,15 @@ export type LegalPage = {
   updatedAt: string;
 };
 
-/** Yönetim Kurulu hiyerarşi seviyesi. */
-export type BoardLevel = "baskan" | "yonetim" | "uye";
+/**
+ * Yönetim Kurulu hiyerarşi seviyesi slug'ı. Sabit enum yerine admin
+ * panelden yönetilen `BoardLevelConfig.slug` değerine işaret eder; varsayılan
+ * tohumda `baskan`, `yonetim`, `uye` gelir, müşteri yeni seviyeler ekleyebilir.
+ */
+export type BoardLevel = string;
+
+/** Üye fotoğrafının şekli — yuvarlak (varsayılan) ya da kare çerçeve. */
+export type BoardMemberShape = "circle" | "square";
 
 export type BoardMember = {
   id: string;
@@ -543,6 +550,27 @@ export type BoardMember = {
   avatar: string;
   bio: string;
   level: BoardLevel;
+  /**
+   * Avatar görüntüleme şekli. Eski kayıtlarda olmayabilir → mapper "circle"
+   * varsayılanına düşer.
+   */
+  shape: BoardMemberShape;
+  sort: number;
+};
+
+/**
+ * Admin tarafından yönetilen tek bir hiyerarşi seviyesi tanımı. Public
+ * Yönetim Kurulu sayfası `sort` artan sırayla bu listeyi gezer ve
+ * `BoardMember.level === slug` eşleşen üyeleri o seviyenin avatar
+ * boyutuyla (size) render eder.
+ */
+export type BoardLevelSize = "lg" | "md" | "sm" | "xs";
+
+export type BoardLevelConfig = {
+  id: string;
+  slug: string;
+  name: string;
+  size: BoardLevelSize;
   sort: number;
 };
 

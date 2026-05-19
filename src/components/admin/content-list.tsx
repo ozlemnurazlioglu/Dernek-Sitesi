@@ -85,6 +85,7 @@ export function ContentListAdmin({
   // satır eklemeyi unutma (TypeScript bu Record'un eksiksiz olmasını zorlar).
   const stateMap: Record<ContentType, keyof typeof store> = {
     "board-members": "boardMembers",
+    "board-levels": "boardLevels",
     milestones: "milestones",
     "activity-reports": "activityReports",
     "scholarship-programs": "scholarshipPrograms",

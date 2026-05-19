@@ -9,6 +9,7 @@ import {
   applications,
   applicationDocuments,
   bankAccounts,
+  boardLevels,
   boardMembers,
   donationPresets,
   donationUses,
@@ -64,6 +65,7 @@ export async function GET() {
     settingsRows,
     pageBlocksRows,
     boardRows,
+    boardLevelRows,
     milestoneRows,
     reportRows,
     programRows,
@@ -98,7 +100,38 @@ export async function GET() {
     db.select().from(applicationDocuments),
     db.select().from(siteSettings),
     db.select().from(pageBlocks),
-    db.select().from(boardMembers).orderBy(asc(boardMembers.sort)),
+    // board_members.shape v12'de eklendi. Migration yapılmamış DB'de kolon
+    // yoksa select bütününü kaybetmemek için sade alanlarla yeniden dener
+    // ve eksik shape'i "circle" varsayar.
+    db
+      .select()
+      .from(boardMembers)
+      .orderBy(asc(boardMembers.sort))
+      .catch(() =>
+        db
+          .select({
+            id: boardMembers.id,
+            name: boardMembers.name,
+            role: boardMembers.role,
+            avatar: boardMembers.avatar,
+            bio: boardMembers.bio,
+            level: boardMembers.level,
+            sort: boardMembers.sort,
+          })
+          .from(boardMembers)
+          .orderBy(asc(boardMembers.sort))
+          .then((rows) =>
+            rows.map((r) => ({ ...r, shape: "circle" as const })),
+          ),
+      ),
+    // board_levels v12'de eklendi — migration yapılmamış DB'lerde tablo
+    // yoksa public sayfa eski 3'lü hiyerarşiye fallback eder. Bootstrap'i
+    // kilitlememek için hata sessizce yutulur, boş dizi döner.
+    db
+      .select()
+      .from(boardLevels)
+      .orderBy(asc(boardLevels.sort))
+      .catch(() => [] as Array<typeof boardLevels.$inferSelect>),
     db.select().from(milestones).orderBy(asc(milestones.sort)),
     db.select().from(activityReports).orderBy(asc(activityReports.sort)),
     db.select().from(scholarshipPrograms).orderBy(asc(scholarshipPrograms.sort)),
@@ -189,7 +222,12 @@ export async function GET() {
     ),
     siteSettings: settings,
     pageBlocks: pageBlocksMap,
-    boardMembers: boardRows,
+    boardMembers: boardRows.map((b) => ({
+      ...b,
+      // Eski kayıtlarda shape NULL/eksik olabilir → güvenli varsayılan.
+      shape: b.shape === "square" ? "square" : "circle",
+    })),
+    boardLevels: boardLevelRows,
     milestones: milestoneRows,
     activityReports: reportRows,
     scholarshipPrograms: programRows.map((p) => {

@@ -6,7 +6,7 @@ import { AuthError, requireAdmin } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const SUPPORTED_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const SUPPORTED_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 type Json = Record<string, unknown>;
 type Rows = Record<string, unknown>[];
@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
     await db.delete(schema.activityReports);
     await db.delete(schema.milestones);
     await db.delete(schema.boardMembers);
+    await db.delete(schema.boardLevels);
     await db.delete(schema.newsCategories);
     await db.delete(schema.eventCategories);
     await db.delete(schema.legalPages);
@@ -122,6 +123,10 @@ export async function POST(req: NextRequest) {
     }
 
     /* ---------- içerik listeleri ---------- */
+    // boardLevels v12'de eklendi — eski yedeklerde olmayabilir, sessizce
+    // atlanır; bu durumda migration scripti (add-board-levels) varsayılan
+    // 3 seviyeyi yeniden ekler.
+    await bulkInsert(schema.boardLevels, content.boardLevels);
     await bulkInsert(schema.boardMembers, content.boardMembers);
     await bulkInsert(schema.milestones, content.milestones);
     await bulkInsert(schema.activityReports, content.activityReports);

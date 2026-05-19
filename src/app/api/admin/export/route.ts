@@ -7,6 +7,7 @@ import {
   announcements,
   applicationDocuments,
   applications,
+  boardLevels,
   boardMembers,
   donationPresets,
   donationUses,
@@ -41,7 +42,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /** Sürüm — şema değişirse bumplanmalı, import bunu kontrol eder. */
-const EXPORT_VERSION = 11;
+const EXPORT_VERSION = 12;
 
 /**
  * Tüm site içeriğini ve uygulama verisini tek bir JSON paketi olarak döndürür.
@@ -67,6 +68,7 @@ export async function GET() {
     siteSettingsRows,
     pageBlocksRows,
     boardMembersRows,
+    boardLevelsRows,
     milestonesRows,
     activityReportsRows,
     scholarshipProgramsRows,
@@ -101,6 +103,7 @@ export async function GET() {
     db.select().from(siteSettings),
     db.select().from(pageBlocks),
     db.select().from(boardMembers),
+    db.select().from(boardLevels),
     db.select().from(milestones),
     db.select().from(activityReports),
     db.select().from(scholarshipPrograms),
@@ -146,6 +149,7 @@ export async function GET() {
     pageBlocks: pageBlocksRows,
     content: {
       boardMembers: boardMembersRows,
+      boardLevels: boardLevelsRows,
       milestones: milestonesRows,
       activityReports: activityReportsRows,
       scholarshipPrograms: scholarshipProgramsRows,

@@ -4,6 +4,7 @@ import {
   seedAgalar,
   seedAnnouncementCategories,
   seedAnnouncements,
+  seedBoardLevels,
   seedBoardMembers,
   seedDonationPresets,
   seedDonationUses,
@@ -41,6 +42,7 @@ export async function clearContentTables() {
   await db.delete(schema.activityReports);
   await db.delete(schema.milestones);
   await db.delete(schema.boardMembers);
+  await db.delete(schema.boardLevels);
   await db.delete(schema.newsCategories);
   await db.delete(schema.eventCategories);
   await db.delete(schema.legalPages);
@@ -68,6 +70,9 @@ export async function seedContent() {
     updatedAt: now,
   });
 
+  for (const lv of seedBoardLevels) {
+    await db.insert(schema.boardLevels).values(lv);
+  }
   for (const m of seedBoardMembers) {
     await db.insert(schema.boardMembers).values(m);
   }

@@ -8,6 +8,7 @@ import {
   announcementCategories,
   announcements,
   bankAccounts,
+  boardLevels,
   boardMembers,
   donationPresets,
   donationUses,
@@ -34,7 +35,11 @@ import {
 export const contentLists = {
   "board-members": {
     table: boardMembers,
-    fields: ["id", "name", "role", "avatar", "bio", "level", "sort"] as const,
+    fields: ["id", "name", "role", "avatar", "bio", "level", "shape", "sort"] as const,
+  },
+  "board-levels": {
+    table: boardLevels,
+    fields: ["id", "slug", "name", "size", "sort"] as const,
   },
   milestones: {
     table: milestones,

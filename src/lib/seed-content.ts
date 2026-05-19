@@ -17,6 +17,7 @@ import type {
   ApplicationFormText,
   BankAccount,
   AuthUiText,
+  BoardLevelConfig,
   CommonUiText,
   FinanceItem,
   HeaderConfig,
@@ -89,6 +90,17 @@ export const seedSiteSettings: SiteSettings = {
   customTrackingHtml: "",
 };
 
+/**
+ * Varsayılan hiyerarşi seviyeleri. `slug` değerleri `BoardMember.level` ile
+ * eşleşir. Admin yeni seviye ekleyebilir; eklenen seviyenin `sort`'una göre
+ * şemada yerleşir, `size` avatar boyutunu belirler.
+ */
+export const seedBoardLevels: BoardLevelConfig[] = [
+  { id: "bl-baskan", slug: "baskan", name: "Başkan", size: "lg", sort: 10 },
+  { id: "bl-yonetim", slug: "yonetim", name: "Yönetim", size: "md", sort: 20 },
+  { id: "bl-uye", slug: "uye", name: "Üye", size: "sm", sort: 30 },
+];
+
 export const seedBoardMembers: BoardMember[] = [
   {
     id: "b-1",
@@ -97,6 +109,7 @@ export const seedBoardMembers: BoardMember[] = [
     avatar: "https://i.pravatar.cc/240?img=33",
     bio: "",
     level: "baskan",
+    shape: "circle",
     sort: 10,
   },
   {
@@ -106,6 +119,7 @@ export const seedBoardMembers: BoardMember[] = [
     avatar: "https://i.pravatar.cc/240?img=12",
     bio: "",
     level: "yonetim",
+    shape: "circle",
     sort: 10,
   },
   {
@@ -115,6 +129,7 @@ export const seedBoardMembers: BoardMember[] = [
     avatar: "https://i.pravatar.cc/240?img=15",
     bio: "",
     level: "yonetim",
+    shape: "circle",
     sort: 20,
   },
   {
@@ -124,6 +139,7 @@ export const seedBoardMembers: BoardMember[] = [
     avatar: "https://i.pravatar.cc/240?img=47",
     bio: "",
     level: "yonetim",
+    shape: "circle",
     sort: 30,
   },
   {
@@ -133,6 +149,7 @@ export const seedBoardMembers: BoardMember[] = [
     avatar: "https://i.pravatar.cc/240?img=20",
     bio: "",
     level: "yonetim",
+    shape: "circle",
     sort: 40,
   },
   {
@@ -142,6 +159,7 @@ export const seedBoardMembers: BoardMember[] = [
     avatar: "https://i.pravatar.cc/240?img=68",
     bio: "",
     level: "uye",
+    shape: "circle",
     sort: 10,
   },
   {
@@ -151,6 +169,7 @@ export const seedBoardMembers: BoardMember[] = [
     avatar: "https://i.pravatar.cc/240?img=24",
     bio: "",
     level: "uye",
+    shape: "circle",
     sort: 20,
   },
   {
@@ -160,6 +179,7 @@ export const seedBoardMembers: BoardMember[] = [
     avatar: "https://i.pravatar.cc/240?img=53",
     bio: "",
     level: "uye",
+    shape: "circle",
     sort: 30,
   },
   {
@@ -169,6 +189,7 @@ export const seedBoardMembers: BoardMember[] = [
     avatar: "https://i.pravatar.cc/240?img=11",
     bio: "",
     level: "uye",
+    shape: "circle",
     sort: 40,
   },
   {
@@ -178,6 +199,7 @@ export const seedBoardMembers: BoardMember[] = [
     avatar: "https://i.pravatar.cc/240?img=14",
     bio: "",
     level: "uye",
+    shape: "circle",
     sort: 50,
   },
   {
@@ -187,6 +209,7 @@ export const seedBoardMembers: BoardMember[] = [
     avatar: "https://i.pravatar.cc/240?img=8",
     bio: "",
     level: "uye",
+    shape: "circle",
     sort: 60,
   },
   {
@@ -196,6 +219,7 @@ export const seedBoardMembers: BoardMember[] = [
     avatar: "https://i.pravatar.cc/240?img=60",
     bio: "",
     level: "uye",
+    shape: "circle",
     sort: 70,
   },
 ];

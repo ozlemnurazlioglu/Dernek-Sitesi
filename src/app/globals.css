@@ -259,3 +259,42 @@ body {
     transform: scale(1.05);
   }
 }
+
+/*
+ * Yönetim Kurulu PDF çıktısı — kullanıcı "PDF olarak İndir" butonuna basınca
+ * tarayıcının yerleşik yazdırma diyaloğu açılır ve "PDF olarak kaydet"
+ * seçeneğiyle dosya indirilir. Sayfanın yalnızca organizasyon şemasını
+ * göstermek istediğimiz için header/footer, üst koyu bant ve butonlar
+ * `print:hidden` ile gizlenir; aşağıdaki kurallar arkaplan rengini ve
+ * sayfa kenar boşluğunu yazdırmaya uygun hale getirir.
+ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+  }
+  /* Header / footer / sidebar gibi navigasyon bileşenlerini gizle.
+   * Sayfa içinde `print:hidden` tailwind sınıfı zaten ilgili elementleri
+   * gizliyor; aşağıdaki kural başka noktalarda kalmış sticky bantları
+   * yedek olarak kapatır. */
+  header,
+  footer,
+  nav {
+    display: none !important;
+  }
+  /* Tailwind v4 bazı sürümlerde `print:hidden` varyantı için CSS kuralı
+   * üretmiyor — HTML'deki `class="print:hidden"` öğeleri yazdırılırken
+   * görünür kalıyor. Açık tanım: üst koyu bant ve PDF butonu kesin
+   * gizlensin. */
+  .print\:hidden {
+    display: none !important;
+  }
+  .print\\:no-shadow {
+    box-shadow: none !important;
+  }
+}
+

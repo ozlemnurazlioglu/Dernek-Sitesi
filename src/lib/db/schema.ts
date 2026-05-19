@@ -379,14 +379,42 @@ export const boardMembers = mysqlTable(
     // TiDB, text/blob türlerinde DEFAULT desteklemediğinden varchar(2000)
     // kullanıyoruz. 2000 karakter kısa biyografi için fazlasıyla yeterli.
     bio: varchar("bio", { length: 2000 }).notNull().default(""),
-    /** Hiyerarşik seviye: 'baskan' | 'yonetim' | 'uye' */
+    /**
+     * Hiyerarşik seviye slug'ı — `board_levels.slug` ile eşleşir. Varsayılan
+     * tohumda 'baskan' | 'yonetim' | 'uye' gelir; admin yeni seviye
+     * tanımlayabilir, üyeler o seviyenin slug'ını alır.
+     */
     level: varchar("level", { length: 32 }).notNull().default("uye"),
+    /**
+     * Üye fotoğrafının görüntüleme şekli: 'circle' (yuvarlak) ya da
+     * 'square' (kare köşeleri yumuşatılmış). Public şemada ve modal'da
+     * bu değere göre avatar maske uygulanır.
+     */
+    shape: varchar("shape", { length: 16 }).notNull().default("circle"),
     sort: int("sort").notNull().default(0),
   },
   (t) => [
     index("board_sort_idx").on(t.sort),
     index("board_level_idx").on(t.level),
   ],
+);
+
+/**
+ * Yönetim kurulu hiyerarşi seviyeleri. Admin panelden eklenip silinebilir;
+ * her seviyenin avatar boyutu (lg/md/sm) ve sıralaması ayrı düzenlenebilir.
+ * Public şema sayfasında `sort` artan sırayla render edilir.
+ */
+export const boardLevels = mysqlTable(
+  "board_levels",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    slug: varchar("slug", { length: 32 }).notNull().unique(),
+    name: varchar("name", { length: 100 }).notNull(),
+    /** Avatar boyutu: 'lg' (başkan), 'md' (yönetim), 'sm' (üye), 'xs' (kompakt). */
+    size: varchar("size", { length: 4 }).notNull().default("md"),
+    sort: int("sort").notNull().default(0),
+  },
+  (t) => [index("board_levels_sort_idx").on(t.sort)],
 );
 
 // Tarihçe (zaman çizelgesi)
