@@ -1025,6 +1025,23 @@ export type BursApplicationClosedText = {
   footnote: string;
 };
 
+/**
+ * Burs başvuru formunun **son adımında** (motivasyon + IBAN sayfası) gösterilen
+ * vicdani sorumluluk notu. Başvuru penceresi AÇIK iken de gönder butonunun
+ * hemen üstünde belirgin bir kart olarak çıkar — öğrencinin son okuduğu mesaj
+ * olduğu için bilinç altı etkisi en yüksek nokta.
+ *
+ * `page_blocks.burs.application_pledge` — Yasal Sayfalar admininden düzenlenir.
+ */
+export type BursApplicationPledge = {
+  /** false ise kart hiç render edilmez. Geçici kapatmak için. */
+  enabled: boolean;
+  /** Kartın küçük üst etiketi (örn. "Vicdani Sorumluluk"). Boş bırakılırsa yalnızca body gösterilir. */
+  title: string;
+  /** Asıl mesaj — çok satırlı düz metin. */
+  body: string;
+};
+
 /** Burs başvuru formu: adım başlıkları, butonlar, onay metni, başarı ekranı */
 export type ApplicationFormText = {
   steps: {

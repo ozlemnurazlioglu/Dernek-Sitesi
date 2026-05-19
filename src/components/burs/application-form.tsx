@@ -36,12 +36,14 @@ import type {
   ApplicationDocument,
   ApplicationFormText,
   BursApplicationClosedText,
+  BursApplicationPledge,
   DocumentKey,
   ScholarshipApplication,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { normalizeBurseRules, checkApplicationWindow } from "@/lib/burs-rules-shared";
 import { normalizeBursApplicationClosed } from "@/lib/defaults/burs-application-closed";
+import { normalizeBursApplicationPledge } from "@/lib/defaults/burs-application-pledge";
 import { DEFAULT_KVKK_TEXT } from "@/lib/defaults/kvkk";
 import { computeExpectedGradYear, isGraduatingThisYear } from "@/lib/graduation";
 
@@ -287,6 +289,13 @@ export function ApplicationForm({
     () => normalizeBursApplicationClosed(pageBlocks["burs.application_closed"]),
     [pageBlocks],
   );
+  // Son adımdaki vicdani sorumluluk notu. Admin'den enabled=false ise null.
+  const pledge = useMemo<BursApplicationPledge | null>(() => {
+    const p = normalizeBursApplicationPledge(
+      pageBlocks["burs.application_pledge"],
+    );
+    return p.enabled && p.body.trim() ? p : null;
+  }, [pageBlocks]);
   const steps = STEP_DEFS.map((s) => ({
     ...s,
     title: formText.steps[s.key as StepKey].title,
@@ -1249,6 +1258,18 @@ export function ApplicationForm({
                     />
                   </Field>
                 </div>
+                {pledge && (
+                  <div className="sm:col-span-2 rounded-xl border border-gold-200 bg-gold-50 p-5">
+                    {pledge.title.trim() && (
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-gold-700">
+                        {pledge.title}
+                      </div>
+                    )}
+                    <p className="text-sm md:text-base text-brand-900 leading-relaxed whitespace-pre-line mt-1">
+                      {pledge.body}
+                    </p>
+                  </div>
+                )}
                 <div className="sm:col-span-2 rounded-xl bg-brand-50 border border-brand-100 p-4">
                   <p className="text-sm text-brand-900">
                     <span className="font-semibold">Onay:</span>{" "}

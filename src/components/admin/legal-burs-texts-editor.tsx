@@ -8,8 +8,15 @@ import {
   DEFAULT_BURS_APPLICATION_CLOSED,
   normalizeBursApplicationClosed,
 } from "@/lib/defaults/burs-application-closed";
+import {
+  DEFAULT_BURS_APPLICATION_PLEDGE,
+  normalizeBursApplicationPledge,
+} from "@/lib/defaults/burs-application-pledge";
 import { DEFAULT_KVKK_TEXT } from "@/lib/defaults/kvkk";
-import type { BursApplicationClosedText } from "@/lib/types";
+import type {
+  BursApplicationClosedText,
+  BursApplicationPledge,
+} from "@/lib/types";
 
 export function LegalBursTextsEditor() {
   const { pageBlocks, updatePageBlock } = useStore();
@@ -25,6 +32,10 @@ export function LegalBursTextsEditor() {
     normalizeBursApplicationClosed(pageBlocks["burs.application_closed"]),
   );
 
+  const [pledge, setPledge] = useState<BursApplicationPledge>(() =>
+    normalizeBursApplicationPledge(pageBlocks["burs.application_pledge"]),
+  );
+
   useEffect(() => {
     setKvkk(
       typeof pageBlocks["legal.kvkk"] === "string" &&
@@ -35,6 +46,9 @@ export function LegalBursTextsEditor() {
     setClosed(
       normalizeBursApplicationClosed(pageBlocks["burs.application_closed"]),
     );
+    setPledge(
+      normalizeBursApplicationPledge(pageBlocks["burs.application_pledge"]),
+    );
   }, [pageBlocks]);
 
   const setClosedField = <K extends keyof BursApplicationClosedText>(
@@ -42,6 +56,13 @@ export function LegalBursTextsEditor() {
     value: BursApplicationClosedText[K],
   ) => {
     setClosed((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const setPledgeField = <K extends keyof BursApplicationPledge>(
+    key: K,
+    value: BursApplicationPledge[K],
+  ) => {
+    setPledge((prev) => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -126,6 +147,56 @@ export function LegalBursTextsEditor() {
             type="button"
             className="text-xs text-brand-700 hover:underline"
             onClick={() => setClosed(DEFAULT_BURS_APPLICATION_CLOSED)}
+          >
+            Varsayılana döndür
+          </button>
+        </div>
+      </BlockCard>
+
+      <BlockCard
+        title="Burs Başvurusu — Vicdani Sorumluluk Notu"
+        description="Başvuru formunun son adımında, 'Başvuruyu Gönder' butonunun hemen üstünde gösterilir. Başvuru dönemi açıkken de görünür; öğrenciye son hatırlatma niteliğindedir."
+        blockKey="burs.application_pledge"
+        onSave={() => updatePageBlock("burs.application_pledge", pledge)}
+      >
+        <div className="space-y-4">
+          <label className="flex items-start gap-3 rounded-xl border border-border p-4 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={pledge.enabled}
+              onChange={(e) => setPledgeField("enabled", e.target.checked)}
+              className="mt-1 h-4 w-4"
+            />
+            <span className="text-sm text-brand-900">
+              <strong>Bu notu formda göster</strong>
+              <span className="block text-muted-foreground mt-0.5">
+                Kapatırsanız vicdani sorumluluk kartı başvuru formunun son
+                adımında hiç render edilmez.
+              </span>
+            </span>
+          </label>
+          <Field label="Başlık (opsiyonel)">
+            <Input
+              value={pledge.title}
+              onChange={(e) => setPledgeField("title", e.target.value)}
+              placeholder="Vicdani Sorumluluk"
+            />
+          </Field>
+          <Field
+            label="Mesaj"
+            hint="Çok satırlı düz metin. Öğrenci 'Başvuruyu Gönder' butonuna basmadan hemen önce okur."
+          >
+            <Textarea
+              rows={4}
+              value={pledge.body}
+              onChange={(e) => setPledgeField("body", e.target.value)}
+              placeholder={DEFAULT_BURS_APPLICATION_PLEDGE.body}
+            />
+          </Field>
+          <button
+            type="button"
+            className="text-xs text-brand-700 hover:underline"
+            onClick={() => setPledge(DEFAULT_BURS_APPLICATION_PLEDGE)}
           >
             Varsayılana döndür
           </button>
