@@ -162,22 +162,22 @@ export default function ApplicationDetailPage() {
     application.expectedGradYear <= new Date().getFullYear();
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
+    <div className="space-y-6 min-w-0">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 min-w-0">
+        <div className="min-w-0">
           <Link
             href="/admin/basvurular"
             className="text-sm text-muted-foreground hover:text-brand-900 inline-flex items-center gap-1 mb-2"
           >
             <ArrowLeft className="h-4 w-4" /> Tüm başvurular
           </Link>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl md:text-3xl font-semibold text-brand-900">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
+            <h1 className="text-2xl md:text-3xl font-semibold text-brand-900 break-words min-w-0">
               {application.fullName}
             </h1>
             <StatusBadge status={application.status} />
           </div>
-          <p className="text-muted-foreground mt-1 font-mono text-xs">
+          <p className="text-muted-foreground mt-1 font-mono text-xs break-all">
             #{application.id} ·{" "}
             {formatDateTimeTR(application.submittedAt)}
           </p>
@@ -236,8 +236,8 @@ export default function ApplicationDetailPage() {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid lg:grid-cols-3 gap-6 min-w-0">
+        <div className="lg:col-span-2 space-y-6 min-w-0">
           <Section title="Kişisel Bilgiler" icon={User}>
             <Grid>
               <Detail label="Ad Soyad" value={application.fullName} />
@@ -376,7 +376,7 @@ export default function ApplicationDetailPage() {
               <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                 Motivasyon Mektubu
               </div>
-              <p className="mt-2 text-brand-900 leading-relaxed whitespace-pre-line">
+              <p className="mt-2 text-brand-900 leading-relaxed whitespace-pre-line break-words">
                 {application.motivationLetter}
               </p>
             </div>
@@ -407,7 +407,7 @@ export default function ApplicationDetailPage() {
                 </div>
               );
             })()}
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid sm:grid-cols-2 gap-3 min-w-0">
               {docKeysToShow.map((key) => {
                 const doc = application.documents[key];
                 const hasFile = doc && !!doc.url;
@@ -415,14 +415,14 @@ export default function ApplicationDetailPage() {
                   <div
                     key={key}
                     className={
-                      "rounded-lg border p-4 " +
+                      "rounded-lg border p-4 min-w-0 " +
                       (doc
                         ? "border-emerald-200 bg-emerald-50/40"
                         : "border-dashed border-border bg-muted/30")
                     }
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-sm font-medium text-brand-900">
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                      <div className="text-sm font-medium text-brand-900 min-w-0 break-words">
                         {labelFor(key)}
                       </div>
                       {doc ? (
@@ -440,8 +440,8 @@ export default function ApplicationDetailPage() {
                       )}
                     </div>
                     {doc ? (
-                      <div className="mt-3 flex items-center justify-between gap-3 rounded-md bg-white border border-border px-3 py-2">
-                        <div className="min-w-0">
+                      <div className="mt-3 flex items-center justify-between gap-3 rounded-md bg-white border border-border px-3 py-2 min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="text-sm text-brand-900 truncate">
                             {doc.fileName}
                           </div>
@@ -657,7 +657,11 @@ function Section({
 }
 
 function Grid({ children }: { children: React.ReactNode }) {
-  return <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4">{children}</div>;
+  return (
+    <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4 min-w-0">
+      {children}
+    </div>
+  );
 }
 
 function Detail({
@@ -676,7 +680,7 @@ function Detail({
   highlight?: boolean;
 }) {
   return (
-    <div className={wide ? "sm:col-span-2" : ""}>
+    <div className={(wide ? "sm:col-span-2 " : "") + "min-w-0"}>
       <div className="text-xs text-muted-foreground inline-flex items-center gap-1">
         {icon}
         {label}
@@ -685,7 +689,7 @@ function Detail({
         className={
           "mt-1 text-sm " +
           (highlight ? "font-semibold text-brand-900" : "text-brand-900") +
-          (mono ? " font-mono" : "")
+          (mono ? " font-mono break-all" : " break-words")
         }
       >
         {value || "—"}
