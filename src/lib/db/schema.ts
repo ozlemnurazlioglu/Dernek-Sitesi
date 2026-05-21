@@ -391,6 +391,15 @@ export const boardMembers = mysqlTable(
      * bu değere göre avatar maske uygulanır.
      */
     shape: varchar("shape", { length: 16 }).notNull().default("circle"),
+    /**
+     * Sosyal medya linkleri — public şemada üye kartının altında ikon
+     * olarak gösterilir. Boş bırakılan kanallar render edilmez. Tam URL
+     * beklenir (https://twitter.com/kullanici gibi).
+     */
+    twitter: varchar("twitter", { length: 512 }).notNull().default(""),
+    instagram: varchar("instagram", { length: 512 }).notNull().default(""),
+    facebook: varchar("facebook", { length: 512 }).notNull().default(""),
+    website: varchar("website", { length: 512 }).notNull().default(""),
     sort: int("sort").notNull().default(0),
   },
   (t) => [
@@ -415,6 +424,48 @@ export const boardLevels = mysqlTable(
     sort: int("sort").notNull().default(0),
   },
   (t) => [index("board_levels_sort_idx").on(t.sort)],
+);
+
+/**
+ * Kumru Protokolü üyeleri — belediye başkanı, kaymakam, müdürler gibi
+ * resmi protokol üyelerinin listelendiği ayrı tablo. Yapı `board_members`
+ * ile birebir aynıdır; tek farkı sosyal medya alanlarının başlangıçtan
+ * itibaren tanımlı olması ve `level` kolonunun `protocol_levels` tablosuna
+ * işaret etmesidir.
+ */
+export const protocolMembers = mysqlTable(
+  "protocol_members",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    name: varchar("name", { length: 191 }).notNull(),
+    role: varchar("role", { length: 191 }).notNull(),
+    avatar: varchar("avatar", { length: 512 }).notNull(),
+    bio: varchar("bio", { length: 2000 }).notNull().default(""),
+    level: varchar("level", { length: 32 }).notNull().default("uye"),
+    shape: varchar("shape", { length: 16 }).notNull().default("circle"),
+    twitter: varchar("twitter", { length: 512 }).notNull().default(""),
+    instagram: varchar("instagram", { length: 512 }).notNull().default(""),
+    facebook: varchar("facebook", { length: 512 }).notNull().default(""),
+    website: varchar("website", { length: 512 }).notNull().default(""),
+    sort: int("sort").notNull().default(0),
+  },
+  (t) => [
+    index("protocol_sort_idx").on(t.sort),
+    index("protocol_level_idx").on(t.level),
+  ],
+);
+
+/** Kumru Protokolü hiyerarşi seviyeleri — board_levels ile aynı yapı. */
+export const protocolLevels = mysqlTable(
+  "protocol_levels",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    slug: varchar("slug", { length: 32 }).notNull().unique(),
+    name: varchar("name", { length: 100 }).notNull(),
+    size: varchar("size", { length: 4 }).notNull().default("md"),
+    sort: int("sort").notNull().default(0),
+  },
+  (t) => [index("protocol_levels_sort_idx").on(t.sort)],
 );
 
 // Tarihçe (zaman çizelgesi)

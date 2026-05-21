@@ -18,6 +18,8 @@ import {
   seedNewsCategories,
   seedPhotoCategories,
   seedPhotos,
+  seedProtocolLevels,
+  seedProtocolMembers,
   seedVideoCategories,
   seedVideos,
   seedPageBlocks,
@@ -43,6 +45,12 @@ export async function clearContentTables() {
   await db.delete(schema.milestones);
   await db.delete(schema.boardMembers);
   await db.delete(schema.boardLevels);
+  try {
+    await db.delete(schema.protocolMembers);
+    await db.delete(schema.protocolLevels);
+  } catch {
+    // v13 öncesi DB'lerde protocol tabloları olmayabilir — sessizce atla.
+  }
   await db.delete(schema.newsCategories);
   await db.delete(schema.eventCategories);
   await db.delete(schema.legalPages);
@@ -75,6 +83,16 @@ export async function seedContent() {
   }
   for (const m of seedBoardMembers) {
     await db.insert(schema.boardMembers).values(m);
+  }
+  try {
+    for (const lv of seedProtocolLevels) {
+      await db.insert(schema.protocolLevels).values(lv);
+    }
+    for (const m of seedProtocolMembers) {
+      await db.insert(schema.protocolMembers).values(m);
+    }
+  } catch {
+    // Migration çalışmamış DB'lerde protocol_* tabloları yoktur — sessizce atla.
   }
   for (const m of seedMilestones) {
     await db.insert(schema.milestones).values(m);

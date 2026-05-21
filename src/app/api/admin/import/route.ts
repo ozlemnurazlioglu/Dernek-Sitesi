@@ -6,7 +6,7 @@ import { AuthError, requireAdmin } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const SUPPORTED_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const SUPPORTED_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
 type Json = Record<string, unknown>;
 type Rows = Record<string, unknown>[];
@@ -81,6 +81,12 @@ export async function POST(req: NextRequest) {
     await db.delete(schema.milestones);
     await db.delete(schema.boardMembers);
     await db.delete(schema.boardLevels);
+    try {
+      await db.delete(schema.protocolMembers);
+      await db.delete(schema.protocolLevels);
+    } catch {
+      // v13 öncesi DB'lerde protocol tabloları olmayabilir — sessizce atla.
+    }
     await db.delete(schema.newsCategories);
     await db.delete(schema.eventCategories);
     await db.delete(schema.legalPages);
@@ -128,6 +134,14 @@ export async function POST(req: NextRequest) {
     // 3 seviyeyi yeniden ekler.
     await bulkInsert(schema.boardLevels, content.boardLevels);
     await bulkInsert(schema.boardMembers, content.boardMembers);
+    // Kumru Protokolü v13'te eklendi. Eski yedeklerde olmayabilir veya
+    // hedef DB'de tablo henüz yoksa sessizce atlanır.
+    try {
+      await bulkInsert(schema.protocolLevels, content.protocolLevels);
+      await bulkInsert(schema.protocolMembers, content.protocolMembers);
+    } catch {
+      /* tablolar yoksa atla */
+    }
     await bulkInsert(schema.milestones, content.milestones);
     await bulkInsert(schema.activityReports, content.activityReports);
     await bulkInsert(

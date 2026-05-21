@@ -40,6 +40,8 @@ import type {
   PageHeadersMap,
   PhotoCategory,
   Photo,
+  ProtocolLevelConfig,
+  ProtocolMember,
   VideoCategory,
   Video,
   RequiredDocument,
@@ -110,6 +112,10 @@ export const seedBoardMembers: BoardMember[] = [
     bio: "",
     level: "baskan",
     shape: "circle",
+    twitter: "",
+    instagram: "",
+    facebook: "",
+    website: "",
     sort: 10,
   },
   {
@@ -120,6 +126,10 @@ export const seedBoardMembers: BoardMember[] = [
     bio: "",
     level: "yonetim",
     shape: "circle",
+    twitter: "",
+    instagram: "",
+    facebook: "",
+    website: "",
     sort: 10,
   },
   {
@@ -130,6 +140,10 @@ export const seedBoardMembers: BoardMember[] = [
     bio: "",
     level: "yonetim",
     shape: "circle",
+    twitter: "",
+    instagram: "",
+    facebook: "",
+    website: "",
     sort: 20,
   },
   {
@@ -140,6 +154,10 @@ export const seedBoardMembers: BoardMember[] = [
     bio: "",
     level: "yonetim",
     shape: "circle",
+    twitter: "",
+    instagram: "",
+    facebook: "",
+    website: "",
     sort: 30,
   },
   {
@@ -150,6 +168,10 @@ export const seedBoardMembers: BoardMember[] = [
     bio: "",
     level: "yonetim",
     shape: "circle",
+    twitter: "",
+    instagram: "",
+    facebook: "",
+    website: "",
     sort: 40,
   },
   {
@@ -160,6 +182,10 @@ export const seedBoardMembers: BoardMember[] = [
     bio: "",
     level: "uye",
     shape: "circle",
+    twitter: "",
+    instagram: "",
+    facebook: "",
+    website: "",
     sort: 10,
   },
   {
@@ -170,6 +196,10 @@ export const seedBoardMembers: BoardMember[] = [
     bio: "",
     level: "uye",
     shape: "circle",
+    twitter: "",
+    instagram: "",
+    facebook: "",
+    website: "",
     sort: 20,
   },
   {
@@ -180,6 +210,10 @@ export const seedBoardMembers: BoardMember[] = [
     bio: "",
     level: "uye",
     shape: "circle",
+    twitter: "",
+    instagram: "",
+    facebook: "",
+    website: "",
     sort: 30,
   },
   {
@@ -190,6 +224,10 @@ export const seedBoardMembers: BoardMember[] = [
     bio: "",
     level: "uye",
     shape: "circle",
+    twitter: "",
+    instagram: "",
+    facebook: "",
+    website: "",
     sort: 40,
   },
   {
@@ -200,6 +238,10 @@ export const seedBoardMembers: BoardMember[] = [
     bio: "",
     level: "uye",
     shape: "circle",
+    twitter: "",
+    instagram: "",
+    facebook: "",
+    website: "",
     sort: 50,
   },
   {
@@ -210,6 +252,10 @@ export const seedBoardMembers: BoardMember[] = [
     bio: "",
     level: "uye",
     shape: "circle",
+    twitter: "",
+    instagram: "",
+    facebook: "",
+    website: "",
     sort: 60,
   },
   {
@@ -220,9 +266,30 @@ export const seedBoardMembers: BoardMember[] = [
     bio: "",
     level: "uye",
     shape: "circle",
+    twitter: "",
+    instagram: "",
+    facebook: "",
+    website: "",
     sort: 70,
   },
 ];
+
+/**
+ * Kumru Protokolü seviyeleri — Belediye Başkanı, Müdür/Yetkili, Üye gibi
+ * resmi makam hiyerarşisini temsil eder. Admin panelden eklenip silinebilir.
+ */
+export const seedProtocolLevels: ProtocolLevelConfig[] = [
+  { id: "pl-baskan", slug: "baskan", name: "Belediye Başkanı", size: "lg", sort: 10 },
+  { id: "pl-yonetim", slug: "yonetim", name: "Müdür / Yetkili", size: "md", sort: 20 },
+  { id: "pl-uye", slug: "uye", name: "Üye", size: "sm", sort: 30 },
+];
+
+/**
+ * Kumru Protokolü için boş bir başlangıç listesi. Demo verisi sunmuyoruz;
+ * dernek admini gerçek protokol üyelerini elle ekler. Yapı `BoardMember`
+ * ile birebir aynıdır.
+ */
+export const seedProtocolMembers: ProtocolMember[] = [];
 
 export const seedMilestones: Milestone[] = [
   {
@@ -1031,6 +1098,11 @@ export const seedPageBlocks: Record<string, unknown> = {
       description:
         "Derneğimizi gönüllü olarak yöneten Yönetim Kurulu üyelerimizi tanıyın.",
     },
+    protokol: {
+      title: "Kumru Protokolü",
+      description:
+        "Derneğimize destek veren resmi kurum yetkililerini ve protokol üyelerini burada listeliyoruz.",
+    },
     "mali-tablo": {
       title: "Mali Tablo",
       description:
@@ -1100,6 +1172,7 @@ export const seedPageBlocks: Record<string, unknown> = {
         links: [
           { label: "Hakkımızda", href: "/hakkimizda" },
           { label: "Yönetim Kurulu", href: "/yonetim" },
+          { label: "Kumru Protokolü", href: "/kumru-protokolu" },
           { label: "Tüzük", href: "/tuzuk" },
           { label: "Faaliyet Raporları", href: "/hakkimizda#raporlar" },
           { label: "İletişim", href: "/iletisim" },

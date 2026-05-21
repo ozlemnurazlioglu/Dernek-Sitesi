@@ -2,19 +2,19 @@
 
 import { ContentListAdmin, type FieldDef } from "@/components/admin/content-list";
 import { useStore } from "@/lib/store";
-import type { BoardMember } from "@/lib/types";
+import type { ProtocolMember } from "@/lib/types";
 
-export default function YonetimKuruluPage() {
-  const { boardLevels } = useStore();
+export default function KumruProtokoluPage() {
+  const { protocolLevels } = useStore();
 
-  // Hiyerarşi seviyeleri admin tarafından yönetildiği için seçenek listesini
-  // store'dan dinamik olarak inşa ediyoruz. Eski sabit 3 seviye (baskan/
-  // yonetim/uye) ile geriye uyumluluk: tablo boşsa fallback dizinin tamamı.
-  const levelOptions = (boardLevels.length > 0
-    ? [...boardLevels].sort((a, b) => a.sort - b.sort)
+  // Yönetim Kurulu seviyeleri ile aynı mantık — admin yeni seviye
+  // ekleyebilsin diye seçenekleri store'dan dinamik üretiyoruz. Tablo
+  // boşsa varsayılan 3 seviye fallback olarak gözükür.
+  const levelOptions = (protocolLevels.length > 0
+    ? [...protocolLevels].sort((a, b) => a.sort - b.sort)
     : [
-        { id: "fallback-baskan", slug: "baskan", name: "Başkan", size: "lg" as const, sort: 10 },
-        { id: "fallback-yonetim", slug: "yonetim", name: "Yönetim", size: "md" as const, sort: 20 },
+        { id: "fallback-baskan", slug: "baskan", name: "Belediye Başkanı", size: "lg" as const, sort: 10 },
+        { id: "fallback-yonetim", slug: "yonetim", name: "Müdür / Yetkili", size: "md" as const, sort: 20 },
         { id: "fallback-uye", slug: "uye", name: "Üye", size: "sm" as const, sort: 30 },
       ]
   ).map((lv) => ({ value: lv.slug, label: lv.name }));
@@ -23,10 +23,10 @@ export default function YonetimKuruluPage() {
     { key: "name", label: "Ad Soyad", type: "text", required: true },
     {
       key: "role",
-      label: "Görev / Rol",
+      label: "Görev / Unvan",
       type: "text",
       required: true,
-      placeholder: "Örn. Başkan Yardımcısı, Genel Sekreter, Üye",
+      placeholder: "Örn. Kumru Belediye Başkanı, Kaymakam, Müdür",
     },
     {
       key: "level",
@@ -79,19 +79,18 @@ export default function YonetimKuruluPage() {
     },
   ];
 
-  // Seviye slug → görünen ad eşlemesi (renderRow rozeti için).
   const levelLabelMap = new Map<string, string>();
-  for (const lv of boardLevels) levelLabelMap.set(lv.slug, lv.name);
+  for (const lv of protocolLevels) levelLabelMap.set(lv.slug, lv.name);
 
   return (
     <ContentListAdmin
-      type="board-members"
-      title="Yönetim Kurulu"
-      description="Hakkımızda sayfasında listelenen yönetim kurulu üyeleri. Seviyeler 'Yönetim Kurulu Seviyeleri' sayfasından özelleştirilebilir."
+      type="protocol-members"
+      title="Kumru Protokolü"
+      description="Derneğimize destek veren belediye başkanı, kaymakam, müdür gibi resmi protokol üyelerini bu sayfadan yönetebilirsiniz. Seviyeler 'Kumru Protokolü Seviyeleri' sayfasından özelleştirilebilir."
       singular="Üye"
       fields={fields}
       renderRow={(item) => {
-        const m = item as unknown as BoardMember;
+        const m = item as unknown as ProtocolMember;
         const levelLabel = levelLabelMap.get(m.level) ?? m.level;
         const shape = m.shape === "square" ? "square" : "circle";
         const imgShape = shape === "square" ? "rounded-lg" : "rounded-full";

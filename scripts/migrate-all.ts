@@ -24,7 +24,8 @@ const STEPS: { label: string; script: string }[] = [
   { label: "9/12 donors tablosu + örnek veri",     script: "scripts/add-donors.ts" },
   { label: "10/12 application_documents.file_url kolonu", script: "scripts/add-application-doc-urls.ts" },
   { label: "11/12 Burs sistemi genişletme (11 madde + Y1/Y2/Y3)", script: "scripts/add-burs-extensions.ts" },
-  { label: "12/12 Yönetim Kurulu seviyeleri + üye foto şekli", script: "scripts/add-board-levels.ts" },
+  { label: "12/13 Yönetim Kurulu seviyeleri + üye foto şekli", script: "scripts/add-board-levels.ts" },
+  { label: "13/13 Kumru Protokolü + sosyal medya kolonları", script: "scripts/add-kumru-protokolu.ts" },
 ];
 
 function runStep(scriptPath: string): Promise<void> {

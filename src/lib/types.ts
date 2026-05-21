@@ -555,8 +555,27 @@ export type BoardMember = {
    * varsayılanına düşer.
    */
   shape: BoardMemberShape;
+  /**
+   * Sosyal medya linkleri — public kartının altında ikon olarak gösterilir.
+   * Boş olanlar render edilmez. Tam URL beklenir. Eski kayıtlarda alanlar
+   * olmayabilir → mapper boş string'e düşer.
+   */
+  twitter: string;
+  instagram: string;
+  facebook: string;
+  website: string;
   sort: number;
 };
+
+/**
+ * Kumru Protokolü üyesi — Yönetim Kurulu ile yapı olarak birebir aynıdır,
+ * yalnızca ayrı bir liste oluşturduğu için ayrı bir tablo+tipi vardır.
+ * level alanı `ProtocolLevelConfig.slug` ile eşleşir.
+ */
+export type ProtocolMember = BoardMember;
+
+/** Kumru Protokolü hiyerarşi seviyesi — BoardLevelConfig ile aynı yapıdadır. */
+export type ProtocolLevelConfig = BoardLevelConfig;
 
 /**
  * Admin tarafından yönetilen tek bir hiyerarşi seviyesi tanımı. Public
@@ -866,6 +885,7 @@ export type PageHeadersMap = {
   etkinlikler: PageHeaderItem;
   duyurular: PageHeaderItem;
   yonetim: PageHeaderItem;
+  protokol: PageHeaderItem;
   iletisim: PageHeaderItem;
   "mali-tablo": PageHeaderItem;
   hesabim: PageHeaderItem;

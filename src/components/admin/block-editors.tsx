@@ -1384,6 +1384,7 @@ const PAGE_HEADER_LABELS: { key: keyof PageHeadersMap; name: string; hint?: stri
     { key: "etkinlikler", name: "Etkinlikler" },
     { key: "duyurular", name: "Duyurular (Hemşehri İlanları)" },
     { key: "yonetim", name: "Yönetim Kurulu" },
+    { key: "protokol", name: "Kumru Protokolü" },
     { key: "iletisim", name: "İletişim" },
     { key: "mali-tablo", name: "Mali Tablo" },
     {
@@ -1403,6 +1404,7 @@ const EMPTY_HEADERS: PageHeadersMap = {
   etkinlikler: EMPTY_HEADER,
   duyurular: EMPTY_HEADER,
   yonetim: EMPTY_HEADER,
+  protokol: EMPTY_HEADER,
   iletisim: EMPTY_HEADER,
   "mali-tablo": EMPTY_HEADER,
   hesabim: EMPTY_HEADER,

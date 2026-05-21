@@ -86,6 +86,8 @@ export function ContentListAdmin({
   const stateMap: Record<ContentType, keyof typeof store> = {
     "board-members": "boardMembers",
     "board-levels": "boardLevels",
+    "protocol-members": "protocolMembers",
+    "protocol-levels": "protocolLevels",
     milestones: "milestones",
     "activity-reports": "activityReports",
     "scholarship-programs": "scholarshipPrograms",

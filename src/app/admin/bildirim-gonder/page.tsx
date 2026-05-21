@@ -372,10 +372,26 @@ export default function BulkNotifyPage() {
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Ana sayfa abonelik formundan veya içe aktarılan numaralara
-                  düz metin SMS. Sadece SMS gider, e-posta atılmaz.
+                  düz metin SMS. Sadece SMS gider, e-posta atılmaz.{" "}
+                  <span className="font-medium text-amber-700">
+                    Burs başvurularıyla ilişkili değildir
+                  </span>{" "}
+                  — burada başvuru durumu (Reddedildi/Güncelleme) filtresi
+                  uygulanmaz.
                 </p>
               </button>
             </div>
+            {audience === "applications" && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 flex gap-2.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
+                <p className="text-xs text-emerald-900 leading-relaxed">
+                  Bu modda seçili başvuranlara <strong>otomatik hem e-posta
+                  hem SMS</strong> gönderilir (başvuru formundaki iletişim
+                  bilgileri kullanılır). Reddettiğiniz başvuranlara SMS
+                  yollamak için <em>SMS Aboneleri</em>'ne geçmenize gerek yok.
+                </p>
+              </div>
+            )}
           </section>
 
           {audience === "applications" && (
@@ -521,7 +537,7 @@ export default function BulkNotifyPage() {
           </>
           )}
 
-          {event === "rejected" && (
+          {audience === "applications" && event === "rejected" && (
             <section className="rounded-2xl border border-border bg-white p-5 space-y-3">
               <h2 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
                 3) Red gerekçesi (opsiyonel)
@@ -539,7 +555,7 @@ export default function BulkNotifyPage() {
             </section>
           )}
 
-          {event === "needsUpdate" && (
+          {audience === "applications" && event === "needsUpdate" && (
             <section className="rounded-2xl border border-border bg-white p-5 space-y-3">
               <h2 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
                 3) Güncelleme talebi <span className="text-red-500">*</span>
@@ -580,7 +596,11 @@ export default function BulkNotifyPage() {
                     });
                     return;
                   }
-                } else if (event === "needsUpdate" && !updateRequest.trim()) {
+                } else if (
+                  audience === "applications" &&
+                  event === "needsUpdate" &&
+                  !updateRequest.trim()
+                ) {
                   toast({
                     tone: "error",
                     title: "Açıklama gerekli",

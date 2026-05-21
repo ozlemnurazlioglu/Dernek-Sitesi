@@ -25,6 +25,8 @@ import {
   pageBlocks,
   photoCategories,
   photos,
+  protocolLevels,
+  protocolMembers,
   requiredDocuments,
   scholarshipPrograms,
   scholarshipTimeline,
@@ -42,7 +44,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /** Sürüm — şema değişirse bumplanmalı, import bunu kontrol eder. */
-const EXPORT_VERSION = 12;
+const EXPORT_VERSION = 13;
 
 /**
  * Tüm site içeriğini ve uygulama verisini tek bir JSON paketi olarak döndürür.
@@ -69,6 +71,8 @@ export async function GET() {
     pageBlocksRows,
     boardMembersRows,
     boardLevelsRows,
+    protocolMembersRows,
+    protocolLevelsRows,
     milestonesRows,
     activityReportsRows,
     scholarshipProgramsRows,
@@ -104,6 +108,8 @@ export async function GET() {
     db.select().from(pageBlocks),
     db.select().from(boardMembers),
     db.select().from(boardLevels),
+    db.select().from(protocolMembers).catch(() => []),
+    db.select().from(protocolLevels).catch(() => []),
     db.select().from(milestones),
     db.select().from(activityReports),
     db.select().from(scholarshipPrograms),
@@ -150,6 +156,8 @@ export async function GET() {
     content: {
       boardMembers: boardMembersRows,
       boardLevels: boardLevelsRows,
+      protocolMembers: protocolMembersRows,
+      protocolLevels: protocolLevelsRows,
       milestones: milestonesRows,
       activityReports: activityReportsRows,
       scholarshipPrograms: scholarshipProgramsRows,

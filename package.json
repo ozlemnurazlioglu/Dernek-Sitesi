@@ -25,6 +25,7 @@
     "db:add-application-doc-urls": "tsx --env-file=.env.local scripts/add-application-doc-urls.ts",
     "db:add-burs-extensions": "tsx --env-file=.env.local scripts/add-burs-extensions.ts",
     "db:add-board-levels": "tsx --env-file=.env.local scripts/add-board-levels.ts",
+    "db:add-kumru-protokolu": "tsx --env-file=.env.local scripts/add-kumru-protokolu.ts",
     "db:migrate-all": "tsx scripts/migrate-all.ts"
   },
   "dependencies": {

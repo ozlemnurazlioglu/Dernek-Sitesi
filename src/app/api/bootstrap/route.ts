@@ -28,6 +28,8 @@ import {
   pageBlocks,
   photoCategories,
   photos,
+  protocolLevels,
+  protocolMembers,
   requiredDocuments,
   scholarshipPrograms,
   scholarshipTimeline,
@@ -66,6 +68,8 @@ export async function GET() {
     pageBlocksRows,
     boardRows,
     boardLevelRows,
+    protocolRows,
+    protocolLevelRows,
     milestoneRows,
     reportRows,
     programRows,
@@ -100,9 +104,10 @@ export async function GET() {
     db.select().from(applicationDocuments),
     db.select().from(siteSettings),
     db.select().from(pageBlocks),
-    // board_members.shape v12'de eklendi. Migration yapılmamış DB'de kolon
-    // yoksa select bütününü kaybetmemek için sade alanlarla yeniden dener
-    // ve eksik shape'i "circle" varsayar.
+    // board_members.shape v12'de, sosyal medya kolonları v13'te eklendi.
+    // Migration yapılmamış DB'de bu kolonlar yoksa select bütününü kaybetmemek
+    // için sade alanlarla yeniden dener; eksik shape'i "circle" ve sosyal
+    // medya alanlarını boş string varsayar.
     db
       .select()
       .from(boardMembers)
@@ -121,7 +126,14 @@ export async function GET() {
           .from(boardMembers)
           .orderBy(asc(boardMembers.sort))
           .then((rows) =>
-            rows.map((r) => ({ ...r, shape: "circle" as const })),
+            rows.map((r) => ({
+              ...r,
+              shape: "circle" as const,
+              twitter: "",
+              instagram: "",
+              facebook: "",
+              website: "",
+            })),
           ),
       ),
     // board_levels v12'de eklendi — migration yapılmamış DB'lerde tablo
@@ -132,6 +144,19 @@ export async function GET() {
       .from(boardLevels)
       .orderBy(asc(boardLevels.sort))
       .catch(() => [] as Array<typeof boardLevels.$inferSelect>),
+    // protocol_members ve protocol_levels v13'te eklendi — migration
+    // yapılmamış DB'lerde tablolar yoksa boş diziye düşeriz; public sayfa
+    // "henüz üye eklenmemiş" ekranı gösterir.
+    db
+      .select()
+      .from(protocolMembers)
+      .orderBy(asc(protocolMembers.sort))
+      .catch(() => [] as Array<typeof protocolMembers.$inferSelect>),
+    db
+      .select()
+      .from(protocolLevels)
+      .orderBy(asc(protocolLevels.sort))
+      .catch(() => [] as Array<typeof protocolLevels.$inferSelect>),
     db.select().from(milestones).orderBy(asc(milestones.sort)),
     db.select().from(activityReports).orderBy(asc(activityReports.sort)),
     db.select().from(scholarshipPrograms).orderBy(asc(scholarshipPrograms.sort)),
@@ -226,8 +251,22 @@ export async function GET() {
       ...b,
       // Eski kayıtlarda shape NULL/eksik olabilir → güvenli varsayılan.
       shape: b.shape === "square" ? "square" : "circle",
+      // Sosyal medya v13'te eklendi; eski kayıtlarda yoksa boş string.
+      twitter: b.twitter ?? "",
+      instagram: b.instagram ?? "",
+      facebook: b.facebook ?? "",
+      website: b.website ?? "",
     })),
     boardLevels: boardLevelRows,
+    protocolMembers: protocolRows.map((b) => ({
+      ...b,
+      shape: b.shape === "square" ? "square" : "circle",
+      twitter: b.twitter ?? "",
+      instagram: b.instagram ?? "",
+      facebook: b.facebook ?? "",
+      website: b.website ?? "",
+    })),
+    protocolLevels: protocolLevelRows,
     milestones: milestoneRows,
     activityReports: reportRows,
     scholarshipPrograms: programRows.map((p) => {

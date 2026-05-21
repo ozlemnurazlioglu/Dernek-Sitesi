@@ -20,6 +20,7 @@ export const DEFAULT_HEADER_CONFIG: HeaderConfig = {
       ],
     },
     { label: "Yönetim", href: "/yonetim", enabled: true },
+    { label: "Kumru Protokolü", href: "/kumru-protokolu", enabled: true },
     { label: "Burs", href: "/burs", enabled: true },
     { label: "Haberler", href: "/haberler", enabled: true },
     { label: "Etkinlikler", href: "/etkinlikler", enabled: true },

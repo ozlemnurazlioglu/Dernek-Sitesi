@@ -42,6 +42,7 @@ const STATIC_PATHS: StaticEntry[] = [
   { path: "/hakkimizda", priority: 0.7, changeFrequency: "monthly" },
   { path: "/hakkimizda/mahallelerimiz", priority: 0.5, changeFrequency: "monthly" },
   { path: "/yonetim", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/kumru-protokolu", priority: 0.5, changeFrequency: "monthly" },
   { path: "/burs", priority: 0.8, changeFrequency: "weekly" },
   { path: "/burs/basvuru", priority: 0.7, changeFrequency: "weekly" },
   { path: "/etkinlikler", priority: 0.8, changeFrequency: "daily" },

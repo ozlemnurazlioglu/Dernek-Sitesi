@@ -33,6 +33,8 @@ import type {
   NewsItem,
   Photo,
   PhotoCategory,
+  ProtocolLevelConfig,
+  ProtocolMember,
   RequiredDocument,
   ScholarshipApplication,
   ScholarshipProgram,
@@ -51,6 +53,8 @@ import { uid } from "./utils";
 type ContentMap = {
   "board-members": BoardMember;
   "board-levels": BoardLevelConfig;
+  "protocol-members": ProtocolMember;
+  "protocol-levels": ProtocolLevelConfig;
   milestones: Milestone;
   "activity-reports": ActivityReport;
   "scholarship-programs": ScholarshipProgram;
@@ -90,6 +94,8 @@ type State = {
   pageBlocks: Record<string, unknown>;
   boardMembers: BoardMember[];
   boardLevels: BoardLevelConfig[];
+  protocolMembers: ProtocolMember[];
+  protocolLevels: ProtocolLevelConfig[];
   milestones: Milestone[];
   activityReports: ActivityReport[];
   scholarshipPrograms: ScholarshipProgram[];
@@ -130,6 +136,8 @@ type LoginResult =
 const CONTENT_STATE_KEY: Record<ContentType, keyof State> = {
   "board-members": "boardMembers",
   "board-levels": "boardLevels",
+  "protocol-members": "protocolMembers",
+  "protocol-levels": "protocolLevels",
   milestones: "milestones",
   "activity-reports": "activityReports",
   "scholarship-programs": "scholarshipPrograms",
@@ -280,6 +288,8 @@ const emptyState: State = {
   pageBlocks: {},
   boardMembers: [],
   boardLevels: [],
+  protocolMembers: [],
+  protocolLevels: [],
   milestones: [],
   activityReports: [],
   scholarshipPrograms: [],
@@ -351,6 +361,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         pageBlocks: data.pageBlocks ?? {},
         boardMembers: data.boardMembers ?? [],
         boardLevels: data.boardLevels ?? [],
+        protocolMembers: data.protocolMembers ?? [],
+        protocolLevels: data.protocolLevels ?? [],
         milestones: data.milestones ?? [],
         activityReports: data.activityReports ?? [],
         scholarshipPrograms: data.scholarshipPrograms ?? [],

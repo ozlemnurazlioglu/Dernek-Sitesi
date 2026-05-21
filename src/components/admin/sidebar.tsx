@@ -80,6 +80,8 @@ const contentItems: ContentItem[] = [
   { href: "/admin/sayfalar", label: "Sayfa İçerikleri", icon: FileText },
   { href: "/admin/yonetim-kurulu", label: "Yönetim Kurulu", icon: UserCog },
   { href: "/admin/yonetim-kurulu-seviyeleri", label: "Yönetim Kurulu Seviyeleri", icon: ListOrdered },
+  { href: "/admin/kumru-protokolu", label: "Kumru Protokolü", icon: UserCog },
+  { href: "/admin/kumru-protokolu-seviyeleri", label: "Kumru Protokolü Seviyeleri", icon: ListOrdered },
   { href: "/admin/tarihce", label: "Tarihçe", icon: History },
   { href: "/admin/raporlar", label: "Raporlar & Belgeler", icon: FileBadge },
   {
