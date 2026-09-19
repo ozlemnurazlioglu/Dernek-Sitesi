@@ -59,6 +59,7 @@ export type ScholarshipApplication = {
   phone: string;
   address: string;
   city: string;
+  neighborhood?: string;
 
   // Step 2 — Education
   schoolType: "lise" | "onlisans" | "lisans" | "yuksek_lisans" | "doktora";

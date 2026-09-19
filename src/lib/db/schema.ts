@@ -109,6 +109,7 @@ export const applications = mysqlTable(
     phone: varchar("phone", { length: 64 }).notNull(),
     address: text("address").notNull(),
     city: varchar("city", { length: 128 }).notNull(),
+    neighborhood: varchar("neighborhood", { length: 191 }),
 
     // Step 2 — Education
     schoolType: mysqlEnum("school_type", [

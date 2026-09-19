@@ -281,6 +281,7 @@ export async function PUT(
   if (typeof body.phone === "string") updates.phone = body.phone;
   if (typeof body.address === "string") updates.address = body.address;
   if (typeof body.city === "string") updates.city = body.city;
+  if (typeof body.neighborhood === "string") updates.neighborhood = body.neighborhood;
   if (
     body.schoolType === "lise" ||
     body.schoolType === "onlisans" ||

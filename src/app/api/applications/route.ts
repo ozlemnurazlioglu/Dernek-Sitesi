@@ -108,6 +108,7 @@ export async function POST(req: NextRequest) {
         phone: body.phone ?? "",
         address: body.address ?? "",
         city: body.city ?? "",
+        neighborhood: body.neighborhood ?? null,
         schoolType: body.schoolType ?? "lisans",
         schoolName: body.schoolName ?? "",
         department: body.department ?? "",

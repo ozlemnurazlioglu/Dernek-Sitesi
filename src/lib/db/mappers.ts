@@ -153,6 +153,7 @@ export function rowToApplication(
     phone: r.phone,
     address: r.address,
     city: r.city,
+    neighborhood: r.neighborhood ?? undefined,
     schoolType: r.schoolType,
     schoolName: r.schoolName,
     department: r.department,

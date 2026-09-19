@@ -267,6 +267,7 @@ export default function ApplicationDetailPage() {
                 icon={<Phone className="h-3.5 w-3.5" />}
               />
               <Detail label="Şehir" value={application.city} />
+              <Detail label="Köy / Mahalle" value={application.neighborhood || "—"} />
               <Detail
                 label="Adres"
                 value={application.address}
@@ -304,42 +305,63 @@ export default function ApplicationDetailPage() {
           </Section>
 
           <Section title="Aile Bilgileri" icon={Users}>
-            <Grid>
-              <Detail label="Baba" value={application.fatherName} />
-              <Detail label="Mesleği" value={application.fatherJob} />
-              <Detail
-                label="Aylık Gelir"
-                value={fatherIncome ? formatCurrencyTR(fatherIncome) : "—"}
-              />
-              <Detail label="Anne" value={application.motherName} />
-              <Detail label="Mesleği" value={application.motherJob} />
-              <Detail
-                label="Aylık Gelir"
-                value={motherIncome ? formatCurrencyTR(motherIncome) : "—"}
-              />
-              <Detail
-                label="Kardeş Sayısı"
-                value={String(application.siblings)}
-              />
-              <Detail
-                label="Çalışan Kişi"
-                value={String(application.workingMembers)}
-              />
-              <Detail
-                label="Önceki Burs"
-                value={
-                  application.previousScholarship
-                    ? application.previousScholarshipDetail || "Var"
-                    : "Yok"
-                }
-              />
-              <Detail
-                label="Toplam Aile Geliri"
-                value={formatCurrencyTR(totalIncome)}
-                highlight
-                wide
-              />
-            </Grid>
+            <div className="grid md:grid-cols-2 gap-6 pb-6 border-b border-border">
+              {/* Baba Bilgileri Column */}
+              <div className="space-y-4 bg-muted/20 p-4 rounded-xl border border-border/60">
+                <h4 className="text-sm font-semibold text-brand-900 border-b border-border/80 pb-2 flex items-center gap-2">
+                  <User className="h-4 w-4 text-brand-600" /> Baba Bilgileri
+                </h4>
+                <div className="space-y-3">
+                  <Detail label="Adı Soyadı" value={application.fatherName} />
+                  <Detail label="Mesleği" value={application.fatherJob} />
+                  <Detail
+                    label="Aylık Geliri"
+                    value={fatherIncome ? formatCurrencyTR(fatherIncome) : "—"}
+                  />
+                </div>
+              </div>
+
+              {/* Anne Bilgileri Column */}
+              <div className="space-y-4 bg-muted/20 p-4 rounded-xl border border-border/60">
+                <h4 className="text-sm font-semibold text-brand-900 border-b border-border/80 pb-2 flex items-center gap-2">
+                  <User className="h-4 w-4 text-brand-600" /> Anne Bilgileri
+                </h4>
+                <div className="space-y-3">
+                  <Detail label="Adı Soyadı" value={application.motherName} />
+                  <Detail label="Mesleği" value={application.motherJob} />
+                  <Detail
+                    label="Aylık Geliri"
+                    value={motherIncome ? formatCurrencyTR(motherIncome) : "—"}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <Grid>
+                <Detail
+                  label="Kardeş Sayısı"
+                  value={String(application.siblings)}
+                />
+                <Detail
+                  label="Çalışan Kişi"
+                  value={String(application.workingMembers)}
+                />
+                <Detail
+                  label="Önceki Burs"
+                  value={
+                    application.previousScholarship
+                      ? application.previousScholarshipDetail || "Var"
+                      : "Yok"
+                  }
+                />
+                <Detail
+                  label="Toplam Aile Geliri"
+                  value={formatCurrencyTR(totalIncome)}
+                  highlight
+                />
+              </Grid>
+            </div>
           </Section>
 
           <Section title="Referans Bilgileri" icon={Users}>

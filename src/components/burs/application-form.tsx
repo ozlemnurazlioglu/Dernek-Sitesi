@@ -165,6 +165,7 @@ const blankData = (): FormData => ({
   phone: "",
   address: "",
   city: "",
+  neighborhood: "",
   schoolType: "lisans",
   schoolName: "",
   department: "",
@@ -210,6 +211,7 @@ const dataFromApplication = (app: ScholarshipApplication): FormData => {
     phone: app.phone,
     address: app.address,
     city: app.city,
+    neighborhood: app.neighborhood ?? "",
     schoolType: app.schoolType,
     schoolName: app.schoolName,
     department: app.department,
@@ -260,6 +262,7 @@ export function ApplicationForm({
     updateApplication,
     pageBlocks,
     requiredDocuments,
+    neighborhoods,
   } = useStore();
   const { toast } = useToast();
   const isEdit = mode === "edit";
@@ -296,6 +299,7 @@ export function ApplicationForm({
     );
     return p.enabled && p.body.trim() ? p : null;
   }, [pageBlocks]);
+
   const steps = STEP_DEFS.map((s) => ({
     ...s,
     title: formText.steps[s.key as StepKey].title,
@@ -330,6 +334,17 @@ export function ApplicationForm({
   const [kvkkOpen, setKvkkOpen] = useState(
     () => !isEdit && !data.kvkkConsentAt,
   );
+
+  const predefinedNames = useMemo(
+    () => (neighborhoods ?? []).map((n) => n.name),
+    [neighborhoods],
+  );
+  const isPredefined = useMemo(
+    () => !data.neighborhood || predefinedNames.includes(data.neighborhood),
+    [data.neighborhood, predefinedNames],
+  );
+  const selectValue = isPredefined ? data.neighborhood : "Diger";
+
   // Mezuniyet yılı uyarısı (madde 6) — schoolType + grade değişince güncellenir
   const expectedGradYear = useMemo(
     () => computeExpectedGradYear(data.schoolType, data.grade),
@@ -371,6 +386,8 @@ export function ApplicationForm({
       if (!data.phone.trim()) newErrors.phone = "Telefon zorunludur";
       if (!data.address.trim()) newErrors.address = "Adres zorunludur";
       if (!data.city.trim()) newErrors.city = "Şehir zorunludur";
+      if (!data.neighborhood?.trim())
+        newErrors.neighborhood = "Köy / Mahalle seçimi zorunludur";
     } else if (step === 1) {
       if (!data.schoolName.trim())
         newErrors.schoolName = "Okul adı zorunludur";
@@ -796,6 +813,40 @@ export function ApplicationForm({
                     placeholder="İl"
                   />
                 </Field>
+                <Field label="Köy / Mahalle" required error={errors.neighborhood}>
+                  <Select
+                    value={selectValue}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "Diger") {
+                        update("neighborhood", " ");
+                      } else {
+                        update("neighborhood", val);
+                      }
+                    }}
+                    invalid={!!errors.neighborhood}
+                  >
+                    <option value="">Seçiniz</option>
+                    {predefinedNames.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                    <option value="Diger">Diğer / Listede Yok</option>
+                  </Select>
+                </Field>
+                {!isPredefined && (
+                  <div className="sm:col-span-2">
+                    <Field label="Köy / Mahalle Adı" required error={errors.neighborhood}>
+                      <Input
+                        value={data.neighborhood}
+                        onChange={(e) => update("neighborhood", e.target.value)}
+                        invalid={!!errors.neighborhood}
+                        placeholder="Köy veya mahalle adını yazınız"
+                      />
+                    </Field>
+                  </div>
+                )}
               </div>
             </StepWrap>
           )}
@@ -914,53 +965,74 @@ export function ApplicationForm({
               title={formText.steps.family.title}
               description={formText.steps.family.description}
             >
-              <div className="grid sm:grid-cols-2 gap-5">
-                <Field label="Baba Adı" required error={errors.fatherName}>
-                  <Input
-                    value={data.fatherName}
-                    onChange={(e) => update("fatherName", e.target.value)}
-                    invalid={!!errors.fatherName}
-                  />
-                </Field>
-                <Field label="Baba Mesleği" required error={errors.fatherJob}>
-                  <Input
-                    value={data.fatherJob}
-                    onChange={(e) => update("fatherJob", e.target.value)}
-                    invalid={!!errors.fatherJob}
-                  />
-                </Field>
-                <Field label="Baba Aylık Gelir (₺)">
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    value={data.fatherIncome}
-                    onChange={(e) => update("fatherIncome", e.target.value)}
-                    placeholder="0"
-                  />
-                </Field>
-                <Field label="Anne Adı" required error={errors.motherName}>
-                  <Input
-                    value={data.motherName}
-                    onChange={(e) => update("motherName", e.target.value)}
-                    invalid={!!errors.motherName}
-                  />
-                </Field>
-                <Field label="Anne Mesleği" required error={errors.motherJob}>
-                  <Input
-                    value={data.motherJob}
-                    onChange={(e) => update("motherJob", e.target.value)}
-                    invalid={!!errors.motherJob}
-                  />
-                </Field>
-                <Field label="Anne Aylık Gelir (₺)">
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    value={data.motherIncome}
-                    onChange={(e) => update("motherIncome", e.target.value)}
-                    placeholder="0"
-                  />
-                </Field>
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Baba Bilgileri Column */}
+                <div className="space-y-4 bg-muted/20 p-4 rounded-xl border border-border/60">
+                  <h4 className="text-sm font-semibold text-brand-900 border-b border-border/80 pb-2 flex items-center gap-2">
+                    <User className="h-4 w-4 text-brand-600" /> Baba Bilgileri
+                  </h4>
+                  <div className="space-y-4">
+                    <Field label="Baba Adı" required error={errors.fatherName}>
+                      <Input
+                        value={data.fatherName}
+                        onChange={(e) => update("fatherName", e.target.value)}
+                        invalid={!!errors.fatherName}
+                      />
+                    </Field>
+                    <Field label="Baba Mesleği" required error={errors.fatherJob}>
+                      <Input
+                        value={data.fatherJob}
+                        onChange={(e) => update("fatherJob", e.target.value)}
+                        invalid={!!errors.fatherJob}
+                      />
+                    </Field>
+                    <Field label="Baba Aylık Gelir (₺)">
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        value={data.fatherIncome}
+                        onChange={(e) => update("fatherIncome", e.target.value)}
+                        placeholder="0"
+                      />
+                    </Field>
+                  </div>
+                </div>
+
+                {/* Anne Bilgileri Column */}
+                <div className="space-y-4 bg-muted/20 p-4 rounded-xl border border-border/60">
+                  <h4 className="text-sm font-semibold text-brand-900 border-b border-border/80 pb-2 flex items-center gap-2">
+                    <User className="h-4 w-4 text-brand-600" /> Anne Bilgileri
+                  </h4>
+                  <div className="space-y-4">
+                    <Field label="Anne Adı" required error={errors.motherName}>
+                      <Input
+                        value={data.motherName}
+                        onChange={(e) => update("motherName", e.target.value)}
+                        invalid={!!errors.motherName}
+                      />
+                    </Field>
+                    <Field label="Anne Mesleği" required error={errors.motherJob}>
+                      <Input
+                        value={data.motherJob}
+                        onChange={(e) => update("motherJob", e.target.value)}
+                        invalid={!!errors.motherJob}
+                      />
+                    </Field>
+                    <Field label="Anne Aylık Gelir (₺)">
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        value={data.motherIncome}
+                        onChange={(e) => update("motherIncome", e.target.value)}
+                        placeholder="0"
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </div>
+
+              {/* Diğer Aile Alanları */}
+              <div className="grid sm:grid-cols-2 gap-5 mt-5">
                 <Field label="Kardeş Sayısı">
                   <Input
                     type="number"
